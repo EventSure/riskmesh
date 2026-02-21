@@ -491,3 +491,188 @@ Switchboard 커스텀 피드에서 온체인으로 제공되는 값은 다음을
 - 지연 값 10분 단위 위반 → `E_ORACLE_FORMAT`
 - 승인 없이 지급 시도 → `E_INVALID_STATE`
 - 잔액 부족 지급 시도 → `E_POOL_INSUFFICIENT`
+
+---
+
+# Anchor 타입 정의(초안 v1)
+
+## 32. 계정 타입(Anchor)
+
+### `Policy`
+```rust
+pub struct Policy {
+    pub policy_id: u64,
+    pub leader: Pubkey,
+    pub route: String,
+    pub flight_no: String,
+    pub departure_date: i64,
+    pub delay_threshold_min: u16,
+    pub payout_amount: u64,
+    pub currency_mint: Pubkey,
+    pub oracle_feed: Pubkey,
+    pub state: u8,
+    pub underwriting: Pubkey,
+    pub pool: Pubkey,
+    pub created_at: i64,
+    pub active_from: i64,
+    pub active_to: i64,
+}
+```
+
+### `Underwriting`
+```rust
+pub struct Underwriting {
+    pub policy: Pubkey,
+    pub leader: Pubkey,
+    pub participants: Vec<ParticipantShare>,
+    pub total_ratio: u16,
+    pub status: u8,
+    pub created_at: i64,
+}
+```
+
+### `ParticipantShare`
+```rust
+pub struct ParticipantShare {
+    pub insurer: Pubkey,
+    pub ratio_bps: u16,
+    pub status: u8,
+    pub escrow: Pubkey,
+}
+```
+
+### `RiskPool`
+```rust
+pub struct RiskPool {
+    pub policy: Pubkey,
+    pub currency_mint: Pubkey,
+    pub vault: Pubkey,
+    pub total_escrowed: u64,
+    pub available_balance: u64,
+    pub status: u8,
+}
+```
+
+### `Claim`
+```rust
+pub struct Claim {
+    pub policy: Pubkey,
+    pub oracle_round: u64,
+    pub oracle_value: i64,
+    pub verified_at: i64,
+    pub approved_by: Pubkey,
+    pub status: u8,
+    pub payout_amount: u64,
+}
+```
+
+### `PolicyholderRegistry`
+```rust
+pub struct PolicyholderRegistry {
+    pub policy: Pubkey,
+    pub entries: Vec<PolicyholderEntry>,
+}
+```
+
+### `PolicyholderEntry`
+```rust
+pub struct PolicyholderEntry {
+    pub external_ref: String,
+    pub policy_id: u64,
+    pub flight_no: String,
+    pub departure_date: i64,
+    pub passenger_count: u16,
+    pub premium_paid: u64,
+    pub coverage_amount: u64,
+    pub timestamp: i64,
+}
+```
+
+## 33. Enum 타입(Anchor)
+
+```rust
+pub enum PolicyState {
+    Draft = 0,
+    Open = 1,
+    Funded = 2,
+    Active = 3,
+    Claimable = 4,
+    Approved = 5,
+    Settled = 6,
+    Expired = 7,
+}
+
+pub enum UnderwritingStatus {
+    Proposed = 0,
+    Open = 1,
+    Finalized = 2,
+    Failed = 3,
+}
+
+pub enum ClaimStatus {
+    None = 0,
+    PendingOracle = 1,
+    Claimable = 2,
+    Approved = 3,
+    Settled = 4,
+    Rejected = 5,
+}
+```
+
+---
+
+# 시뮬레이션 데이터(샘플 v1)
+
+## 34. 샘플 보험(Policy)
+- `policy_id`: 1001
+- `leader`: `LeaderPubkey`
+- `route`: `ICN-JFK`
+- `flight_no`: `KE081`
+- `departure_date`: `2026-03-15T10:00:00Z` (Unix)
+- `delay_threshold_min`: 120
+- `payout_amount`: 1,000,000 (SPL 단위)
+- `currency_mint`: `MintPubkey`
+- `oracle_feed`: `OracleFeedPubkey`
+- `active_from`: `2026-03-15T00:00:00Z`
+- `active_to`: `2026-03-16T00:00:00Z`
+
+## 35. 샘플 참여사(Underwriting)
+- 리더: 40% (4000 bps)
+- 참여사 A: 35% (3500 bps)
+- 참여사 B: 25% (2500 bps)
+
+## 36. 샘플 예치금
+- 리더 예치: 400,000
+- 참여사 A 예치: 350,000
+- 참여사 B 예치: 250,000
+
+## 37. 샘플 오라클 값
+- `delay_min = 130` (조건 충족)
+- `last_updated`: `2026-03-15T11:00:00Z`
+
+## 38. 샘플 정산
+- 지급액: 1,000,000
+- 부담: 리더 400,000 / 참여사 A 350,000 / 참여사 B 250,000
+
+---
+
+# 샘플 서비스 유저 플로우(운영용)
+
+## 39. 리더사 플로우
+1. 보험상품 생성: 노선/항공편/날짜/지연 기준/정액 지급 설정
+2. 공동 인수 비율 설정 후 모집 개시
+3. 참여사 응답 모니터링
+4. 인수 완료 후 보험 개시
+5. 오라클 지연 발생 알림 확인
+6. 청구 승인 및 지급 실행
+
+## 40. 참여사 플로우
+1. 모집 중인 보험 확인
+2. 비율 검토 후 승락 또는 거절
+3. 승락 시 즉시 예치 완료
+4. 만기 시 환급 확인
+
+## 41. 운영자 플로우(내부)
+1. 오라클 피드 정상 업데이트 모니터링
+2. 지연 조건 충족 시 청구 상태 확인
+3. 정산 후 감사 로그 확인
