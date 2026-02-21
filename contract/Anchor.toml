@@ -1,0 +1,12 @@
+[programs.localnet]
+open_parametric = "OpenParametric11111111111111111111111111111111"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn mocha -t 1000000 tests/*.ts"

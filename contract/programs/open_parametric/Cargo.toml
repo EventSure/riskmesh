@@ -1,0 +1,19 @@
+[package]
+name = "open_parametric"
+version = "0.1.0"
+description = "Open Parametric insurance protocol (MVP)"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "open_parametric"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+
+[dependencies]
+anchor-lang = "0.30.0"
+anchor-spl = "0.30.0"

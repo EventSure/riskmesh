@@ -676,3 +676,9 @@ pub enum ClaimStatus {
 1. 오라클 피드 정상 업데이트 모니터링
 2. 지연 조건 충족 시 청구 상태 확인
 3. 정산 후 감사 로그 확인
+
+---
+
+# 저장소 구조(초기 스캐폴딩)
+- `contract/`: Anchor 기반 Solana 프로그램
+- `frontend/`: 간단 미리보기 화면(정적 HTML/CSS)
