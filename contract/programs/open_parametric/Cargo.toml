@@ -17,3 +17,4 @@ cpi = ["no-entrypoint"]
 [dependencies]
 anchor-lang = "0.30.0"
 anchor-spl = "0.30.0"
+switchboard-on-demand = "0.8.0"

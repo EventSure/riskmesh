@@ -38,6 +38,15 @@ Open Parametric은 Solana 기반 파라메트릭 보험 인프라 프로토콜�
 - 대안: VariFlight DataWorks (광범위 글로벌 항공편 커버리지)
 - 보조: 인천공항 공공데이터 API(당일/주간 항공편 현황, 국내 데이터 보완용)
 
+### Switchboard 온디맨드 연동 요약(구현 기준)
+- **Canonical quote account**는 `queue`와 `feed ID`로 PDA 파생됨.
+- 트랜잭션에는 다음 3개 인스트럭션이 동일 트랜잭션에 포함되어야 함:
+  1) Ed25519 검증 인스트럭션  
+  2) Switchboard `verified_update` 인스트럭션  
+  3) 우리 프로그램의 `check_oracle_and_create_claim`
+- 프로그램은 `SlotHashes`, `Instructions`, `Clock` sysvar를 사용해 검증.
+- 실제 지연 값은 `quote_account.feeds`에서 읽음(10분 단위 값).
+
 ---
 
 # 온체인 계정 구조(상세 초안)
