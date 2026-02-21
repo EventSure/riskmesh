@@ -411,3 +411,83 @@ Open Parametric은 Solana 기반 파라메트릭 보험 인프라 프로토콜�
 - `Policy.state == Expired`
 - 참여자 상태 `Accepted`
 - 참여자별 예치 비율에 따라 환급
+
+---
+
+# 오라클 데이터 구조 및 검증(상세 v1)
+
+## 22. 오라클 데이터 구조(가정)
+Switchboard 커스텀 피드에서 온체인으로 제공되는 값은 다음을 만족해야 함.
+
+필드(논리적 구조):
+- `flight_no` (문자열 또는 해시, 피드 메타데이터에 포함)
+- `departure_date` (i64, 출발 예정 시각)
+- `delay_min` (i64, 지연 분; 10분 단위)
+- `last_updated` (i64, 오라클 업데이트 시각)
+
+온체인에서는 `delay_min`, `last_updated`를 직접 읽고,
+`flight_no`, `departure_date`는 정책 계정의 값과 일치하도록 오프체인에서 보장.
+
+## 23. 오라클 검증 규칙(추천)
+- 피드 계정 주소는 `Policy.oracle_feed`와 일치해야 함.
+- `delay_min % 10 == 0` (10분 단위)
+- `delay_min >= 0`
+- `now - last_updated <= ORACLE_FRESHNESS_WINDOW` (예: 30분)
+- `delay_min >= delay_threshold_min`이면 `Claimable` 생성
+- 피드가 실패/결측이면 `E_ORACLE_STALE` 또는 `E_ORACLE_FORMAT`
+
+## 24. 오라클 운영 규칙(오프체인)
+- 오프체인 오라클 워커가 항공 데이터 API를 주기적으로 조회
+- 지연 계산은 `actual_departure - scheduled_departure` 기준
+- 지연 결과는 10분 단위로 반올림 또는 내림(정책에 명시)
+- 피드 업데이트 주기와 신뢰성 모니터링 필요
+
+---
+
+# 리스크 풀 정산 로직(상세 v1)
+
+## 25. 예치 계산 규칙
+각 참여사 예치액은 다음을 만족해야 함:
+- `escrow_amount_i >= payout_amount * ratio_bps_i / 10000`
+
+## 26. 지급 시 정산
+- `payout_amount`는 풀에서 차감
+- 참여사별 부담액:  
+  `loss_i = payout_amount * ratio_bps_i / 10000`
+- 풀 잔액은 차감 후 업데이트
+
+## 27. 부지급/만기 시 환급
+- 정책 만기 후 `Expired` 상태에서 환급 가능
+- 참여사별 환급액:  
+  `refund_i = escrow_amount_i` (전액 환급)
+- 환급 완료 후 풀 잔액 정리
+
+## 28. 수수료/운영비(옵션)
+- MVP에서는 수수료 없음
+- 추후 `fee_bps` 도입 시 `payout_amount`에서 차감 후 분배
+
+---
+
+# 테스트 시나리오(상세 v1)
+
+## 29. 정상 플로우
+1. 리더가 보험 생성 → `Draft`
+2. 리더가 인수 모집 → `Open`
+3. 참여사들이 승락/예치 → `Funded`
+4. 리더가 보험 개시 → `Active`
+5. 오라클 값 120 이상 → `Claimable`
+6. 리더 승인 → `Approved`
+7. 지급 정산 → `Settled`
+
+## 30. 부지급 플로우
+1. 보험 개시 → `Active`
+2. 오라클 값 < 120
+3. 만기 도래 → `Expired`
+4. 참여사 환급 완료
+
+## 31. 실패/예외 케이스
+- 인수 비율 합계 10000 미달 → `Funded` 불가
+- 오라클 최신성 실패 → `E_ORACLE_STALE`
+- 지연 값 10분 단위 위반 → `E_ORACLE_FORMAT`
+- 승인 없이 지급 시도 → `E_INVALID_STATE`
+- 잔액 부족 지급 시도 → `E_POOL_INSUFFICIENT`
