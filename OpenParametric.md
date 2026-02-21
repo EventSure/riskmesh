@@ -25,6 +25,19 @@ Open Parametric은 Solana 기반 파라메트릭 보험 인프라 프로토콜�
 - 오라클 값의 최신성/정합성 검증 후 조건 충족 시 청구 생성
 - 현재는 보험사 승인 후 지급 확정(향후 자동 승인 가능)
 
+### 후보 비교(요약)
+1. Switchboard (Solana/SVM)
+   - 장점: 커스텀 피드를 만들어 원하는 항공 데이터 API를 직접 연결 가능
+   - Solana에서 피드 배포/운영 가이드가 명확함
+   - 한국 항공편 제공 API와 결합하기 가장 쉬움
+   - 근거: Switchboard 문서에 Solana SVM 데이터 피드 설계/배포/관리 및 feed hash 기반 계정 파생 방식이 설명되어 있음
+
+### 오라클 데이터 소스 추천(항공편)
+- 권장: FlightAware AeroAPI (글로벌 항공편 상태/지연 데이터 제공, 쿼리 기반 API)
+- 대안: Cirium FlightStats (항공편 상태/지연/게이트 등 상세 데이터 제공)
+- 대안: VariFlight DataWorks (광범위 글로벌 항공편 커버리지)
+- 보조: 인천공항 공공데이터 API(당일/주간 항공편 현황, 국내 데이터 보완용)
+
 ---
 
 # 온체인 계정 구조(상세 초안)
@@ -99,10 +112,14 @@ Open Parametric은 Solana 기반 파라메트릭 보험 인프라 프로토콜�
 - `entries` (PolicyholderEntry 벡터)
 
 `PolicyholderEntry`:
-- `external_ref` (문자열 또는 바이트)
-- `premium_paid` (u64)
-- `coverage_amount` (u64)
-- `timestamp` (i64)
+- `external_ref` (문자열 또는 바이트, 보험사 내부 식별자/해시; PII 저장 안함)
+- `policy_id` (u64, 연결된 보험상품 식별자)
+- `flight_no` (문자열, 해당 항공편 번호)
+- `departure_date` (i64, 출발 예정 시각)
+- `passenger_count` (u16, 가입 인원 수)
+- `premium_paid` (u64, 납입 보험료)
+- `coverage_amount` (u64, 보장 금액)
+- `timestamp` (i64, 등록 시각)
 
 ---
 
@@ -271,16 +288,15 @@ Open Parametric은 Solana 기반 파라메트릭 보험 인프라 프로토콜�
 - Anchor discriminator 8 포함 → **105 bytes**
 
 ### `PolicyholderRegistry`
-`PolicyholderEntry` = (4 + 32) + 8 + 8 + 8 = 60 bytes
-`entries` 벡터: 4 + 128 * 60 = 7684
+`PolicyholderEntry` = (4 + 32) + 8 + (4 + 16) + 8 + 2 + 8 + 8 + 8 = 106 bytes
+`entries` 벡터: 4 + 128 * 106 = 13572
 `policy` 32
-- 합계 32 + 4 + 7684 = 7720
-- Anchor discriminator 8 포함 → **7728 bytes**
+- 합계 32 + 4 + 13572 = 13608
+- Anchor discriminator 8 포함 → **13616 bytes**
 
 ---
 
 # 미정 사항
-- 계약자 데이터 스키마
 - 오라클 네트워크 및 항공편 피드 구체화
 
 ---
@@ -290,7 +306,6 @@ Open Parametric은 Solana 기반 파라메트릭 보험 인프라 프로토콜�
 ## 17. 역할 정의
 - `Leader` (리더사): 보험 생성, 인수 조건 설정, 보험 개시, 청구 승인/정산 권한
 - `Participant` (참여사): 인수 참여/거절, 예치, 만기 환급 권한
-- `Operator` (운영자): 리더사로부터 위임받은 승인/정산 권한(옵션)
 - `Public` (누구나): 오라클 검증 트리거, 만기 처리
 
 ## 18. 서명 규칙 (Instruction별)
@@ -306,8 +321,8 @@ Open Parametric은 Solana 기반 파라메트릭 보험 인프라 프로토콜�
 
 ### 청구/정산
 - `check_oracle_and_create_claim`: `Public` 가능(서명 제한 없음)
-- `approve_claim`: `Leader` 또는 `Operator` 서명 필수
-- `settle_claim`: `Leader` 또는 `Operator` 서명 필수
+- `approve_claim`: `Leader` 서명 필수
+- `settle_claim`: `Leader` 서명 필수
 
 ### 만기/환급
 - `expire_policy`: `Public` 가능(서명 제한 없음)
@@ -316,9 +331,83 @@ Open Parametric은 Solana 기반 파라메트릭 보험 인프라 프로토콜�
 ## 19. 권한 검증 규칙
 - `Leader`는 `Policy.leader`와 서명자가 일치해야 함.
 - `Participant`는 `Underwriting.participants[i].insurer`와 서명자가 일치해야 함.
-- `Operator`는 `Policy.operator` 또는 `Underwriting.operator` (추가 필드 필요)로 등록된 경우에만 허용.
 - `Public` 호출은 상태 및 시간 조건 검증만 수행.
 
 추가 제안:
-- `Operator` 지원을 위해 `Policy.operator`(Pubkey, optional) 필드를 추가하는 것을 고려.
 - `approve_claim`와 `settle_claim`을 분리하여 감사 가능성을 확보.
+
+---
+
+# 프로그램 에러 및 검증 규칙(상세 v1)
+
+## 20. 공통 에러 코드(제안)
+- `E_UNAUTHORIZED` 서명자 권한 없음
+- `E_INVALID_STATE` 잘못된 상태 전이
+- `E_INVALID_RATIO` 인수 비율 합계 불일치
+- `E_ALREADY_EXISTS` 이미 존재하는 계정/청구
+- `E_NOT_FOUND` 대상 계정 없음
+- `E_INSUFFICIENT_ESCROW` 예치금 부족
+- `E_POOL_INSUFFICIENT` 풀 잔액 부족
+- `E_ORACLE_STALE` 오라클 값이 오래됨
+- `E_ORACLE_FORMAT` 오라클 값 형식/단위 오류
+- `E_TIME_WINDOW` 시간 조건 불일치
+- `E_INPUT_INVALID` 입력 파라미터 오류
+- `E_AMOUNT_INVALID` 금액/지급값 오류
+
+## 21. Instruction별 검증 규칙
+
+### `create_policy`
+- `Leader` 서명 필수
+- `payout_amount > 0`
+- `active_from < active_to`
+- `delay_threshold_min == 120`
+- `currency_mint` 유효
+- `route`, `flight_no` 길이 ≤ 최대치
+- `policy_id`는 리더별 유니크
+
+### `open_underwriting`
+- `Policy.state == Draft`
+- `Underwriting.status == Proposed`
+
+### `accept_share`
+- `Policy.state == Open`
+- 해당 `Participant` 상태 `Pending`
+- `ratio_bps > 0`
+- 예치금 이체 성공 확인
+- 누적 `ratio_bps` 합계 ≤ 10000
+- 예치금 규모가 `payout_amount * ratio_bps/10000` 이상
+
+### `reject_share`
+- `Policy.state == Open`
+- 해당 `Participant` 상태 `Pending`
+
+### `activate_policy`
+- `Policy.state == Funded`
+- 현재 시간 ≥ `active_from`
+
+### `check_oracle_and_create_claim`
+- `Policy.state == Active`
+- 오라클 피드 계정 일치
+- 오라클 값 최신성 검사(예: 30분 이내)
+- 오라클 값이 10분 단위인지 확인
+- 오라클 값 ≥ `delay_threshold_min`일 때만 `Claim` 생성
+- 기존 활성 `Claim` 존재 시 거부
+
+### `approve_claim`
+- `Claim.status == Claimable`
+- `Policy.state == Claimable`
+
+### `settle_claim`
+- `Claim.status == Approved`
+- `payout_amount <= RiskPool.available_balance`
+- 지급 후 잔액 갱신
+
+### `expire_policy`
+- `Policy.state == Active`
+- 현재 시간 > `active_to`
+- 활성 `Claim` 없음
+
+### `refund_after_expiry`
+- `Policy.state == Expired`
+- 참여자 상태 `Accepted`
+- 참여자별 예치 비율에 따라 환급
