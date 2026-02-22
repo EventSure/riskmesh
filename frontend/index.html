@@ -1,101 +1,18 @@
 <!doctype html>
 <html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Open Parametric — MVP Console (Preview)</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-  <main class="shell">
-    <header class="top">
-      <div class="brand">
-        <div class="logo"></div>
-        <div>
-          <h1>Open Parametric</h1>
-          <p>MVP 운영 콘솔 프리뷰</p>
-        </div>
-      </div>
-      <button class="btn">지갑 연결 (미구현)</button>
-    </header>
-
-    <section class="grid">
-      <article class="card">
-        <h2>보험 생성</h2>
-        <div class="field">
-          <label>노선</label>
-          <input value="ICN-JFK" />
-        </div>
-        <div class="field">
-          <label>항공편</label>
-          <input value="KE081" />
-        </div>
-        <div class="field">
-          <label>지연 기준</label>
-          <input value="120분" />
-        </div>
-        <div class="field">
-          <label>정액 지급</label>
-          <input value="1,000,000" />
-        </div>
-        <button class="btn primary">보험 생성</button>
-      </article>
-
-      <article class="card">
-        <h2>공동 인수</h2>
-        <div class="row">
-          <span>리더사</span>
-          <strong>40%</strong>
-        </div>
-        <div class="row">
-          <span>참여사 A</span>
-          <strong>35%</strong>
-        </div>
-        <div class="row">
-          <span>참여사 B</span>
-          <strong>25%</strong>
-        </div>
-        <button class="btn">승락</button>
-        <button class="btn ghost">거절</button>
-      </article>
-
-      <article class="card">
-        <h2>오라클 상태</h2>
-        <div class="metric">
-          <span>지연(분)</span>
-          <strong>130</strong>
-        </div>
-        <div class="metric">
-          <span>최신 업데이트</span>
-          <strong>11:00 UTC</strong>
-        </div>
-        <div class="badge ok">조건 충족</div>
-      </article>
-
-      <article class="card">
-        <h2>청구 / 정산</h2>
-        <div class="row">
-          <span>상태</span>
-          <strong>Claimable</strong>
-        </div>
-        <div class="row">
-          <span>지급액</span>
-          <strong>1,000,000</strong>
-        </div>
-        <button class="btn primary">승인</button>
-        <button class="btn">정산</button>
-      </article>
-    </section>
-
-    <section class="card wide">
-      <h2>이벤트 로그</h2>
-      <ul class="log">
-        <li>Policy#1001 생성됨</li>
-        <li>Underwriting Open</li>
-        <li>참여사 A 예치 완료</li>
-        <li>오라클 지연 130분 감지</li>
-      </ul>
-    </section>
-  </main>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <title>Open Parametric</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
