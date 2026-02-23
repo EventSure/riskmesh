@@ -8,6 +8,7 @@ export const theme = {
     danger: '#EF4444',
     success: '#22C55E',
     warning: '#F59E0B',
+    info: '#38BDF8',
     text: '#F8FAFC',
     sub: '#94A3B8',
     border: '#1F2937',
@@ -17,6 +18,8 @@ export const theme = {
     primary: 'rgba(153,69,255,0.25)',
     accent: 'rgba(20,241,149,0.25)',
     danger: 'rgba(239,68,68,0.25)',
+    info: 'rgba(56,189,248,0.25)',
+    warning: 'rgba(245,158,11,0.25)',
   },
   fonts: {
     sans: "'Space Grotesk', sans-serif",

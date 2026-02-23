@@ -1,65 +1,29 @@
+import { useState } from 'react';
 import styled from '@emotion/styled';
-import { PolicyBuilder } from '@/components/dashboard/PolicyBuilder';
-import { PolicyDetails } from '@/components/dashboard/PolicyDetails';
-import { ClaimCard } from '@/components/dashboard/ClaimCard';
-import { ExternalRefs } from '@/components/dashboard/ExternalRefs';
-import { StateMachine } from '@/components/dashboard/StateMachine';
-import { InstructionRunner } from '@/components/dashboard/InstructionRunner';
-import { OracleConsole } from '@/components/dashboard/OracleConsole';
-import { RiskTokenToggle } from '@/components/dashboard/RiskTokenToggle';
-import { RiskPoolAccount } from '@/components/dashboard/RiskPoolAccount';
-import { Participants } from '@/components/dashboard/Participants';
-import { VaultChart } from '@/components/dashboard/VaultChart';
-import { OnChainInspector } from '@/components/dashboard/OnChainInspector';
-import { EventLog } from '@/components/dashboard/EventLog';
+import { TabBar, type TabId } from '@/components/layout/TabBar';
+import { Tab1Contract } from '@/components/tabs/tab1/Tab1Contract';
+import { Tab2Feed } from '@/components/tabs/tab2/Tab2Feed';
+import { Tab3Oracle } from '@/components/tabs/tab3/Tab3Oracle';
+import { Tab4Settlement } from '@/components/tabs/tab4/Tab4Settlement';
+import { Tab5Inspector } from '@/components/tabs/tab5/Tab5Inspector';
 
-const MainGrid = styled.div`
-  display: grid;
-  grid-template-columns: 300px 1fr 300px;
-  gap: 0;
-  height: calc(100vh - 106px);
-  min-height: 600px;
-`;
-
-const Column = styled.div`
-  overflow-y: auto;
-  border-right: 1px solid ${p => p.theme.colors.border};
-  padding: 14px;
-  &:last-child {
-    border-right: none;
-  }
+const TabContent = styled.div<{ visible: boolean }>`
+  display: ${p => (p.visible ? 'flex' : 'none')};
+  height: calc(100vh - 136px);
+  overflow: hidden;
 `;
 
 export function Dashboard() {
+  const [activeTab, setActiveTab] = useState<TabId>('t1');
+
   return (
     <>
-      <MainGrid>
-        {/* LEFT COL: Policy Builder + Details */}
-        <Column>
-          <PolicyBuilder />
-          <PolicyDetails />
-          <ClaimCard />
-          <ExternalRefs />
-        </Column>
-
-        {/* CENTER COL: State Machine + Demo Runner + Oracle */}
-        <Column>
-          <StateMachine />
-          <InstructionRunner />
-          <OracleConsole />
-          <RiskTokenToggle />
-        </Column>
-
-        {/* RIGHT COL: Underwriting Pool */}
-        <Column>
-          <RiskPoolAccount />
-          <Participants />
-          <VaultChart />
-          <OnChainInspector />
-        </Column>
-      </MainGrid>
-
-      <EventLog />
+      <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
+      <TabContent visible={activeTab === 't1'}><Tab1Contract /></TabContent>
+      <TabContent visible={activeTab === 't2'}><Tab2Feed /></TabContent>
+      <TabContent visible={activeTab === 't3'}><Tab3Oracle /></TabContent>
+      <TabContent visible={activeTab === 't4'}><Tab4Settlement /></TabContent>
+      <TabContent visible={activeTab === 't5'}><Tab5Inspector /></TabContent>
     </>
   );
 }
