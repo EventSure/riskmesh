@@ -1,6 +1,7 @@
 import styled from '@emotion/styled';
 import { Card, CardHeader, CardTitle, CardBody, Button, Tag } from '@/components/common';
 import { useProtocolStore, ROLES } from '@/store/useProtocolStore';
+import { useShallow } from 'zustand/shallow';
 import { useToast } from '@/components/common';
 
 const PtRow = styled.div<{ confirmed?: boolean }>`
@@ -41,7 +42,9 @@ const PT_DEF = [
 ];
 
 export function ParticipantConfirm() {
-  const { role, confirms, shares, cStep, masterActive, confirmParty, activateMaster } = useProtocolStore();
+  const { role, confirms, shares, cStep, masterActive, confirmParty, activateMaster } = useProtocolStore(
+    useShallow(s => ({ role: s.role, confirms: s.confirms, shares: s.shares, cStep: s.cStep, masterActive: s.masterActive, confirmParty: s.confirmParty, activateMaster: s.activateMaster })),
+  );
   const { toast } = useToast();
 
   const allConfirmed = confirms.partA && confirms.partB && confirms.rein;

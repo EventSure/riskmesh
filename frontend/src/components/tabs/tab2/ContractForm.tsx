@@ -18,8 +18,8 @@ export function ContractForm() {
   }, [masterActive, name, flight, date, addContract, toast]);
 
   const handleAutoFeed = useCallback(() => {
-    if (autoRunning) {
-      clearInterval(timerRef.current!);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
       timerRef.current = null;
       setAutoRunning(false);
       return;

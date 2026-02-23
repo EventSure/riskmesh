@@ -11,7 +11,8 @@ import { useProtocolStore } from '@/store/useProtocolStore';
 import { useEffect } from 'react';
 
 function InitLogger() {
-  const { addLog, logs } = useProtocolStore();
+  const addLog = useProtocolStore(s => s.addLog);
+  const logs = useProtocolStore(s => s.logs);
   useEffect(() => {
     if (logs.length === 0) {
       addLog('OpenParametric Protocol 초기화. Solana Devnet.', '#9945FF', 'system_init', '1단계: 마스터 계약 설정 → 약관 세팅을 클릭하세요.');

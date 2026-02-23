@@ -2,6 +2,7 @@ import styled from '@emotion/styled';
 import { keyframes } from '@emotion/react';
 import { Mono } from '@/components/common';
 import { useProtocolStore, ROLES, fmt, type Role } from '@/store/useProtocolStore';
+import { useShallow } from 'zustand/shallow';
 import { useToast } from '@/components/common';
 
 const blink = keyframes`
@@ -157,7 +158,9 @@ const ROLE_OPTIONS: { value: Role; label: string }[] = [
 ];
 
 export function Header() {
-  const { role, setRole, masterActive, contracts, totPrem, totClaim, poolBal } = useProtocolStore();
+  const { role, setRole, masterActive, contracts, totPrem, totClaim, poolBal } = useProtocolStore(
+    useShallow(s => ({ role: s.role, setRole: s.setRole, masterActive: s.masterActive, contracts: s.contracts, totPrem: s.totPrem, totClaim: s.totClaim, poolBal: s.poolBal })),
+  );
   const { toast } = useToast();
 
   const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {

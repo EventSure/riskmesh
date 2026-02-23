@@ -1,4 +1,4 @@
-import { useState, useCallback, createContext, useContext, useRef } from 'react';
+import { useState, useCallback, useEffect, createContext, useContext, useRef } from 'react';
 import styled from '@emotion/styled';
 import { keyframes } from '@emotion/react';
 
@@ -53,6 +53,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setVisible(true);
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => setVisible(false), 3000);
+  }, []);
+
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, []);
 
   return (

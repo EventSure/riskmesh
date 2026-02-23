@@ -6,13 +6,15 @@ const TabsWrap = styled.div`
   border-bottom: 1px solid ${p => p.theme.colors.border};
 `;
 
-const Tab = styled.div<{ active?: boolean }>`
+const Tab = styled.button<{ active?: boolean }>`
   padding: 9px 16px;
   font-size: 11px;
   font-weight: 600;
   color: ${p => (p.active ? p.theme.colors.primary : p.theme.colors.sub)};
   cursor: pointer;
+  border: none;
   border-bottom: 2px solid ${p => (p.active ? p.theme.colors.primary : 'transparent')};
+  background: none;
   transition: all 0.2s;
   white-space: nowrap;
 
@@ -39,9 +41,16 @@ interface TabBarProps {
 
 export function TabBar({ activeTab, onTabChange }: TabBarProps) {
   return (
-    <TabsWrap>
+    <TabsWrap role="tablist">
       {TAB_IDS.map(id => (
-        <Tab key={id} active={activeTab === id} onClick={() => onTabChange(id)}>
+        <Tab
+          key={id}
+          role="tab"
+          aria-selected={activeTab === id}
+          tabIndex={activeTab === id ? 0 : -1}
+          active={activeTab === id}
+          onClick={() => onTabChange(id)}
+        >
           {TAB_LABELS[id]}
         </Tab>
       ))}

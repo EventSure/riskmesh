@@ -1,6 +1,7 @@
 import styled from '@emotion/styled';
 import { Card, CardHeader, CardTitle, CardBody } from '@/components/common';
 import { useProtocolStore, fmt, mPDA, pPDA, vPDA, lPDA, SS } from '@/store/useProtocolStore';
+import { useShallow } from 'zustand/shallow';
 
 const Ia = styled.div`
   background: var(--card2);
@@ -86,7 +87,9 @@ const IaVal = styled.div<{ variant?: string }>`
 `;
 
 export function InspectorPanel() {
-  const { masterActive, psIdx, contracts, poolBal, totPrem, totClaim, acc, shares } = useProtocolStore();
+  const { masterActive, psIdx, contracts, poolBal, totPrem, totClaim, acc, shares } = useProtocolStore(
+    useShallow(s => ({ masterActive: s.masterActive, psIdx: s.psIdx, contracts: s.contracts, poolBal: s.poolBal, totPrem: s.totPrem, totClaim: s.totClaim, acc: s.acc, shares: s.shares })),
+  );
 
   if (!masterActive) {
     return (

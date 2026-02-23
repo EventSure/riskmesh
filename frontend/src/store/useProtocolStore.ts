@@ -230,8 +230,9 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
   },
 
   activateMaster: () => {
-    const { role } = get();
+    const { role, confirms } = get();
     if (role !== 'leader' && role !== 'operator') return { ok: false, msg: '리더사만 가능합니다' };
+    if (!confirms.partA || !confirms.partB || !confirms.rein) return { ok: false, msg: '모든 참여사·재보험사 컨펌이 필요합니다' };
     set({ masterActive: true, psIdx: 3, cStep: 5 });
     get().addLog(
       '마스터 계약 온체인 기록 완료. 실시간 계약 수락 시작', '#14F195', 'activate_master',
@@ -287,6 +288,7 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
       totClaim: 0,
       poolBal: 10000,
       premHist: [],
+      poolHist: [{ t: 'init', v: 10000 }],
       claims: [],
       clCnt: 0,
     });
@@ -294,7 +296,7 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
 
   runOracle: (contractId, delay, fresh) => {
     const st = get();
-    if (fresh > 30) return { ok: false, msg: `데이터가 ${fresh}분 전. 최대 30분 이내만 유효.`, type: 'error' as const, code: 'E_ORACLE_STALE' };
+    if (fresh < 0 || fresh > 30) return { ok: false, msg: `데이터가 ${fresh}분 전. 0~30분 이내만 유효.`, type: 'error' as const, code: 'E_ORACLE_STALE' };
     if (delay < 0 || delay % 10 !== 0) return { ok: false, msg: `delay_min은 0이상 10의 배수여야 함. 입력:${delay}`, type: 'error' as const, code: 'E_ORACLE_FORMAT' };
 
     const tier = getTier(delay);
@@ -304,7 +306,8 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
     }
 
     const contract = st.contracts.find(c => c.id === contractId);
-    if (contract?.status === 'claimed') return { ok: false, msg: `계약 #${contractId}은 이미 클레임 처리됨`, type: 'error' as const, code: 'E_ALREADY_CLAIMED' };
+    if (!contract) return { ok: false, msg: `계약 #${contractId}을 찾을 수 없습니다`, type: 'error' as const, code: 'E_CONTRACT_NOT_FOUND' };
+    if (contract.status === 'claimed') return { ok: false, msg: `계약 #${contractId}은 이미 클레임 처리됨`, type: 'error' as const, code: 'E_ALREADY_CLAIMED' };
     const newClCnt = st.clCnt + 1;
     const payout = tier.p;
     const lS = st.shares.leader / 100, aS = st.shares.partA / 100, bS = st.shares.partB / 100;
@@ -327,6 +330,7 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
       claims: [...prev.claims, cl],
       totClaim: prev.totClaim + payout,
       poolBal: Math.max(0, prev.poolBal - payout),
+      psIdx: Math.max(prev.psIdx, 4),
       acc: {
         ...prev.acc,
         lC: prev.acc.lC + lNet,
@@ -353,6 +357,7 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
     const pendIds = new Set(pend.map(c => c.id));
     set(prev => ({
       claims: prev.claims.map(c => pendIds.has(c.id) ? { ...c, status: 'approved' as const, approvedAt: nowd() } : c),
+      psIdx: Math.max(prev.psIdx, 5),
     }));
     get().addLog(`클레임 ${pend.length}건 승인 by ${ROLES[st.role].label}`, '#22C55E', 'approve_claim');
     return pend.length;
@@ -365,7 +370,7 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
     const apprIds = new Set(appr.map(c => c.id));
     set(prev => ({
       claims: prev.claims.map(c => apprIds.has(c.id) ? { ...c, status: 'settled' as const, settledAt: nowd() } : c),
-      psIdx: prev.psIdx === 4 ? 5 : prev.psIdx,
+      psIdx: 6,
     }));
     get().addLog(
       `클레임 ${appr.length}건 정산 완료. Pool→계약자 이체`, '#14F195', 'settle_claim',
