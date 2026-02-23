@@ -15,6 +15,6 @@ no-log-ix-name = []
 cpi = ["no-entrypoint"]
 
 [dependencies]
-anchor-lang = "0.30.0"
-anchor-spl = "0.30.0"
-switchboard-on-demand = "0.8.0"
+anchor-lang = "0.31.1"
+anchor-spl = "0.31.1"
+switchboard-on-demand = { version = "0.9.5", features = ["anchor"] }
