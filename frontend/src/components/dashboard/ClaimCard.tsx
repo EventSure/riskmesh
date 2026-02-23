@@ -1,35 +1,28 @@
+import { Card, CardHeader, CardTitle, CardBody } from '@/components/common';
+import { Button } from '@/components/common';
+import { Tag } from '@/components/common';
+import { SummaryRow } from '@/components/common';
+import { Divider } from '@/components/common';
+import { Mono } from '@/components/common';
+import { FormLabel } from '@/components/common';
+
 export function ClaimCard() {
   return (
-    <div className="card">
-      <div className="card-hdr">
-        <div className="card-title">Claim Account</div>
-        <span className="tag tag-s">PENDING</span>
-      </div>
-      <div className="card-body">
-        <div className="srow">
-          <span className="fl">oracle_value</span>
-          <span className="mono">— min</span>
-        </div>
-        <div className="srow">
-          <span className="fl">verified_at</span>
-          <span className="mono">—</span>
-        </div>
-        <div className="srow">
-          <span className="fl">approved_by</span>
-          <span className="mono">—</span>
-        </div>
-        <div className="srow">
-          <span className="fl">payout_amount</span>
-          <span className="mono">—</span>
-        </div>
-        <div className="srow">
-          <span className="fl">status</span>
-          <span className="mono">None</span>
-        </div>
-        <div className="div-line"></div>
-        <button className="btn btn-w btn-full">approve_claim</button>
-        <button className="btn btn-a btn-full" style={{ marginTop: 6 }}>settle_claim</button>
-      </div>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Claim Account</CardTitle>
+        <Tag variant="subtle">PENDING</Tag>
+      </CardHeader>
+      <CardBody>
+        <SummaryRow><FormLabel as="span">oracle_value</FormLabel><Mono>— min</Mono></SummaryRow>
+        <SummaryRow><FormLabel as="span">verified_at</FormLabel><Mono>—</Mono></SummaryRow>
+        <SummaryRow><FormLabel as="span">approved_by</FormLabel><Mono>—</Mono></SummaryRow>
+        <SummaryRow><FormLabel as="span">payout_amount</FormLabel><Mono>—</Mono></SummaryRow>
+        <SummaryRow><FormLabel as="span">status</FormLabel><Mono>None</Mono></SummaryRow>
+        <Divider />
+        <Button variant="warning" fullWidth>approve_claim</Button>
+        <Button variant="accent" fullWidth style={{ marginTop: 6 }}>settle_claim</Button>
+      </CardBody>
+    </Card>
   );
 }
