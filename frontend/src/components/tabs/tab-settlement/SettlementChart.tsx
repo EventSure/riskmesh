@@ -2,10 +2,12 @@ import { useEffect, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardBody } from '@/components/common';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { Chart, registerables } from 'chart.js';
+import { useTranslation } from 'react-i18next';
 
 Chart.register(...registerables);
 
 export function SettlementChart() {
+  const { t, i18n: { language } } = useTranslation();
   const { acc, totalPremium, totalClaim } = useProtocolStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
@@ -18,10 +20,10 @@ export function SettlementChart() {
   const rCNet = -rcIn + rcOut;
 
   const rows = [
-    { label: '리더사', net: acc.leaderPrem - acc.leaderClaim },
-    { label: '참여사A', net: acc.partAPrem - acc.partAClaim },
-    { label: '참여사B', net: acc.partBPrem - acc.partBClaim },
-    { label: '재보험사', net: rPNet + rCNet },
+    { label: t('settle.party.leader'), net: acc.leaderPrem - acc.leaderClaim },
+    { label: t('settle.party.partA'), net: acc.partAPrem - acc.partAClaim },
+    { label: t('settle.party.partB'), net: acc.partBPrem - acc.partBClaim },
+    { label: t('settle.party.reinsurer'), net: rPNet + rCNet },
   ];
 
   useEffect(() => {
@@ -43,7 +45,7 @@ export function SettlementChart() {
       data: {
         labels,
         datasets: [{
-          label: '최종 수지',
+          label: t('settle.finalTh.pl'),
           data: vals,
           backgroundColor: vals.map(v => v >= 0 ? 'rgba(20,241,149,.5)' : 'rgba(239,68,68,.5)'),
           borderColor: vals.map(v => v >= 0 ? '#14F195' : '#EF4444'),
@@ -63,11 +65,11 @@ export function SettlementChart() {
     });
 
     return () => { chartRef.current?.destroy(); chartRef.current = null; };
-  }, [acc, totalPremium, totalClaim]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [acc, totalPremium, totalClaim, language]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <Card>
-      <CardHeader><CardTitle>수지 추이</CardTitle></CardHeader>
+      <CardHeader><CardTitle>{t('settle.chartTitle')}</CardTitle></CardHeader>
       <CardBody style={{ padding: 10 }}>
         <div style={{ height: 140 }}><canvas ref={canvasRef} /></div>
       </CardBody>

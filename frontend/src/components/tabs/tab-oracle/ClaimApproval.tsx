@@ -1,8 +1,10 @@
+import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardBody, Button, SummaryRow, Divider } from '@/components/common';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { useToast } from '@/components/common';
 
 export function ClaimApproval() {
+  const { t } = useTranslation();
   const { role, claims, approveClaims, settleClaims } = useProtocolStore();
   const { toast } = useToast();
 
@@ -13,38 +15,38 @@ export function ClaimApproval() {
 
   const handleApprove = () => {
     const n = approveClaims();
-    if (n === 0) { toast('승인할 클레임 없음', 'w'); return; }
-    toast(`${n}건 승인 완료`, 's');
+    if (n === 0) { toast(t('toast.noClaimApprove'), 'w'); return; }
+    toast(t('toast.approvedN', { count: n }), 's');
   };
 
   const handleSettle = () => {
     const n = settleClaims();
-    if (n === 0) { toast('정산할 클레임 없음', 'w'); return; }
-    toast(`${n}건 정산 완료!`, 's');
+    if (n === 0) { toast(t('toast.noClaimSettle'), 'w'); return; }
+    toast(t('toast.settledN', { count: n }), 's');
   };
 
   return (
     <Card>
-      <CardHeader><CardTitle>클레임 승인 &amp; 정산</CardTitle></CardHeader>
+      <CardHeader><CardTitle>{t('claim.approvalTitle')}</CardTitle></CardHeader>
       <CardBody>
         <SummaryRow>
-          <span style={{ fontSize: 10, color: 'var(--sub)' }}>클레임 대기</span>
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{pendCnt}건</span>
+          <span style={{ fontSize: 10, color: 'var(--sub)' }}>{t('claim.pending')}</span>
+          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{t('common.count', { count: pendCnt })}</span>
         </SummaryRow>
         <SummaryRow>
-          <span style={{ fontSize: 10, color: 'var(--sub)' }}>승인 완료</span>
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{appCnt}건</span>
+          <span style={{ fontSize: 10, color: 'var(--sub)' }}>{t('claim.approved')}</span>
+          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{t('common.count', { count: appCnt })}</span>
         </SummaryRow>
         <SummaryRow>
-          <span style={{ fontSize: 10, color: 'var(--sub)' }}>정산 완료</span>
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{setlCnt}건</span>
+          <span style={{ fontSize: 10, color: 'var(--sub)' }}>{t('claim.settled')}</span>
+          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{t('common.count', { count: setlCnt })}</span>
         </SummaryRow>
         <Divider />
         <Button variant="warning" fullWidth onClick={handleApprove} disabled={!canAct || pendCnt === 0} style={{ marginBottom: 6 }}>
-          ✅ approve_claim (전체)
+          {t('claim.approveBtn')}
         </Button>
         <Button variant="accent" fullWidth onClick={handleSettle} disabled={!canAct || appCnt === 0}>
-          💸 settle_claim (전체)
+          {t('claim.settleBtn')}
         </Button>
       </CardBody>
     </Card>

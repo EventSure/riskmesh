@@ -2,6 +2,7 @@ import styled from '@emotion/styled';
 import { keyframes } from '@emotion/react';
 import { Card, CardHeader, CardTitle, CardBody } from '@/components/common';
 import { useProtocolStore } from '@/store/useProtocolStore';
+import { useTranslation } from 'react-i18next';
 
 const logIn = keyframes`
   from { opacity: 0; transform: translateX(-4px); }
@@ -48,12 +49,13 @@ const LogDetail = styled.div`font-size: 9px; color: var(--sub); margin-top: 1px;
 
 export function EventLog() {
   const logs = useProtocolStore(s => s.logs);
+  const { t } = useTranslation();
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>프로토콜 이벤트 로그</CardTitle>
-        <span style={{ fontSize: 9, color: 'var(--success)' }}>● 실시간</span>
+        <CardTitle>{t('log.title')}</CardTitle>
+        <span style={{ fontSize: 9, color: 'var(--success)' }}>● {t('common.live')}</span>
       </CardHeader>
       <CardBody style={{ padding: 10 }}>
         <LogWrap>

@@ -1,4 +1,5 @@
 import styled from '@emotion/styled';
+import { useTranslation } from 'react-i18next';
 
 type NodeVariant = 'leader' | 'accent' | 'warning' | 'info' | 'danger';
 
@@ -56,27 +57,29 @@ const FlowNote = styled.div`
 `;
 
 export function SettlementFlowDiagram() {
+  const { t } = useTranslation();
+
   return (
     <FlowWrap>
-      <FlowTitle>💰 보험료 흐름 (계약 즉시)</FlowTitle>
+      <FlowTitle>{t('flow.premiumTitle')}</FlowTitle>
       <FlowRow>
-        <FlowNode variant="danger">계약자<FlowAmount>1 USDC</FlowAmount></FlowNode>
+        <FlowNode variant="danger">{t('flow.policyholder')}<FlowAmount>1 USDC</FlowAmount></FlowNode>
         <FlowArrow>→</FlowArrow>
-        <FlowNode variant="leader">원수사<FlowAmount>지분별 배분</FlowAmount></FlowNode>
+        <FlowNode variant="leader">{t('flow.primaryIns')}<FlowAmount>{t('flow.shareBasedSplit')}</FlowAmount></FlowNode>
         <FlowArrow>→</FlowArrow>
-        <FlowNode variant="info">재보험사<FlowAmount>각 지분의 50%</FlowAmount></FlowNode>
+        <FlowNode variant="info">{t('flow.reinsurer')}<FlowAmount>{t('flow.eachShare50')}</FlowAmount></FlowNode>
       </FlowRow>
-      <FlowNote>※ 재보험사→원수사 수수료 10% 환급</FlowNote>
+      <FlowNote>{t('flow.premiumNote')}</FlowNote>
 
-      <FlowTitle style={{ marginTop: 8 }}>💸 보험금 흐름 (오라클 트리거 즉시)</FlowTitle>
+      <FlowTitle style={{ marginTop: 8 }}>{t('flow.claimTitle')}</FlowTitle>
       <FlowRow>
-        <FlowNode variant="info">재보험사<FlowAmount>50% 분담</FlowAmount></FlowNode>
+        <FlowNode variant="info">{t('flow.reinsurer')}<FlowAmount>{t('flow.rein50Share')}</FlowAmount></FlowNode>
         <FlowArrow>+</FlowArrow>
-        <FlowNode variant="leader">원수사Pool<FlowAmount>50% 분담</FlowAmount></FlowNode>
+        <FlowNode variant="leader">{t('flow.primaryPool')}<FlowAmount>{t('flow.rein50Share')}</FlowAmount></FlowNode>
         <FlowArrow>→</FlowArrow>
-        <FlowNode variant="danger">계약자<FlowAmount>구간별 지급</FlowAmount></FlowNode>
+        <FlowNode variant="danger">{t('flow.policyholder')}<FlowAmount>{t('flow.tierPayout')}</FlowAmount></FlowNode>
       </FlowRow>
-      <FlowNote>※ 원수사→재보험사 수수료 10% (보험금 기준)</FlowNote>
+      <FlowNote>{t('flow.claimNote')}</FlowNote>
     </FlowWrap>
   );
 }

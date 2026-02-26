@@ -2,6 +2,7 @@ import styled from '@emotion/styled';
 import { Card, CardHeader, CardTitle, CardBody } from '@/components/common';
 import { useProtocolStore, formatNum, masterPDA, poolPDA, vaultPDA, ledgerPDA, POLICY_STATES } from '@/store/useProtocolStore';
 import { useShallow } from 'zustand/shallow';
+import { useTranslation } from 'react-i18next';
 
 const AccountCard = styled.div`
   background: var(--card2);
@@ -87,6 +88,7 @@ const FieldValue = styled.div<{ variant?: string }>`
 `;
 
 export function InspectorPanel() {
+  const { t } = useTranslation();
   const { masterActive, policyStateIdx, contracts, poolBalance, totalPremium, totalClaim, acc, shares } = useProtocolStore(
     useShallow(s => ({ masterActive: s.masterActive, policyStateIdx: s.policyStateIdx, contracts: s.contracts, poolBalance: s.poolBalance, totalPremium: s.totalPremium, totalClaim: s.totalClaim, acc: s.acc, shares: s.shares })),
   );
@@ -97,7 +99,7 @@ export function InspectorPanel() {
         <CardHeader><CardTitle>On-chain Inspector (PDA)</CardTitle></CardHeader>
         <CardBody style={{ padding: 10 }}>
           <div style={{ fontSize: 10, color: 'var(--sub)', textAlign: 'center', padding: 20 }}>
-            마스터 계약 체결 후 표시됩니다.
+            {t('inspector.placeholder')}
           </div>
         </CardBody>
       </Card>

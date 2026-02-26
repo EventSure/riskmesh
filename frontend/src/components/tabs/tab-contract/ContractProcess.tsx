@@ -2,6 +2,7 @@ import styled from '@emotion/styled';
 import { Card, CardHeader, CardTitle, CardBody, Button } from '@/components/common';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { useToast } from '@/components/common';
+import { useTranslation } from 'react-i18next';
 
 const StepItem = styled.div<{ active?: boolean; done?: boolean }>`
   background: var(--card2);
@@ -57,28 +58,29 @@ const StepDesc = styled.div`
   padding-left: 25px;
 `;
 
-const STEPS = [
-  { n: 1, name: '약관 세팅 & 요율 산정', role: '리더사', desc: '리더사가 담보 조건, 보험료, 지분 구조를 세팅합니다.' },
-  { n: 2, name: '참여사 A 컨펌', role: '참여사A', desc: '참여사 A가 조건 및 요율을 검토하고 컨펌합니다.' },
-  { n: 3, name: '참여사 B 컨펌', role: '참여사B', desc: '참여사 B가 조건 및 요율을 검토하고 컨펌합니다.' },
-  { n: 4, name: '재보험사 컨펌', role: '재보험사', desc: '재보험사가 조건 및 요율을 검토하고 컨펌합니다.' },
-  { n: 5, name: '마스터 계약 활성화', role: '리더사', desc: '모든 컨펌 완료. 마스터 계약이 온체인에 기록됩니다.' },
-];
-
 export function ContractProcess() {
   const { processStep, resetAll } = useProtocolStore();
   const { toast } = useToast();
+  const { t } = useTranslation();
+
+  const STEPS = [
+    { n: 1, name: t('process.step1.name'), role: t('process.step1.role'), desc: t('process.step1.desc') },
+    { n: 2, name: t('process.step2.name'), role: t('process.step2.role'), desc: t('process.step2.desc') },
+    { n: 3, name: t('process.step3.name'), role: t('process.step3.role'), desc: t('process.step3.desc') },
+    { n: 4, name: t('process.step4.name'), role: t('process.step4.role'), desc: t('process.step4.desc') },
+    { n: 5, name: t('process.step5.name'), role: t('process.step5.role'), desc: t('process.step5.desc') },
+  ];
 
   const handleReset = () => {
     resetAll();
-    toast('전체 초기화 완료', 'i');
+    toast(t('toast.resetDone'), 'i');
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>계약 체결 프로세스</CardTitle>
-        <Button variant="outline" size="sm" onClick={handleReset}>↺ 초기화</Button>
+        <CardTitle>{t('process.title')}</CardTitle>
+        <Button variant="outline" size="sm" onClick={handleReset}>{t('common.reset')}</Button>
       </CardHeader>
       <CardBody style={{ padding: 10 }}>
         {STEPS.map((s, i) => {

@@ -7,17 +7,38 @@ import { QueryProvider } from '@/providers/QueryProvider';
 import { ToastProvider } from '@/components/common';
 import { Layout } from '@/components/layout/Layout';
 import { Dashboard } from '@/pages/Dashboard';
-import { useProtocolStore } from '@/store/useProtocolStore';
-import { useEffect } from 'react';
+import { useProtocolStore, type LogEntry } from '@/store/useProtocolStore';
+import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 function InitLogger() {
-  const addLog = useProtocolStore(s => s.addLog);
-  const logs = useProtocolStore(s => s.logs);
+  const { t, i18n } = useTranslation();
+  const didInit = useRef(false);
+
   useEffect(() => {
-    if (logs.length === 0) {
-      addLog('OpenParametric Protocol 초기화. Solana Devnet.', '#9945FF', 'system_init', '1단계: 마스터 계약 설정 → 약관 세팅을 클릭하세요.');
+    const state = useProtocolStore.getState();
+
+    if (!didInit.current && state.logs.length === 0) {
+      // First mount: create init log
+      didInit.current = true;
+      const initLog: LogEntry = {
+        id: 1, msg: t('app.initMsg'), color: '#9945FF',
+        instruction: 'system_init', detail: t('app.initDetail'),
+        time: new Date().toLocaleTimeString('ko-KR', { hour12: false }),
+      };
+      useProtocolStore.setState({ logs: [initLog], logIdCounter: 1 });
+    } else {
+      // Language changed: update all system_init log entries
+      didInit.current = true;
+      const updated = state.logs.map(l =>
+        l.instruction === 'system_init'
+          ? { ...l, msg: t('app.initMsg'), detail: t('app.initDetail') }
+          : l,
+      );
+      useProtocolStore.setState({ logs: updated });
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [i18n.language]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return null;
 }
 

@@ -1,10 +1,13 @@
 import { Card, CardHeader, CardTitle, SettlementFlowDiagram } from '@/components/common';
+import { useTranslation } from 'react-i18next';
 
 export function SettlementFlow() {
+  const { t } = useTranslation();
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>건당 실시간 정산 구조</CardTitle>
+        <CardTitle>{t('flow.title')}</CardTitle>
       </CardHeader>
       <SettlementFlowDiagram />
     </Card>
