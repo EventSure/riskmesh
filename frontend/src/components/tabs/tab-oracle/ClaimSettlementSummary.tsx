@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardBody, SummaryRow } from '@/components/common';
 import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
 import { Chart, registerables } from 'chart.js';
@@ -6,6 +7,7 @@ import { Chart, registerables } from 'chart.js';
 Chart.register(...registerables);
 
 export function ClaimSettlementSummary() {
+  const { t, i18n: { language } } = useTranslation();
   const { totalClaim, claims } = useProtocolStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
@@ -17,15 +19,14 @@ export function ClaimSettlementSummary() {
     if (!canvasRef.current) return;
 
     if (chartRef.current) {
-      chartRef.current.data.datasets[0]!.data = [direct, totRC];
-      chartRef.current.update();
-      return;
+      chartRef.current.destroy();
+      chartRef.current = null;
     }
 
     chartRef.current = new Chart(canvasRef.current, {
       type: 'doughnut',
       data: {
-        labels: ['원수사 부담', '재보험사 부담'],
+        labels: [t('claim.chartPrimary'), t('claim.chartReinsurer')],
         datasets: [{
           data: [direct, totRC],
           backgroundColor: ['rgba(153,69,255,.7)', 'rgba(56,189,248,.7)'],
@@ -42,23 +43,23 @@ export function ClaimSettlementSummary() {
     });
 
     return () => { chartRef.current?.destroy(); chartRef.current = null; };
-  }, [direct, totRC]);
+  }, [direct, totRC, language]);
 
   return (
     <Card style={{ marginTop: 10 }}>
-      <CardHeader><CardTitle>보험금 정산 요약</CardTitle></CardHeader>
+      <CardHeader><CardTitle>{t('claim.summaryTitle')}</CardTitle></CardHeader>
       <CardBody>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 7 }}>
           <SummaryRow style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-            <span style={{ fontSize: 10, color: 'var(--sub)' }}>총 보험금 지급</span>
+            <span style={{ fontSize: 10, color: 'var(--sub)' }}>{t('claim.totalPaid')}</span>
             <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{formatNum(totalClaim, 2)} USDC</span>
           </SummaryRow>
           <SummaryRow style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-            <span style={{ fontSize: 10, color: 'var(--sub)' }}>원수사 순부담</span>
+            <span style={{ fontSize: 10, color: 'var(--sub)' }}>{t('claim.primaryBurden')}</span>
             <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{formatNum(direct, 2)} USDC</span>
           </SummaryRow>
           <SummaryRow style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-            <span style={{ fontSize: 10, color: 'var(--sub)' }}>재보험사 부담</span>
+            <span style={{ fontSize: 10, color: 'var(--sub)' }}>{t('claim.reinBurden')}</span>
             <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{formatNum(totRC, 2)} USDC</span>
           </SummaryRow>
         </div>

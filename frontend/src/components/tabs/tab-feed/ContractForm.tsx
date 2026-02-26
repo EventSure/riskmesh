@@ -1,9 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardBody, Button, FormGroup, FormLabel, FormInput, FormSelect, Divider } from '@/components/common';
 import { useProtocolStore, FLIGHTS, FLIGHT_ROUTES, NAMES, DATES } from '@/store/useProtocolStore';
 import { useToast } from '@/components/common';
 
 export function ContractForm() {
+  const { t } = useTranslation();
   const { masterActive, addContract } = useProtocolStore();
   const { toast } = useToast();
   const [name, setName] = useState('홍길동');
@@ -13,7 +15,7 @@ export function ContractForm() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const handleAdd = useCallback(() => {
-    if (!masterActive) { toast('마스터 계약 활성화 후 가능', 'w'); return; }
+    if (!masterActive) { toast(t('toast.afterActivation'), 'w'); return; }
     addContract(name, flight, date);
   }, [masterActive, name, flight, date, addContract, toast]);
 
@@ -24,7 +26,7 @@ export function ContractForm() {
       setAutoRunning(false);
       return;
     }
-    if (!masterActive) { toast('마스터 계약 활성화 후 가능', 'w'); return; }
+    if (!masterActive) { toast(t('toast.afterActivation'), 'w'); return; }
     setAutoRunning(true);
     timerRef.current = setInterval(() => {
       const nm = NAMES[Math.floor(Math.random() * NAMES.length)]! + (Math.floor(Math.random() * 900) + 100);
@@ -40,35 +42,35 @@ export function ContractForm() {
 
   return (
     <Card>
-      <CardHeader><CardTitle>계약자 계약</CardTitle></CardHeader>
+      <CardHeader><CardTitle>{t('feed.formTitle')}</CardTitle></CardHeader>
       <CardBody>
         <FormGroup>
-          <FormLabel>계약자명</FormLabel>
+          <FormLabel>{t('feed.name')}</FormLabel>
           <FormInput value={name} onChange={e => setName(e.target.value)} />
         </FormGroup>
         <FormGroup>
-          <FormLabel>항공편</FormLabel>
+          <FormLabel>{t('feed.flight')}</FormLabel>
           <FormSelect value={flight} onChange={e => setFlight(e.target.value)} style={{ cursor: 'pointer' }}>
             {FLIGHTS.map(f => <option key={f} value={f}>{f} ({FLIGHT_ROUTES[f]})</option>)}
           </FormSelect>
         </FormGroup>
         <FormGroup>
-          <FormLabel>출발일</FormLabel>
+          <FormLabel>{t('feed.date')}</FormLabel>
           <FormInput type="date" value={date} onChange={e => setDate(e.target.value)} />
         </FormGroup>
         <FormGroup>
-          <FormLabel>보험료</FormLabel>
+          <FormLabel>{t('feed.premium')}</FormLabel>
           <FormInput value="1 USDC" readOnly style={{ opacity: 0.6, fontFamily: "'DM Mono', monospace" }} />
         </FormGroup>
         <Divider />
         <Button variant="primary" fullWidth onClick={handleAdd} disabled={!masterActive} style={{ marginBottom: 6 }}>
-          + 계약 체결 (1 USDC)
+          {t('feed.addBtn')}
         </Button>
         <Button variant={autoRunning ? 'danger' : 'accent'} fullWidth onClick={handleAutoFeed}>
-          {autoRunning ? '⏹ 자동 피드 정지' : '▶ 자동 피드 시작'}
+          {autoRunning ? t('feed.autoStop') : t('feed.autoStart')}
         </Button>
         <div style={{ fontSize: 9, color: 'var(--sub)', marginTop: 5, textAlign: 'center' }}>
-          {autoRunning ? '실시간 계약 누적 중...' : '마스터 계약 활성화 후 이용 가능'}
+          {autoRunning ? t('feed.autoRunning') : t('feed.afterActivation')}
         </div>
       </CardBody>
     </Card>

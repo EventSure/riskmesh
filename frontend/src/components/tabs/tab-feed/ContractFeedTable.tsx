@@ -1,26 +1,28 @@
+import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, Button, DataTable, Tag } from '@/components/common';
 import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
 
 export function ContractFeedTable() {
+  const { t } = useTranslation();
   const { contracts, clearContracts } = useProtocolStore();
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>실시간 계약 피드</CardTitle>
+        <CardTitle>{t('feed.tableTitle')}</CardTitle>
         <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
           <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, padding: '2px 7px', borderRadius: 10, background: 'rgba(153,69,255,.15)', color: 'var(--primary)', border: '1px solid rgba(153,69,255,.25)' }}>
-            {contracts.length}건
+            {t('common.count', { count: contracts.length })}
           </span>
-          <Button variant="outline" size="sm" onClick={clearContracts}>초기화</Button>
+          <Button variant="outline" size="sm" onClick={clearContracts}>{t('common.clear')}</Button>
         </div>
       </CardHeader>
       <div style={{ overflowX: 'auto' }}>
         <DataTable style={{ minWidth: 700 }}>
           <thead>
             <tr>
-              <th>#</th><th>계약자</th><th>항공편</th><th>출발일</th><th>보험료</th>
-              <th>리더사</th><th>참여사A</th><th>참여사B</th><th>재보험사(순)</th><th>정산시각</th><th>상태</th>
+              <th>#</th><th>{t('feed.th.policyholder')}</th><th>{t('feed.th.flight')}</th><th>{t('feed.th.date')}</th><th>{t('feed.th.premium')}</th>
+              <th>{t('feed.th.leader')}</th><th>{t('feed.th.partA')}</th><th>{t('feed.th.partB')}</th><th>{t('feed.th.reinsurer')}</th><th>{t('feed.th.settledAt')}</th><th>{t('feed.th.status')}</th>
             </tr>
           </thead>
           <tbody>
@@ -36,7 +38,7 @@ export function ContractFeedTable() {
                 <td style={{ color: '#F59E0B' }}>{formatNum(c.bNet, 4)}</td>
                 <td style={{ color: '#38BDF8' }}>{formatNum(c.rNet, 4)}</td>
                 <td style={{ fontSize: 9, color: 'var(--sub)' }}>{c.ts}</td>
-                <td><Tag variant="accent">활성</Tag></td>
+                <td><Tag variant="accent">{t('common.active')}</Tag></td>
               </tr>
             ))}
           </tbody>

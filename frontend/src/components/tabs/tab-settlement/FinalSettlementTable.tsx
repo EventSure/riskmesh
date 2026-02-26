@@ -1,7 +1,9 @@
 import { Card, CardHeader, CardTitle, SettlementTable } from '@/components/common';
 import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
+import { useTranslation } from 'react-i18next';
 
 export function FinalSettlementTable() {
+  const { t } = useTranslation();
   const { acc, totalPremium, totalClaim } = useProtocolStore();
 
   const rIn = totalPremium * 0.5;
@@ -13,10 +15,10 @@ export function FinalSettlementTable() {
   const rCNet = -rcIn + rcOut;
 
   const rows = [
-    { label: '리더사 (삼성화재)', p: acc.leaderPrem, c: acc.leaderClaim, rein: false },
-    { label: '참여사 A (현대해상)', p: acc.partAPrem, c: acc.partAClaim, rein: false },
-    { label: '참여사 B (DB손보)', p: acc.partBPrem, c: acc.partBClaim, rein: false },
-    { label: '재보험사', p: rPNet, c: rCNet, rein: true },
+    { label: t('settle.party.leader'), p: acc.leaderPrem, c: acc.leaderClaim, rein: false },
+    { label: t('settle.party.partA'), p: acc.partAPrem, c: acc.partAClaim, rein: false },
+    { label: t('settle.party.partB'), p: acc.partBPrem, c: acc.partBClaim, rein: false },
+    { label: t('settle.party.reinsurer'), p: rPNet, c: rCNet, rein: true },
   ].map(r => {
     const net = r.rein ? (r.p + r.c) : (r.p - r.c);
     return { ...r, net };
@@ -24,11 +26,11 @@ export function FinalSettlementTable() {
 
   return (
     <Card>
-      <CardHeader><CardTitle>3. 최종 정산 (수지)</CardTitle></CardHeader>
+      <CardHeader><CardTitle>{t('settle.finalTitle')}</CardTitle></CardHeader>
       <div style={{ overflowX: 'auto', padding: 12 }}>
         <SettlementTable>
           <thead>
-            <tr><th>구분</th><th>정산 보험료</th><th>정산 보험금</th><th>최종 수지</th></tr>
+            <tr><th>{t('settle.finalTh.party')}</th><th>{t('settle.finalTh.premium')}</th><th>{t('settle.finalTh.claim')}</th><th>{t('settle.finalTh.pl')}</th></tr>
           </thead>
           <tbody>
             {rows.map(r => (

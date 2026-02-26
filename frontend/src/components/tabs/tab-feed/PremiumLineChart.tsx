@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardBody } from '@/components/common';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { Chart, registerables } from 'chart.js';
@@ -6,6 +7,7 @@ import { Chart, registerables } from 'chart.js';
 Chart.register(...registerables);
 
 export function PremiumLineChart() {
+  const { t, i18n: { language } } = useTranslation();
   const premHist = useProtocolStore(s => s.premHist);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
@@ -27,7 +29,7 @@ export function PremiumLineChart() {
       data: {
         labels,
         datasets: [{
-          label: '누적 보험료',
+          label: t('feed.totalPremium'),
           data,
           borderColor: '#9945FF',
           backgroundColor: 'rgba(153,69,255,.07)',
@@ -50,11 +52,11 @@ export function PremiumLineChart() {
     });
 
     return () => { chartRef.current?.destroy(); chartRef.current = null; };
-  }, [premHist]);
+  }, [premHist, language]);
 
   return (
     <Card style={{ marginTop: 10 }}>
-      <CardHeader><CardTitle>보험료 실시간 누적</CardTitle></CardHeader>
+      <CardHeader><CardTitle>{t('feed.lineTitle')}</CardTitle></CardHeader>
       <CardBody style={{ padding: 10 }}>
         <div style={{ height: 130 }}><canvas ref={canvasRef} /></div>
       </CardBody>

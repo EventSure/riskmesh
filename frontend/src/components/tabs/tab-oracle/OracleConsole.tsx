@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import styled from '@emotion/styled';
+import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardBody, Button, FormGroup, FormLabel, FormInput, FormSelect, Divider, Tag, TierItem } from '@/components/common';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { useToast } from '@/components/common';
@@ -26,6 +27,7 @@ const MsgText = styled.div<{ variant: 'error' | 'ok' }>`
 `;
 
 export function OracleConsole() {
+  const { t } = useTranslation();
   const { contracts, masterActive, runOracle } = useProtocolStore();
   const { toast } = useToast();
   const [contractId, setContractId] = useState<number>(0);
@@ -34,47 +36,48 @@ export function OracleConsole() {
   const [result, setResult] = useState<{ type: 'error' | 'ok'; msg: string; code?: string } | null>(null);
 
   const handleRun = () => {
-    if (contractId === 0) { toast('계약을 선택하세요', 'w'); return; }
+    if (contractId === 0) { toast(t('toast.selectContract'), 'w'); return; }
     setResult(null);
     const res = runOracle(contractId, delay, fresh);
     if (res.type === 'error') {
       setResult({ type: 'error', msg: res.msg, code: res.code });
       toast(res.code || 'Error', 'd');
     } else if (res.type === 'ok') {
+      const hasClaim = res.msg.includes('USDC');
       setResult({ type: 'ok', msg: res.msg });
-      toast(res.msg.includes('트리거') ? `클레임 생성!` : '트리거 미해당', res.msg.includes('트리거') ? 'w' : 's');
+      toast(hasClaim ? t('toast.claimCreated') : t('toast.noTrigger'), hasClaim ? 'w' : 's');
     }
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>오라클 콘솔</CardTitle>
+        <CardTitle>{t('oracle.title')}</CardTitle>
         <Tag variant="subtle">Switchboard</Tag>
       </CardHeader>
       <CardBody>
         <FormGroup>
-          <FormLabel>대상 계약</FormLabel>
+          <FormLabel>{t('oracle.targetContract')}</FormLabel>
           <FormSelect value={contractId} onChange={e => setContractId(parseInt(e.target.value) || 0)} style={{ cursor: 'pointer' }}>
-            <option value={0}>-- 계약 선택 --</option>
+            <option value={0}>{t('oracle.selectContract')}</option>
             {contracts.filter(c => c.status === 'active').map(c => (
               <option key={c.id} value={c.id}>#{c.id} {c.name} — {c.flight} ({c.date})</option>
             ))}
           </FormSelect>
         </FormGroup>
         <FormGroup>
-          <FormLabel>실제 지연 (분) — 0 이상, 10의 배수</FormLabel>
+          <FormLabel>{t('oracle.delayLabel')}</FormLabel>
           <FormInput type="number" step={10} min={0} value={delay} onChange={e => setDelay(parseInt(e.target.value) || 0)} style={{ fontFamily: "'DM Mono', monospace" }} />
         </FormGroup>
         <FormGroup>
-          <FormLabel>데이터 경과 시간 (분 전)</FormLabel>
+          <FormLabel>{t('oracle.freshnessLabel')}</FormLabel>
           <FormInput type="number" min={0} value={fresh} onChange={e => setFresh(parseInt(e.target.value) || 0)} style={{ fontFamily: "'DM Mono', monospace" }} />
         </FormGroup>
         <Divider />
-        <TierItem label="120~179분" value="→ 40 USDC" color="#F59E0B" />
-        <TierItem label="180~239분" value="→ 60 USDC" color="#f97316" />
-        <TierItem label="240~359분" value="→ 80 USDC" color="#EF4444" />
-        <TierItem label="360분+ / 결항" value="→ 100 USDC" color="#fca5a5" />
+        <TierItem label={t('oracle.tier120')} value="→ 40 USDC" color="#F59E0B" />
+        <TierItem label={t('oracle.tier180')} value="→ 60 USDC" color="#f97316" />
+        <TierItem label={t('oracle.tier240')} value="→ 80 USDC" color="#EF4444" />
+        <TierItem label={t('oracle.tier360')} value="→ 100 USDC" color="#fca5a5" />
         <Divider />
         {result?.type === 'error' && (
           <MsgBox variant="error">

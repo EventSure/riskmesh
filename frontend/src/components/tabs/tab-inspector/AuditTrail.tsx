@@ -2,6 +2,7 @@ import styled from '@emotion/styled';
 import { keyframes } from '@emotion/react';
 import { Card, CardHeader, CardTitle, CardBody } from '@/components/common';
 import { useProtocolStore } from '@/store/useProtocolStore';
+import { useTranslation } from 'react-i18next';
 
 const logIn = keyframes`
   from { opacity: 0; transform: translateX(-4px); }
@@ -44,11 +45,12 @@ const LogTime = styled.span`
 `;
 
 export function AuditTrail() {
+  const { t } = useTranslation();
   const logs = useProtocolStore(s => s.logs);
 
   return (
     <Card>
-      <CardHeader><CardTitle>전체 Audit Trail</CardTitle></CardHeader>
+      <CardHeader><CardTitle>{t('inspector.auditTitle')}</CardTitle></CardHeader>
       <CardBody style={{ padding: 10 }}>
         <LogWrap>
           {logs.map(log => (

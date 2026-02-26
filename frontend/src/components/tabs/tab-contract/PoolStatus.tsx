@@ -2,11 +2,13 @@ import { useEffect, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardBody, SummaryRow } from '@/components/common';
 import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
 import { Chart, registerables } from 'chart.js';
+import { useTranslation } from 'react-i18next';
 
 Chart.register(...registerables);
 
 export function PoolStatus() {
   const { poolBalance, totalClaim, poolHist } = useProtocolStore();
+  const { t, i18n: { language } } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
 
@@ -19,10 +21,8 @@ export function PoolStatus() {
     const data = poolHist.map(x => x.v);
 
     if (chartRef.current) {
-      chartRef.current.data.labels = labels;
-      chartRef.current.data.datasets[0]!.data = data;
-      chartRef.current.update();
-      return;
+      chartRef.current.destroy();
+      chartRef.current = null;
     }
 
     chartRef.current = new Chart(canvasRef.current, {
@@ -30,7 +30,7 @@ export function PoolStatus() {
       data: {
         labels,
         datasets: [{
-          label: 'Pool 잔액',
+          label: t('pool.chartLabel'),
           data,
           borderColor: '#14F195',
           backgroundColor: 'rgba(20,241,149,.07)',
@@ -53,25 +53,25 @@ export function PoolStatus() {
     });
 
     return () => { chartRef.current?.destroy(); chartRef.current = null; };
-  }, [poolHist]);
+  }, [poolHist, language]);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Pool 현황</CardTitle>
+        <CardTitle>{t('pool.title')}</CardTitle>
       </CardHeader>
       <CardBody>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 7 }}>
           <SummaryRow style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-            <span style={{ fontSize: 10, color: 'var(--sub)' }}>Pool 총액</span>
+            <span style={{ fontSize: 10, color: 'var(--sub)' }}>{t('pool.total')}</span>
             <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{formatNum(total, 2)} USDC</span>
           </SummaryRow>
           <SummaryRow style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-            <span style={{ fontSize: 10, color: 'var(--sub)' }}>가용 잔액</span>
+            <span style={{ fontSize: 10, color: 'var(--sub)' }}>{t('pool.available')}</span>
             <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{formatNum(poolBalance, 2)} USDC</span>
           </SummaryRow>
           <SummaryRow style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-            <span style={{ fontSize: 10, color: 'var(--sub)' }}>지급 준비율</span>
+            <span style={{ fontSize: 10, color: 'var(--sub)' }}>{t('pool.solvency')}</span>
             <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{ratio}%</span>
           </SummaryRow>
         </div>

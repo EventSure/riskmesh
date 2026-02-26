@@ -1,14 +1,16 @@
 import { Card, CardHeader, CardTitle, SettlementTable } from '@/components/common';
 import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
+import { useTranslation } from 'react-i18next';
 
 export function ClaimSettlementTable() {
+  const { t } = useTranslation();
   const { totalClaim, shares } = useProtocolStore();
   const lS = shares.leader / 100, aS = shares.partA / 100, bS = shares.partB / 100;
 
   const rows = [
-    { label: '리더사 (삼성화재)', s: lS },
-    { label: '참여사 A (현대해상)', s: aS },
-    { label: '참여사 B (DB손보)', s: bS },
+    { label: t('settle.party.leader'), s: lS },
+    { label: t('settle.party.partA'), s: aS },
+    { label: t('settle.party.partB'), s: bS },
   ].map(r => {
     const gross = totalClaim * r.s;
     const rc = gross * 0.5;
@@ -22,11 +24,11 @@ export function ClaimSettlementTable() {
 
   return (
     <Card>
-      <CardHeader><CardTitle>2. 보험금 정산 (건당 실시간)</CardTitle></CardHeader>
+      <CardHeader><CardTitle>{t('settle.claimTitle')}</CardTitle></CardHeader>
       <div style={{ overflowX: 'auto', padding: 12 }}>
         <SettlementTable>
           <thead>
-            <tr><th>구분</th><th>지분</th><th>보험금 지급</th><th>재보험사 분담</th><th>수수료 지급(10%)</th><th>정산 보험금</th></tr>
+            <tr><th>{t('settle.claimTh.party')}</th><th>{t('settle.claimTh.share')}</th><th>{t('settle.claimTh.gross')}</th><th>{t('settle.claimTh.reinShare')}</th><th>{t('settle.claimTh.commission')}</th><th>{t('settle.claimTh.net')}</th></tr>
           </thead>
           <tbody>
             {rows.map(r => (
@@ -40,7 +42,7 @@ export function ClaimSettlementTable() {
               </tr>
             ))}
             <tr className="trein">
-              <td>재보험사</td>
+              <td>{t('settle.party.reinsurer')}</td>
               <td>50%</td>
               <td style={{ color: 'var(--info)' }}>-{formatNum(rcIn, 4)}</td>
               <td>—</td>

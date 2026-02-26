@@ -1,14 +1,16 @@
 import { Card, CardHeader, CardTitle, SettlementTable } from '@/components/common';
 import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
+import { useTranslation } from 'react-i18next';
 
 export function PremiumSettlementTable() {
+  const { t } = useTranslation();
   const { totalPremium, shares } = useProtocolStore();
   const lS = shares.leader / 100, aS = shares.partA / 100, bS = shares.partB / 100;
 
   const rows = [
-    { label: '리더사 (삼성화재)', s: lS },
-    { label: '참여사 A (현대해상)', s: aS },
-    { label: '참여사 B (DB손보)', s: bS },
+    { label: t('settle.party.leader'), s: lS },
+    { label: t('settle.party.partA'), s: aS },
+    { label: t('settle.party.partB'), s: bS },
   ].map(r => {
     const raw = totalPremium * r.s;
     const toR = raw * 0.5;
@@ -22,11 +24,11 @@ export function PremiumSettlementTable() {
 
   return (
     <Card>
-      <CardHeader><CardTitle>1. 보험료 정산 (건당 실시간)</CardTitle></CardHeader>
+      <CardHeader><CardTitle>{t('settle.premTitle')}</CardTitle></CardHeader>
       <div style={{ overflowX: 'auto', padding: 12 }}>
         <SettlementTable>
           <thead>
-            <tr><th>구분</th><th>지분</th><th>원수 보험료</th><th>재보험사 지급</th><th>수수료 수취(10%)</th><th>정산 보험료</th></tr>
+            <tr><th>{t('settle.premTh.party')}</th><th>{t('settle.premTh.share')}</th><th>{t('settle.premTh.primary')}</th><th>{t('settle.premTh.ceded')}</th><th>{t('settle.premTh.commission')}</th><th>{t('settle.premTh.net')}</th></tr>
           </thead>
           <tbody>
             {rows.map(r => (
@@ -40,7 +42,7 @@ export function PremiumSettlementTable() {
               </tr>
             ))}
             <tr className="trein">
-              <td>재보험사</td>
+              <td>{t('settle.party.reinsurer')}</td>
               <td>50%</td>
               <td>—</td>
               <td style={{ color: 'var(--info)' }}>{formatNum(rIn, 4)}</td>
@@ -48,7 +50,7 @@ export function PremiumSettlementTable() {
               <td style={{ color: 'var(--info)' }}>{formatNum(rIn - rOut, 4)}</td>
             </tr>
             <tr className="ttr">
-              <td>합 계</td>
+              <td>{t('settle.party.total')}</td>
               <td>—</td>
               <td>{formatNum(totalPremium, 4)}</td>
               <td>—</td>

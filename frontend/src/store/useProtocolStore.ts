@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import i18n from '@/i18n';
 
 /* ── Types ── */
 export type Role = 'leader' | 'partA' | 'partB' | 'rein' | 'operator';
@@ -134,6 +135,8 @@ export const ledgerPDA = () => fakePubkey('ledger_' + masterPDA());
 export const formatNum = (n: number, d = 2) =>
   Number(n).toFixed(d).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
+export const getRoleLabel = (role: Role): string => i18n.t(`role.${role}Short`);
+
 const nowTime = () =>
   new Date().toLocaleTimeString('ko-KR', { hour12: false });
 
@@ -203,19 +206,19 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
 
   setRole: (r) => {
     set({ role: r });
-    get().addLog('역할 전환 → ' + ROLES[r].label, ROLES[r].color, 'role_switch');
+    get().addLog(i18n.t('store.roleSwitch', { role: getRoleLabel(r) }), ROLES[r].color, 'role_switch');
   },
 
   setShares: (s) => set(st => ({ shares: { ...st.shares, ...s } })),
 
   setTerms: () => {
     const { role, shares } = get();
-    if (role !== 'leader' && role !== 'operator') return { ok: false, msg: '리더사만 가능합니다' };
-    if (shares.leader + shares.partA + shares.partB !== 100) return { ok: false, msg: '지분 합계가 100이어야 합니다' };
+    if (role !== 'leader' && role !== 'operator') return { ok: false, msg: i18n.t('store.leaderOnly') };
+    if (shares.leader + shares.partA + shares.partB !== 100) return { ok: false, msg: i18n.t('store.shareSumError') };
     set({ processStep: 1, policyStateIdx: 0 });
     get().addLog(
-      '약관 세팅 완료. 참여사·재보험사 컨펌 요청', '#9945FF', 'set_terms',
-      `담보:2026-01-01~12-31|보험료:1USDC|지분 L${shares.leader}/A${shares.partA}/B${shares.partB}`,
+      i18n.t('store.termsSet'), '#9945FF', 'set_terms',
+      i18n.t('store.termsDetail', { leader: shares.leader, partA: shares.partA, partB: shares.partB }),
     );
     return { ok: true };
   },
@@ -226,17 +229,17 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
       confirms: { ...st.confirms, [key]: true },
       processStep: Math.max(st.processStep, step),
     }));
-    get().addLog(ROLES[key].label + ' 컨펌 완료', ROLES[key].color, 'confirm_party');
+    get().addLog(i18n.t('store.confirmDone', { role: getRoleLabel(key) }), ROLES[key].color, 'confirm_party');
   },
 
   activateMaster: () => {
     const { role, confirms } = get();
-    if (role !== 'leader' && role !== 'operator') return { ok: false, msg: '리더사만 가능합니다' };
-    if (!confirms.partA || !confirms.partB || !confirms.rein) return { ok: false, msg: '모든 참여사·재보험사 컨펌이 필요합니다' };
+    if (role !== 'leader' && role !== 'operator') return { ok: false, msg: i18n.t('store.leaderOnly') };
+    if (!confirms.partA || !confirms.partB || !confirms.rein) return { ok: false, msg: i18n.t('store.allConfirmNeeded') };
     set({ masterActive: true, policyStateIdx: 3, processStep: 5 });
     get().addLog(
-      '마스터 계약 온체인 기록 완료. 실시간 계약 수락 시작', '#14F195', 'activate_master',
-      `PDA:${masterPDA().substring(0, 16)}...|Pool:10,000USDC`,
+      i18n.t('store.masterActivated'), '#14F195', 'activate_master',
+      i18n.t('store.masterDetail', { pda: masterPDA().substring(0, 16) }),
     );
     return { ok: true };
   },
@@ -245,7 +248,7 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
     const st = get();
     if (!st.masterActive) return;
     const newCnt = st.contractCount + 1;
-    const name = autoName || '계약자';
+    const name = autoName || i18n.t('store.defaultName');
     const flight = autoFlight || 'KE081';
     const date = autoDate || '2026-01-15';
     const lS = st.shares.leader / 100;
@@ -274,8 +277,8 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
       premHist: [...prev.premHist, { t: nowTime(), v: prev.totalPremium + 1 }],
     }));
     get().addLog(
-      `계약 #${newCnt}: ${name}|${flight}|${date}`, ROLES.leader.color, 'new_contract',
-      `보험료 1USDC → L:${formatNum(lNet, 4)} A:${formatNum(aNet, 4)} B:${formatNum(bNet, 4)} R:${formatNum(rNet, 4)}`,
+      i18n.t('store.newContract', { id: newCnt, name, flight, date }), ROLES.leader.color, 'new_contract',
+      i18n.t('store.newContractDetail', { lNet: formatNum(lNet, 4), aNet: formatNum(aNet, 4), bNet: formatNum(bNet, 4), rNet: formatNum(rNet, 4) }),
     );
   },
 
@@ -296,18 +299,18 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
 
   runOracle: (contractId, delay, fresh) => {
     const st = get();
-    if (fresh < 0 || fresh > 30) return { ok: false, msg: `데이터가 ${fresh}분 전. 0~30분 이내만 유효.`, type: 'error' as const, code: 'E_ORACLE_STALE' };
-    if (delay < 0 || delay % 10 !== 0) return { ok: false, msg: `delay_min은 0이상 10의 배수여야 함. 입력:${delay}`, type: 'error' as const, code: 'E_ORACLE_FORMAT' };
+    if (fresh < 0 || fresh > 30) return { ok: false, msg: i18n.t('store.oracleStale', { fresh }), type: 'error' as const, code: 'E_ORACLE_STALE' };
+    if (delay < 0 || delay % 10 !== 0) return { ok: false, msg: i18n.t('store.oracleFormat', { delay }), type: 'error' as const, code: 'E_ORACLE_FORMAT' };
 
     const tier = getTier(delay);
     if (!tier) {
-      get().addLog(`오라클: 지연 ${delay}분 — 트리거 미해당`, '#22C55E', 'check_oracle');
-      return { ok: true, msg: `지연 ${delay}분 — 트리거 미해당 (120분 미만). 계약 유지.`, type: 'ok' as const };
+      get().addLog(i18n.t('store.oracleNoTrigger', { delay }), '#22C55E', 'check_oracle');
+      return { ok: true, msg: i18n.t('store.oracleNoTriggerMsg', { delay }), type: 'ok' as const };
     }
 
     const contract = st.contracts.find(c => c.id === contractId);
-    if (!contract) return { ok: false, msg: `계약 #${contractId}을 찾을 수 없습니다`, type: 'error' as const, code: 'E_CONTRACT_NOT_FOUND' };
-    if (contract.status === 'claimed') return { ok: false, msg: `계약 #${contractId}은 이미 클레임 처리됨`, type: 'error' as const, code: 'E_ALREADY_CLAIMED' };
+    if (!contract) return { ok: false, msg: i18n.t('store.contractNotFound', { id: contractId }), type: 'error' as const, code: 'E_CONTRACT_NOT_FOUND' };
+    if (contract.status === 'claimed') return { ok: false, msg: i18n.t('store.alreadyClaimed', { id: contractId }), type: 'error' as const, code: 'E_ALREADY_CLAIMED' };
     const newClCnt = st.claimCount + 1;
     const payout = tier.p;
     const lS = st.shares.leader / 100, aS = st.shares.partA / 100, bS = st.shares.partB / 100;
@@ -320,7 +323,7 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
     const rNet = totRC - clComm;
 
     const cl: Claim = {
-      id: newClCnt, contractId, name: contract?.name || '계약자', flight: contract?.flight || '—',
+      id: newClCnt, contractId, name: contract?.name || i18n.t('store.defaultName'), flight: contract?.flight || '—',
       delay, tier: tier.label, payout, lNet, aNet, bNet, totRC, rNet,
       status: 'claimable', ts: nowDate(), color: tier.color,
     };
@@ -343,11 +346,11 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
     }));
 
     get().addLog(
-      `클레임 #${newClCnt} — ${tier.label} → ${payout} USDC`, tier.color, 'create_claim',
-      `L:${formatNum(lNet, 2)} A:${formatNum(aNet, 2)} B:${formatNum(bNet, 2)} 재보:${formatNum(totRC, 2)}`,
+      i18n.t('store.claimLog', { id: newClCnt, tier: tier.label, payout }), tier.color, 'create_claim',
+      i18n.t('store.claimDetail', { lNet: formatNum(lNet, 2), aNet: formatNum(aNet, 2), bNet: formatNum(bNet, 2), totRC: formatNum(totRC, 2) }),
     );
 
-    return { ok: true, msg: `트리거! 지연 ${delay}분 (${tier.label}) → 보험금 ${payout} USDC 클레임 생성`, type: 'ok' as const };
+    return { ok: true, msg: i18n.t('store.claimCreated', { delay, tier: tier.label, payout }), type: 'ok' as const };
   },
 
   approveClaims: () => {
@@ -359,7 +362,7 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
       claims: prev.claims.map(c => pendIds.has(c.id) ? { ...c, status: 'approved' as const, approvedAt: nowDate() } : c),
       policyStateIdx: Math.max(prev.policyStateIdx, 5),
     }));
-    get().addLog(`클레임 ${pend.length}건 승인 by ${ROLES[st.role].label}`, '#22C55E', 'approve_claim');
+    get().addLog(i18n.t('store.claimsApproved', { count: pend.length, role: getRoleLabel(st.role) }), '#22C55E', 'approve_claim');
     return pend.length;
   },
 
@@ -373,8 +376,8 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
       policyStateIdx: 6,
     }));
     get().addLog(
-      `클레임 ${appr.length}건 정산 완료. Pool→계약자 이체`, '#14F195', 'settle_claim',
-      `총 지급:${formatNum(st.totalClaim, 2)}USDC|Pool 잔액:${formatNum(st.poolBalance, 2)}USDC`,
+      i18n.t('store.claimsSettled', { count: appr.length }), '#14F195', 'settle_claim',
+      i18n.t('store.settledDetail', { totalClaim: formatNum(st.totalClaim, 2), poolBalance: formatNum(st.poolBalance, 2) }),
     );
     return appr.length;
   },
@@ -397,6 +400,6 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
       premHist: [], poolHist: [{ t: 'init', v: 10000 }],
       logs: [], logIdCounter: 0,
     });
-    get().addLog('프로토콜 초기화. 마스터 계약 체결부터 시작하세요.', '#9945FF', 'system_init');
+    get().addLog(i18n.t('store.resetMsg'), '#9945FF', 'system_init');
   },
 }));
