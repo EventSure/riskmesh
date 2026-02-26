@@ -1,11 +1,7 @@
 import { useMemo } from 'react';
 import { useConnection, useAnchorWallet } from '@solana/wallet-adapter-react';
-import { AnchorProvider } from '@coral-xyz/anchor';
-import { PROGRAM_ID } from '@/lib/constants';
-
-// TODO: Replace with generated IDL after `anchor build`
-// import type { OpenParametric } from '@/lib/idl/open_parametric';
-// import idl from '@/lib/idl/open_parametric.json';
+import { AnchorProvider, Program } from '@coral-xyz/anchor';
+import idl from '@/lib/idl/open_parametric.json';
 
 export function useProgram() {
   const { connection } = useConnection();
@@ -18,12 +14,15 @@ export function useProgram() {
     });
   }, [connection, wallet]);
 
-  const program = useMemo(() => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const program = useMemo<any>(() => {
     if (!provider) return null;
-    // TODO: Uncomment after IDL is generated
-    // return new Program<OpenParametric>(idl as OpenParametric, PROGRAM_ID, provider);
-    return { programId: PROGRAM_ID, provider };
+    try {
+      return new Program(idl as never, provider);
+    } catch {
+      return null;
+    }
   }, [provider]);
 
-  return { program, provider, connected: !!wallet };
+  return { program, provider, connection, wallet, connected: !!wallet };
 }

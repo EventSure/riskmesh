@@ -1,0 +1,2102 @@
+{
+  "address": "3dBd52Do2ZBbaMboLyuVZSJTupAFKGoorEydQ6MkfiPL",
+  "metadata": {
+    "name": "open_parametric",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Open Parametric insurance protocol (MVP)"
+  },
+  "instructions": [
+    {
+      "name": "accept_share",
+      "discriminator": [
+        93,
+        216,
+        4,
+        7,
+        30,
+        197,
+        190,
+        24
+      ],
+      "accounts": [
+        {
+          "name": "participant",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "policy",
+          "writable": true
+        },
+        {
+          "name": "underwriting",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  110,
+                  100,
+                  101,
+                  114,
+                  119,
+                  114,
+                  105,
+                  116,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "policy"
+              }
+            ]
+          }
+        },
+        {
+          "name": "risk_pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "policy"
+              }
+            ]
+          }
+        },
+        {
+          "name": "participant_token",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "index",
+          "type": "u8"
+        },
+        {
+          "name": "deposit_amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "activate_master",
+      "discriminator": [
+        186,
+        209,
+        49,
+        84,
+        196,
+        147,
+        195,
+        144
+      ],
+      "accounts": [
+        {
+          "name": "operator",
+          "signer": true
+        },
+        {
+          "name": "master_policy",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "activate_policy",
+      "discriminator": [
+        92,
+        136,
+        233,
+        14,
+        49,
+        155,
+        229,
+        61
+      ],
+      "accounts": [
+        {
+          "name": "policy",
+          "writable": true
+        },
+        {
+          "name": "leader",
+          "signer": true,
+          "relations": [
+            "policy"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "approve_claim",
+      "discriminator": [
+        74,
+        228,
+        211,
+        63,
+        140,
+        255,
+        69,
+        210
+      ],
+      "accounts": [
+        {
+          "name": "policy",
+          "writable": true
+        },
+        {
+          "name": "leader",
+          "signer": true,
+          "relations": [
+            "policy"
+          ]
+        },
+        {
+          "name": "claim",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "check_oracle_and_create_claim",
+      "discriminator": [
+        252,
+        142,
+        66,
+        198,
+        112,
+        82,
+        58,
+        112
+      ],
+      "accounts": [
+        {
+          "name": "policy",
+          "writable": true
+        },
+        {
+          "name": "claim",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  97,
+                  105,
+                  109
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "policy"
+              },
+              {
+                "kind": "arg",
+                "path": "oracle_round"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "oracle_feed"
+        },
+        {
+          "name": "queue",
+          "address": "A43DyUGA7s8eXPxqEjJY6EBu1KKbNgfxF8h17VAHn13w"
+        },
+        {
+          "name": "slot_hashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "instructions",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "oracle_round",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "confirm_master",
+      "discriminator": [
+        102,
+        86,
+        120,
+        70,
+        27,
+        68,
+        145,
+        204
+      ],
+      "accounts": [
+        {
+          "name": "actor",
+          "signer": true
+        },
+        {
+          "name": "master_policy",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "role",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "create_flight_policy_from_master",
+      "discriminator": [
+        57,
+        160,
+        23,
+        116,
+        253,
+        159,
+        170,
+        101
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "master_policy",
+          "writable": true
+        },
+        {
+          "name": "flight_policy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  108,
+                  105,
+                  103,
+                  104,
+                  116,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "master_policy"
+              },
+              {
+                "kind": "arg",
+                "path": "params.child_policy_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payer_token",
+          "writable": true
+        },
+        {
+          "name": "leader_deposit_token",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "CreateFlightPolicyParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "create_master_policy",
+      "discriminator": [
+        60,
+        218,
+        158,
+        201,
+        93,
+        156,
+        126,
+        51
+      ],
+      "accounts": [
+        {
+          "name": "leader",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "operator"
+        },
+        {
+          "name": "reinsurer"
+        },
+        {
+          "name": "currency_mint"
+        },
+        {
+          "name": "master_policy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  115,
+                  116,
+                  101,
+                  114,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "leader"
+              },
+              {
+                "kind": "arg",
+                "path": "params.master_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "leader_deposit_wallet",
+          "writable": true
+        },
+        {
+          "name": "reinsurer_pool_wallet",
+          "writable": true
+        },
+        {
+          "name": "reinsurer_deposit_wallet",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "CreateMasterPolicyParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "create_policy",
+      "discriminator": [
+        27,
+        81,
+        33,
+        27,
+        196,
+        103,
+        246,
+        53
+      ],
+      "accounts": [
+        {
+          "name": "leader",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "currency_mint"
+        },
+        {
+          "name": "policy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "leader"
+              },
+              {
+                "kind": "arg",
+                "path": "params.policy_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "underwriting",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  110,
+                  100,
+                  101,
+                  114,
+                  119,
+                  114,
+                  105,
+                  116,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "policy"
+              }
+            ]
+          }
+        },
+        {
+          "name": "risk_pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "policy"
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "policy"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "risk_pool"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "currency_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "CreatePolicyParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "expire_policy",
+      "discriminator": [
+        149,
+        24,
+        43,
+        100,
+        240,
+        50,
+        39,
+        124
+      ],
+      "accounts": [
+        {
+          "name": "policy",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "open_underwriting",
+      "discriminator": [
+        239,
+        241,
+        238,
+        118,
+        80,
+        13,
+        121,
+        76
+      ],
+      "accounts": [
+        {
+          "name": "policy",
+          "writable": true
+        },
+        {
+          "name": "leader",
+          "signer": true,
+          "relations": [
+            "policy"
+          ]
+        },
+        {
+          "name": "underwriting",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  110,
+                  100,
+                  101,
+                  114,
+                  119,
+                  114,
+                  105,
+                  116,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "policy"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "refund_after_expiry",
+      "discriminator": [
+        210,
+        2,
+        52,
+        232,
+        49,
+        218,
+        178,
+        59
+      ],
+      "accounts": [
+        {
+          "name": "participant",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "policy",
+          "writable": true
+        },
+        {
+          "name": "risk_pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "policy"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "participant_token",
+          "writable": true
+        },
+        {
+          "name": "underwriting",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  110,
+                  100,
+                  101,
+                  114,
+                  119,
+                  114,
+                  105,
+                  116,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "policy"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "share_index",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "register_participant_wallets",
+      "discriminator": [
+        113,
+        124,
+        212,
+        28,
+        185,
+        247,
+        99,
+        61
+      ],
+      "accounts": [
+        {
+          "name": "insurer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "master_policy",
+          "writable": true
+        },
+        {
+          "name": "pool_wallet"
+        },
+        {
+          "name": "deposit_wallet"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "register_policyholder",
+      "discriminator": [
+        179,
+        11,
+        150,
+        187,
+        208,
+        78,
+        113,
+        221
+      ],
+      "accounts": [
+        {
+          "name": "registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "policy"
+              }
+            ]
+          }
+        },
+        {
+          "name": "policy",
+          "writable": true
+        },
+        {
+          "name": "leader",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "entry",
+          "type": {
+            "defined": {
+              "name": "PolicyholderEntryInput"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "reject_share",
+      "discriminator": [
+        168,
+        51,
+        227,
+        28,
+        48,
+        26,
+        199,
+        210
+      ],
+      "accounts": [
+        {
+          "name": "participant",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "policy",
+          "writable": true
+        },
+        {
+          "name": "underwriting",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  110,
+                  100,
+                  101,
+                  114,
+                  119,
+                  114,
+                  105,
+                  116,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "policy"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "index",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "resolve_flight_delay",
+      "discriminator": [
+        174,
+        62,
+        167,
+        140,
+        160,
+        0,
+        8,
+        92
+      ],
+      "accounts": [
+        {
+          "name": "resolver",
+          "signer": true
+        },
+        {
+          "name": "master_policy"
+        },
+        {
+          "name": "flight_policy",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "delay_minutes",
+          "type": "u16"
+        },
+        {
+          "name": "cancelled",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "settle_claim",
+      "discriminator": [
+        205,
+        203,
+        21,
+        66,
+        255,
+        231,
+        209,
+        155
+      ],
+      "accounts": [
+        {
+          "name": "policy",
+          "writable": true
+        },
+        {
+          "name": "leader",
+          "signer": true,
+          "relations": [
+            "policy"
+          ]
+        },
+        {
+          "name": "claim",
+          "writable": true
+        },
+        {
+          "name": "risk_pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "policy"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "beneficiary_token",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "settle_flight_claim",
+      "discriminator": [
+        45,
+        3,
+        78,
+        243,
+        150,
+        162,
+        141,
+        201
+      ],
+      "accounts": [
+        {
+          "name": "executor",
+          "signer": true
+        },
+        {
+          "name": "master_policy"
+        },
+        {
+          "name": "flight_policy",
+          "writable": true
+        },
+        {
+          "name": "leader_deposit_token",
+          "writable": true
+        },
+        {
+          "name": "reinsurer_pool_token",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "settle_flight_no_claim",
+      "discriminator": [
+        10,
+        213,
+        166,
+        180,
+        15,
+        38,
+        236,
+        11
+      ],
+      "accounts": [
+        {
+          "name": "executor",
+          "signer": true
+        },
+        {
+          "name": "master_policy"
+        },
+        {
+          "name": "flight_policy",
+          "writable": true
+        },
+        {
+          "name": "leader_deposit_token",
+          "writable": true
+        },
+        {
+          "name": "reinsurer_deposit_token",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Claim",
+      "discriminator": [
+        155,
+        70,
+        22,
+        176,
+        123,
+        215,
+        246,
+        102
+      ]
+    },
+    {
+      "name": "FlightPolicy",
+      "discriminator": [
+        53,
+        42,
+        54,
+        221,
+        74,
+        119,
+        109,
+        25
+      ]
+    },
+    {
+      "name": "MasterPolicy",
+      "discriminator": [
+        244,
+        57,
+        211,
+        253,
+        13,
+        177,
+        50,
+        201
+      ]
+    },
+    {
+      "name": "Policy",
+      "discriminator": [
+        222,
+        135,
+        7,
+        163,
+        235,
+        177,
+        33,
+        68
+      ]
+    },
+    {
+      "name": "PolicyholderRegistry",
+      "discriminator": [
+        108,
+        34,
+        204,
+        23,
+        186,
+        83,
+        103,
+        165
+      ]
+    },
+    {
+      "name": "RiskPool",
+      "discriminator": [
+        101,
+        46,
+        90,
+        100,
+        248,
+        9,
+        6,
+        213
+      ]
+    },
+    {
+      "name": "Underwriting",
+      "discriminator": [
+        123,
+        122,
+        242,
+        233,
+        124,
+        180,
+        111,
+        36
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "Unauthorized"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidState",
+      "msg": "Invalid state for this instruction"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidRatio",
+      "msg": "Invalid ratio sum"
+    },
+    {
+      "code": 6003,
+      "name": "AlreadyExists",
+      "msg": "Already exists"
+    },
+    {
+      "code": 6004,
+      "name": "NotFound",
+      "msg": "Not found"
+    },
+    {
+      "code": 6005,
+      "name": "InsufficientEscrow",
+      "msg": "Insufficient escrow"
+    },
+    {
+      "code": 6006,
+      "name": "PoolInsufficient",
+      "msg": "Pool has insufficient balance"
+    },
+    {
+      "code": 6007,
+      "name": "OracleStale",
+      "msg": "Oracle value is stale"
+    },
+    {
+      "code": 6008,
+      "name": "OracleFormat",
+      "msg": "Oracle value format is invalid"
+    },
+    {
+      "code": 6009,
+      "name": "InvalidTimeWindow",
+      "msg": "Invalid time window"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidInput",
+      "msg": "Invalid input"
+    },
+    {
+      "code": 6011,
+      "name": "InvalidAmount",
+      "msg": "Invalid amount"
+    },
+    {
+      "code": 6012,
+      "name": "InvalidDelayThreshold",
+      "msg": "Invalid delay threshold"
+    },
+    {
+      "code": 6013,
+      "name": "InputTooLong",
+      "msg": "Input too long"
+    },
+    {
+      "code": 6014,
+      "name": "MathOverflow",
+      "msg": "Math overflow"
+    },
+    {
+      "code": 6015,
+      "name": "MasterNotActive",
+      "msg": "Master policy is not active"
+    },
+    {
+      "code": 6016,
+      "name": "MasterNotConfirmed",
+      "msg": "Master policy confirmation is incomplete"
+    },
+    {
+      "code": 6017,
+      "name": "InvalidRole",
+      "msg": "Invalid role for confirmation"
+    },
+    {
+      "code": 6018,
+      "name": "InvalidPayout",
+      "msg": "Invalid payout amount"
+    },
+    {
+      "code": 6019,
+      "name": "AlreadySettled",
+      "msg": "Settlement already completed"
+    },
+    {
+      "code": 6020,
+      "name": "InvalidSettlementTarget",
+      "msg": "Invalid settlement target"
+    },
+    {
+      "code": 6021,
+      "name": "InvalidAccountList",
+      "msg": "Invalid account list"
+    }
+  ],
+  "types": [
+    {
+      "name": "Claim",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "policy",
+            "type": "pubkey"
+          },
+          {
+            "name": "oracle_round",
+            "type": "u64"
+          },
+          {
+            "name": "oracle_value",
+            "type": "i64"
+          },
+          {
+            "name": "verified_at",
+            "type": "i64"
+          },
+          {
+            "name": "approved_by",
+            "type": "pubkey"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
+            "name": "payout_amount",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateFlightPolicyParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "child_policy_id",
+            "type": "u64"
+          },
+          {
+            "name": "subscriber_ref",
+            "type": "string"
+          },
+          {
+            "name": "flight_no",
+            "type": "string"
+          },
+          {
+            "name": "route",
+            "type": "string"
+          },
+          {
+            "name": "departure_ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateMasterPolicyParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "master_id",
+            "type": "u64"
+          },
+          {
+            "name": "coverage_start_ts",
+            "type": "i64"
+          },
+          {
+            "name": "coverage_end_ts",
+            "type": "i64"
+          },
+          {
+            "name": "premium_per_policy",
+            "type": "u64"
+          },
+          {
+            "name": "payout_delay_2h",
+            "type": "u64"
+          },
+          {
+            "name": "payout_delay_3h",
+            "type": "u64"
+          },
+          {
+            "name": "payout_delay_4to5h",
+            "type": "u64"
+          },
+          {
+            "name": "payout_delay_6h_or_cancelled",
+            "type": "u64"
+          },
+          {
+            "name": "ceded_ratio_bps",
+            "type": "u16"
+          },
+          {
+            "name": "reins_commission_bps",
+            "type": "u16"
+          },
+          {
+            "name": "participants",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "MasterParticipantInit"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreatePolicyParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "policy_id",
+            "type": "u64"
+          },
+          {
+            "name": "route",
+            "type": "string"
+          },
+          {
+            "name": "flight_no",
+            "type": "string"
+          },
+          {
+            "name": "departure_date",
+            "type": "i64"
+          },
+          {
+            "name": "delay_threshold_min",
+            "type": "u16"
+          },
+          {
+            "name": "payout_amount",
+            "type": "u64"
+          },
+          {
+            "name": "oracle_feed",
+            "type": "pubkey"
+          },
+          {
+            "name": "active_from",
+            "type": "i64"
+          },
+          {
+            "name": "active_to",
+            "type": "i64"
+          },
+          {
+            "name": "participants",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "ParticipantInit"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "FlightPolicy",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "child_policy_id",
+            "type": "u64"
+          },
+          {
+            "name": "master",
+            "type": "pubkey"
+          },
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "subscriber_ref",
+            "type": "string"
+          },
+          {
+            "name": "flight_no",
+            "type": "string"
+          },
+          {
+            "name": "route",
+            "type": "string"
+          },
+          {
+            "name": "departure_ts",
+            "type": "i64"
+          },
+          {
+            "name": "premium_paid",
+            "type": "u64"
+          },
+          {
+            "name": "delay_minutes",
+            "type": "u16"
+          },
+          {
+            "name": "cancelled",
+            "type": "bool"
+          },
+          {
+            "name": "payout_amount",
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
+            "name": "premium_distributed",
+            "type": "bool"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "updated_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MasterParticipant",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "insurer",
+            "type": "pubkey"
+          },
+          {
+            "name": "share_bps",
+            "type": "u16"
+          },
+          {
+            "name": "confirmed",
+            "type": "bool"
+          },
+          {
+            "name": "pool_wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "deposit_wallet",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MasterParticipantInit",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "insurer",
+            "type": "pubkey"
+          },
+          {
+            "name": "share_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MasterPolicy",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "master_id",
+            "type": "u64"
+          },
+          {
+            "name": "leader",
+            "type": "pubkey"
+          },
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "currency_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "coverage_start_ts",
+            "type": "i64"
+          },
+          {
+            "name": "coverage_end_ts",
+            "type": "i64"
+          },
+          {
+            "name": "premium_per_policy",
+            "type": "u64"
+          },
+          {
+            "name": "payout_delay_2h",
+            "type": "u64"
+          },
+          {
+            "name": "payout_delay_3h",
+            "type": "u64"
+          },
+          {
+            "name": "payout_delay_4to5h",
+            "type": "u64"
+          },
+          {
+            "name": "payout_delay_6h_or_cancelled",
+            "type": "u64"
+          },
+          {
+            "name": "ceded_ratio_bps",
+            "type": "u16"
+          },
+          {
+            "name": "reins_commission_bps",
+            "type": "u16"
+          },
+          {
+            "name": "reinsurer_effective_bps",
+            "type": "u16"
+          },
+          {
+            "name": "reinsurer",
+            "type": "pubkey"
+          },
+          {
+            "name": "reinsurer_confirmed",
+            "type": "bool"
+          },
+          {
+            "name": "reinsurer_pool_wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "reinsurer_deposit_wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "leader_deposit_wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "participants",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "MasterParticipant"
+                }
+              }
+            }
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ParticipantInit",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "insurer",
+            "type": "pubkey"
+          },
+          {
+            "name": "ratio_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ParticipantShare",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "insurer",
+            "type": "pubkey"
+          },
+          {
+            "name": "ratio_bps",
+            "type": "u16"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
+            "name": "escrow",
+            "type": "pubkey"
+          },
+          {
+            "name": "escrowed_amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Policy",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "policy_id",
+            "type": "u64"
+          },
+          {
+            "name": "leader",
+            "type": "pubkey"
+          },
+          {
+            "name": "route",
+            "type": "string"
+          },
+          {
+            "name": "flight_no",
+            "type": "string"
+          },
+          {
+            "name": "departure_date",
+            "type": "i64"
+          },
+          {
+            "name": "delay_threshold_min",
+            "type": "u16"
+          },
+          {
+            "name": "payout_amount",
+            "type": "u64"
+          },
+          {
+            "name": "currency_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "oracle_feed",
+            "type": "pubkey"
+          },
+          {
+            "name": "state",
+            "type": "u8"
+          },
+          {
+            "name": "underwriting",
+            "type": "pubkey"
+          },
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "active_from",
+            "type": "i64"
+          },
+          {
+            "name": "active_to",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PolicyholderEntry",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "external_ref",
+            "type": "string"
+          },
+          {
+            "name": "policy_id",
+            "type": "u64"
+          },
+          {
+            "name": "flight_no",
+            "type": "string"
+          },
+          {
+            "name": "departure_date",
+            "type": "i64"
+          },
+          {
+            "name": "passenger_count",
+            "type": "u16"
+          },
+          {
+            "name": "premium_paid",
+            "type": "u64"
+          },
+          {
+            "name": "coverage_amount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PolicyholderEntryInput",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "external_ref",
+            "type": "string"
+          },
+          {
+            "name": "policy_id",
+            "type": "u64"
+          },
+          {
+            "name": "flight_no",
+            "type": "string"
+          },
+          {
+            "name": "departure_date",
+            "type": "i64"
+          },
+          {
+            "name": "passenger_count",
+            "type": "u16"
+          },
+          {
+            "name": "premium_paid",
+            "type": "u64"
+          },
+          {
+            "name": "coverage_amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PolicyholderRegistry",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "policy",
+            "type": "pubkey"
+          },
+          {
+            "name": "entries",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "PolicyholderEntry"
+                }
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RiskPool",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "policy",
+            "type": "pubkey"
+          },
+          {
+            "name": "currency_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_escrowed",
+            "type": "u64"
+          },
+          {
+            "name": "available_balance",
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Underwriting",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "policy",
+            "type": "pubkey"
+          },
+          {
+            "name": "leader",
+            "type": "pubkey"
+          },
+          {
+            "name": "participants",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "ParticipantShare"
+                }
+              }
+            }
+          },
+          {
+            "name": "total_ratio",
+            "type": "u16"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}
