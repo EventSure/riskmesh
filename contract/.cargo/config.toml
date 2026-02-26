@@ -1,0 +1,9 @@
+# Use the system rustc for build-script / proc-macro host compilation.
+# The Solana platform-tools rustc (1.84.x) only ships BPF targets and
+# cannot compile standard host crates out of the box.
+# Cargo supports a per-host-target RUSTC override via:
+#   CARGO_TARGET_<triple>_RUSTC = <path>
+# But that env is not honoured by old cargo versions.
+# The cargo-build-sbf wrapper removes the RUSTC env var, so we set
+# the build-host linker wrapper here instead.
+# For now, rely on the system default; this file exists to document the issue.
