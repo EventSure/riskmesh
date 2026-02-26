@@ -1,25 +1,27 @@
 import { useState } from 'react';
 import BN from 'bn.js';
+import { Transaction, SystemProgram } from '@solana/web3.js';
+import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction } from '@solana/spl-token';
 import { Card, CardHeader, CardTitle, CardBody, Button, FormGroup, FormLabel, FormInput, Divider, Tag, TierItem } from '@/components/common';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { useToast } from '@/components/common';
 import { useTranslation } from 'react-i18next';
-import { useCreateMasterPolicy } from '@/hooks/useCreateMasterPolicy';
 import { useProgram } from '@/hooks/useProgram';
 import { getMasterPolicyPDA } from '@/lib/pda';
 import { CURRENCY_MINT, DEFAULT_PAYOUT_TIERS } from '@/lib/constants';
-import { getAssociatedTokenAddress } from '@solana/spl-token';
+import { generateDemoKeypairs } from '@/lib/demo-keypairs';
+import { ConfirmRole } from '@/lib/idl/open_parametric';
 
 export function MasterContractSetup() {
-  const { mode, masterActive, processStep, shares, setTerms, onChainSetTerms, setMasterPolicyPDA } = useProtocolStore();
+  const { mode, masterActive, processStep, shares, setTerms, onChainSetTerms, onChainConfirm, setMasterPolicyPDA } = useProtocolStore();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { createMasterPolicy, loading } = useCreateMasterPolicy();
-  const { wallet, connected } = useProgram();
+  const { program, provider, wallet, connected } = useProgram();
 
   const [coverageStart, setCoverageStart] = useState('2026-01-01');
   const [coverageEnd, setCoverageEnd] = useState('2026-12-31');
   const [premium, setPremium] = useState(1);
+  const [loading, setLoading] = useState(false);
 
   const handleSetTerms = async () => {
     if (mode === 'simulation') {
@@ -30,7 +32,7 @@ export function MasterContractSetup() {
     }
 
     // On-chain mode
-    if (!connected || !wallet) {
+    if (!connected || !wallet || !program || !provider) {
       toast('Please connect your wallet first', 'd');
       return;
     }
@@ -39,55 +41,128 @@ export function MasterContractSetup() {
       return;
     }
 
-    const masterId = Date.now(); // Use timestamp as unique ID
-    const leaderKey = wallet.publicKey;
+    setLoading(true);
+    try {
+      const leaderKey = wallet.publicKey;
+      const leaderATA = await getAssociatedTokenAddress(CURRENCY_MINT, leaderKey);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const prog = program as any;
 
-    // TODO: 각 역할별 별도 지갑 주소를 UI 입력으로 받아야 함
-    // 현재 데모에서는 leader 지갑이 operator/reinsurer 역할을 겸함
-    const operatorKey = leaderKey;
-    const reinsurerKey = leaderKey;
+      // TODO.demo: 데모용 인메모리 키페어 생성 — 프로덕션에서는 UI에서 참여사 지갑 주소 입력
+      const { partA: partAKp, partB: partBKp } = generateDemoKeypairs();
 
-    // Derive ATAs for token accounts (SPL Token Program expects token accounts, not wallets)
-    const leaderATA = await getAssociatedTokenAddress(CURRENCY_MINT, leaderKey);
+      const masterId = Date.now();
+      const masterIdBN = new BN(masterId);
+      const [masterPolicyPDA] = getMasterPolicyPDA(leaderKey, masterIdBN);
 
-    const result = await createMasterPolicy({
-      masterId,
-      coverageStartTs: Math.floor(new Date(coverageStart).getTime() / 1000),
-      coverageEndTs: Math.floor(new Date(coverageEnd).getTime() / 1000),
-      premiumPerPolicy: premium * 1_000_000, // USDC 6 decimals
-      payoutDelay2h: DEFAULT_PAYOUT_TIERS.delay2h,
-      payoutDelay3h: DEFAULT_PAYOUT_TIERS.delay3h,
-      payoutDelay4to5h: DEFAULT_PAYOUT_TIERS.delay4to5h,
-      payoutDelay6hOrCancelled: DEFAULT_PAYOUT_TIERS.delay6hOrCancelled,
-      // TODO: UI 입력으로 받을 수 있도록 개선 필요 (현재 고정값)
-      cededRatioBps: 5000, // 50% cession
-      reinsCommissionBps: 1000, // 10% commission
-      operator: operatorKey,
-      reinsurer: reinsurerKey,
-      currencyMint: CURRENCY_MINT,
-      leaderDepositWallet: leaderATA,
-      reinsurerPoolWallet: leaderATA,
-      reinsurerDepositWallet: leaderATA,
-      // TODO: 각 participant는 서로 다른 지갑이어야 함
-      // 같은 키를 사용하면 register_participant_wallets에서 position() 매칭이
-      // 항상 index 0만 반환하여 participant[1],[2]의 wallet이 미등록 상태로 남음
-      // → confirm_master에서 InvalidInput 에러 발생
-      participants: [
-        { insurer: leaderKey, shareBps: shares.leader * 100 },
-        { insurer: leaderKey, shareBps: shares.partA * 100 },
-        { insurer: leaderKey, shareBps: shares.partB * 100 },
-      ],
-    });
+      // TODO.demo: 각 역할별 별도 지갑이어야 함 — 현재 데모에서는 leader=operator=reinsurer
+      const operatorKey = leaderKey;
+      const reinsurerKey = leaderKey;
 
-    if (!result.success) {
-      toast(`TX failed: ${result.error}`, 'd');
-      return;
+      // TODO.demo: 데모 키페어에 SOL 전송 (confirm TX 가스비용)
+      const fundPartA = SystemProgram.transfer({
+        fromPubkey: leaderKey,
+        toPubkey: partAKp.publicKey,
+        lamports: 10_000_000, // 0.01 SOL
+      });
+      const fundPartB = SystemProgram.transfer({
+        fromPubkey: leaderKey,
+        toPubkey: partBKp.publicKey,
+        lamports: 10_000_000,
+      });
+
+      // TODO.demo: 데모 키페어의 ATA(SPL Token Account) 생성 — leader가 rent 비용 부담
+      // 실제 환경에서는 각 참여사가 자체 ATA를 이미 보유
+      const partAATA = await getAssociatedTokenAddress(CURRENCY_MINT, partAKp.publicKey);
+      const partBATA = await getAssociatedTokenAddress(CURRENCY_MINT, partBKp.publicKey);
+      const createPartAATAIx = createAssociatedTokenAccountInstruction(
+        leaderKey, partAATA, partAKp.publicKey, CURRENCY_MINT,
+      );
+      const createPartBATAIx = createAssociatedTokenAccountInstruction(
+        leaderKey, partBATA, partBKp.publicKey, CURRENCY_MINT,
+      );
+
+      const createMasterIx = await prog.methods
+        .createMasterPolicy({
+          masterId: masterIdBN,
+          coverageStartTs: new BN(Math.floor(new Date(coverageStart).getTime() / 1000)),
+          coverageEndTs: new BN(Math.floor(new Date(coverageEnd).getTime() / 1000)),
+          premiumPerPolicy: new BN(premium * 1_000_000),
+          payoutDelay2h: new BN(DEFAULT_PAYOUT_TIERS.delay2h),
+          payoutDelay3h: new BN(DEFAULT_PAYOUT_TIERS.delay3h),
+          payoutDelay4to5h: new BN(DEFAULT_PAYOUT_TIERS.delay4to5h),
+          payoutDelay6hOrCancelled: new BN(DEFAULT_PAYOUT_TIERS.delay6hOrCancelled),
+          // TODO.demo: UI 입력으로 받을 수 있도록 개선 필요 (현재 고정값)
+          cededRatioBps: 5000,
+          reinsCommissionBps: 1000,
+          // TODO.demo: 데모에서는 3명 모두 다른 지갑 키페어 사용
+          participants: [
+            { insurer: leaderKey, shareBps: shares.leader * 100 },
+            { insurer: partAKp.publicKey, shareBps: shares.partA * 100 },
+            { insurer: partBKp.publicKey, shareBps: shares.partB * 100 },
+          ],
+        })
+        .accounts({
+          leader: leaderKey,
+          operator: operatorKey,
+          reinsurer: reinsurerKey,
+          currencyMint: CURRENCY_MINT,
+          masterPolicy: masterPolicyPDA,
+          leaderDepositWallet: leaderATA,
+          reinsurerPoolWallet: leaderATA,
+          reinsurerDepositWallet: leaderATA,
+        })
+        .instruction();
+
+      const regLeaderIx = await prog.methods
+        .registerParticipantWallets()
+        .accounts({
+          insurer: leaderKey,
+          masterPolicy: masterPolicyPDA,
+          poolWallet: leaderATA,
+          depositWallet: leaderATA,
+        })
+        .instruction();
+
+      const confirmLeaderIx = await prog.methods
+        .confirmMaster(ConfirmRole.Participant)
+        .accounts({
+          actor: leaderKey,
+          masterPolicy: masterPolicyPDA,
+        })
+        .instruction();
+
+      const confirmReinIx = await prog.methods
+        .confirmMaster(ConfirmRole.Reinsurer)
+        .accounts({
+          actor: leaderKey,
+          masterPolicy: masterPolicyPDA,
+        })
+        .instruction();
+
+      // ── Single TX: fund + create ATAs + create master + register leader + confirm leader + confirm rein ──
+      // TODO.demo: 1개 TX로 합쳐 Phantom 서명 1회만 요청 (TX 크기 초과 시 2개로 분리 필요)
+      const tx = new Transaction().add(
+        fundPartA, fundPartB,
+        createPartAATAIx, createPartBATAIx,
+        createMasterIx,
+        regLeaderIx, confirmLeaderIx, confirmReinIx,
+      );
+      const sig = await provider.sendAndConfirm(tx);
+
+      // ── Update store ──
+      setMasterPolicyPDA(masterPolicyPDA.toBase58());
+      onChainSetTerms(sig, 5000, 1000);
+      // Leader (participant[0]) and reinsurer already confirmed
+      onChainConfirm('rein', sig);
+
+      toast(`Master policy created! TX: ${sig.slice(0, 8)}...`, 's');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast(`TX failed: ${message}`, 'd');
+    } finally {
+      setLoading(false);
     }
-
-    const [pda] = getMasterPolicyPDA(leaderKey, new BN(masterId));
-    setMasterPolicyPDA(pda.toBase58());
-    onChainSetTerms(result.signature, 5000, 1000);
-    toast(`Master policy created! TX: ${result.signature.slice(0, 8)}...`, 's');
   };
 
   return (

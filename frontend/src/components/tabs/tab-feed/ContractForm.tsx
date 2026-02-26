@@ -1,8 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { PublicKey } from '@solana/web3.js';
+import { getAssociatedTokenAddress } from '@solana/spl-token';
 import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardBody, Button, FormGroup, FormLabel, FormInput, FormSelect, Divider } from '@/components/common';
 import { useProtocolStore, FLIGHTS, FLIGHT_ROUTES, NAMES, DATES } from '@/store/useProtocolStore';
+import { CURRENCY_MINT } from '@/lib/constants';
 import { useToast } from '@/components/common';
 import { useCreateFlightPolicy } from '@/hooks/useCreateFlightPolicy';
 import { useProgram } from '@/hooks/useProgram';
@@ -36,6 +38,7 @@ export function ContractForm() {
     const childId = contractCount + 1;
     const route = FLIGHT_ROUTES[flight] || 'ICN→JFK';
     const departureTs = Math.floor(new Date(date).getTime() / 1000);
+    const walletATA = await getAssociatedTokenAddress(CURRENCY_MINT, wallet.publicKey);
 
     const result = await createFlightPolicy({
       masterPolicy: new PublicKey(masterPolicyPDA),
@@ -44,8 +47,8 @@ export function ContractForm() {
       flightNo: flight,
       route,
       departureTs,
-      payerToken: wallet.publicKey, // placeholder — needs real ATA
-      leaderDepositToken: wallet.publicKey, // placeholder — needs real ATA
+      payerToken: walletATA,
+      leaderDepositToken: walletATA,
     });
 
     if (!result.success) {
