@@ -18,7 +18,7 @@ pub struct SettleFlightClaim<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-pub fn handler(ctx: Context<SettleFlightClaim>) -> Result<()> {
+pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightClaim<'a>>) -> Result<()> {
     let master = &ctx.accounts.master_policy;
     let flight = &mut ctx.accounts.flight_policy;
 
