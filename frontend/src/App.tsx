@@ -29,7 +29,7 @@ export function App() {
           <Global styles={globalStyles} />
           <ToastProvider>
             <InitLogger />
-            <BrowserRouter>
+            <BrowserRouter basename="/riskmesh">
               <Routes>
                 <Route element={<Layout />}>
                   <Route path="/dashboard" element={<Dashboard />} />

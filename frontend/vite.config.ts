@@ -4,6 +4,7 @@ import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import path from 'path';
 
 export default defineConfig({
+  base: '/riskmesh/',
   plugins: [
     react({
       jsxImportSource: '@emotion/react',
