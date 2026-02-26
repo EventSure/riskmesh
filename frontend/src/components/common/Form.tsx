@@ -54,7 +54,7 @@ export const FormSelect = styled.select`
   }
 `;
 
-export const Row2 = styled.div`
+export const FormRow = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;

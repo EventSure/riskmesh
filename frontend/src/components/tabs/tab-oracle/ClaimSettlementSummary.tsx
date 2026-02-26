@@ -1,17 +1,17 @@
 import { useEffect, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardBody, SummaryRow } from '@/components/common';
-import { useProtocolStore, fmt } from '@/store/useProtocolStore';
+import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
 import { Chart, registerables } from 'chart.js';
 
 Chart.register(...registerables);
 
 export function ClaimSettlementSummary() {
-  const { totClaim, claims } = useProtocolStore();
+  const { totalClaim, claims } = useProtocolStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
 
   const totRC = claims.reduce((s, c) => s + c.totRC, 0);
-  const direct = totClaim - totRC;
+  const direct = totalClaim - totRC;
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -51,15 +51,15 @@ export function ClaimSettlementSummary() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 7 }}>
           <SummaryRow style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
             <span style={{ fontSize: 10, color: 'var(--sub)' }}>총 보험금 지급</span>
-            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{fmt(totClaim, 2)} USDC</span>
+            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{formatNum(totalClaim, 2)} USDC</span>
           </SummaryRow>
           <SummaryRow style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
             <span style={{ fontSize: 10, color: 'var(--sub)' }}>원수사 순부담</span>
-            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{fmt(direct, 2)} USDC</span>
+            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{formatNum(direct, 2)} USDC</span>
           </SummaryRow>
           <SummaryRow style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
             <span style={{ fontSize: 10, color: 'var(--sub)' }}>재보험사 부담</span>
-            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{fmt(totRC, 2)} USDC</span>
+            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{formatNum(totRC, 2)} USDC</span>
           </SummaryRow>
         </div>
         <div style={{ height: 120, marginTop: 8 }}><canvas ref={canvasRef} /></div>

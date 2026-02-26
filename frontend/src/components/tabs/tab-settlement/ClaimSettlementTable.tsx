@@ -1,8 +1,8 @@
 import { Card, CardHeader, CardTitle, SettlementTable } from '@/components/common';
-import { useProtocolStore, fmt } from '@/store/useProtocolStore';
+import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
 
 export function ClaimSettlementTable() {
-  const { totClaim, shares } = useProtocolStore();
+  const { totalClaim, shares } = useProtocolStore();
   const lS = shares.leader / 100, aS = shares.partA / 100, bS = shares.partB / 100;
 
   const rows = [
@@ -10,15 +10,15 @@ export function ClaimSettlementTable() {
     { label: '참여사 A (현대해상)', s: aS },
     { label: '참여사 B (DB손보)', s: bS },
   ].map(r => {
-    const gross = totClaim * r.s;
+    const gross = totalClaim * r.s;
     const rc = gross * 0.5;
-    const comm = totClaim * 0.1 * r.s;
+    const comm = totalClaim * 0.1 * r.s;
     const net = gross - rc + comm;
     return { ...r, gross, rc, comm, net };
   });
 
-  const rcIn = totClaim * 0.5;
-  const rcOut = totClaim * 0.1;
+  const rcIn = totalClaim * 0.5;
+  const rcOut = totalClaim * 0.1;
 
   return (
     <Card>
@@ -32,20 +32,20 @@ export function ClaimSettlementTable() {
             {rows.map(r => (
               <tr key={r.label}>
                 <td>{r.label}</td>
-                <td>{fmt(r.s * 100, 0)}%</td>
-                <td style={{ color: 'var(--danger)' }}>{fmt(r.gross, 4)}</td>
-                <td style={{ color: 'var(--info)' }}>{fmt(r.rc, 4)}</td>
-                <td style={{ color: 'var(--warning)' }}>{fmt(r.comm, 4)}</td>
-                <td style={{ color: 'var(--danger)' }}>{fmt(r.net, 4)}</td>
+                <td>{formatNum(r.s * 100, 0)}%</td>
+                <td style={{ color: 'var(--danger)' }}>{formatNum(r.gross, 4)}</td>
+                <td style={{ color: 'var(--info)' }}>{formatNum(r.rc, 4)}</td>
+                <td style={{ color: 'var(--warning)' }}>{formatNum(r.comm, 4)}</td>
+                <td style={{ color: 'var(--danger)' }}>{formatNum(r.net, 4)}</td>
               </tr>
             ))}
             <tr className="trein">
               <td>재보험사</td>
               <td>50%</td>
-              <td style={{ color: 'var(--info)' }}>-{fmt(rcIn, 4)}</td>
+              <td style={{ color: 'var(--info)' }}>-{formatNum(rcIn, 4)}</td>
               <td>—</td>
-              <td style={{ color: 'var(--accent)' }}>+{fmt(rcOut, 4)}</td>
-              <td style={{ color: 'var(--info)' }}>{fmt(-rcIn + rcOut, 4)}</td>
+              <td style={{ color: 'var(--accent)' }}>+{formatNum(rcOut, 4)}</td>
+              <td style={{ color: 'var(--info)' }}>{formatNum(-rcIn + rcOut, 4)}</td>
             </tr>
           </tbody>
         </SettlementTable>

@@ -1,5 +1,5 @@
 import { Card, CardHeader, CardTitle, Button, DataTable, Tag } from '@/components/common';
-import { useProtocolStore, fmt } from '@/store/useProtocolStore';
+import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
 
 export function ContractFeedTable() {
   const { contracts, clearContracts } = useProtocolStore();
@@ -31,10 +31,10 @@ export function ContractFeedTable() {
                 <td style={{ color: 'var(--accent)' }}>{c.flight}</td>
                 <td>{c.date}</td>
                 <td style={{ color: 'var(--warning)' }}>1.0000</td>
-                <td style={{ color: '#9945FF' }}>{fmt(c.lNet, 4)}</td>
-                <td style={{ color: '#14F195' }}>{fmt(c.aNet, 4)}</td>
-                <td style={{ color: '#F59E0B' }}>{fmt(c.bNet, 4)}</td>
-                <td style={{ color: '#38BDF8' }}>{fmt(c.rNet, 4)}</td>
+                <td style={{ color: '#9945FF' }}>{formatNum(c.lNet, 4)}</td>
+                <td style={{ color: '#14F195' }}>{formatNum(c.aNet, 4)}</td>
+                <td style={{ color: '#F59E0B' }}>{formatNum(c.bNet, 4)}</td>
+                <td style={{ color: '#38BDF8' }}>{formatNum(c.rNet, 4)}</td>
                 <td style={{ fontSize: 9, color: 'var(--sub)' }}>{c.ts}</td>
                 <td><Tag variant="accent">활성</Tag></td>
               </tr>

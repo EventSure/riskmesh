@@ -4,7 +4,7 @@ import { useProtocolStore, ROLES } from '@/store/useProtocolStore';
 import { useShallow } from 'zustand/shallow';
 import { useToast } from '@/components/common';
 
-const PtRow = styled.div<{ confirmed?: boolean }>`
+const ParticipantRow = styled.div<{ confirmed?: boolean }>`
   background: var(--card2);
   border: 1px solid var(--border);
   border-radius: 9px;
@@ -42,8 +42,8 @@ const PT_DEF = [
 ];
 
 export function ParticipantConfirm() {
-  const { role, confirms, shares, cStep, masterActive, confirmParty, activateMaster } = useProtocolStore(
-    useShallow(s => ({ role: s.role, confirms: s.confirms, shares: s.shares, cStep: s.cStep, masterActive: s.masterActive, confirmParty: s.confirmParty, activateMaster: s.activateMaster })),
+  const { role, confirms, shares, processStep, masterActive, confirmParty, activateMaster } = useProtocolStore(
+    useShallow(s => ({ role: s.role, confirms: s.confirms, shares: s.shares, processStep: s.processStep, masterActive: s.masterActive, confirmParty: s.confirmParty, activateMaster: s.activateMaster })),
   );
   const { toast } = useToast();
 
@@ -79,7 +79,7 @@ export function ParticipantConfirm() {
             : `지분: ${shares[pt.key]}% (원수사 내)`;
 
           return (
-            <PtRow key={pt.key} confirmed={cf}>
+            <ParticipantRow key={pt.key} confirmed={cf}>
               <PtHeader>
                 <PtName>
                   <PtDot style={{ background: pt.color, boxShadow: `0 0 4px ${pt.color}` }} />
@@ -88,12 +88,12 @@ export function ParticipantConfirm() {
                 <Tag variant={cf ? 'accent' : 'subtle'}>{cf ? '컨펌 완료' : '대기중'}</Tag>
               </PtHeader>
               <div style={{ fontSize: 9, color: 'var(--sub)', marginBottom: 5 }}>{shareInfo}</div>
-              {!cf && canC && cStep >= 1 && (
+              {!cf && canC && processStep >= 1 && (
                 <Button variant="accent" fullWidth size="sm" onClick={() => handleConfirm(pt.key)}>
                   ✓ 컨펌
                 </Button>
               )}
-            </PtRow>
+            </ParticipantRow>
           );
         })}
         <Button variant="accent" fullWidth onClick={handleActivate} disabled={!canActivate} style={{ marginTop: 4 }}>

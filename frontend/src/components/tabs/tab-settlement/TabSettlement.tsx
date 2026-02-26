@@ -14,7 +14,7 @@ const Col = styled.div`
 const ColMain = styled(Col)`flex: 1;`;
 const ColSide = styled(Col)`flex: 0 0 272px;`;
 
-export function Tab4Settlement() {
+export function TabSettlement() {
   return (
     <>
       <ColMain>

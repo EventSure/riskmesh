@@ -11,7 +11,7 @@ const Col = styled.div`
 const ColMd = styled(Col)`flex: 0 0 326px;`;
 const ColLg = styled(Col)`flex: 1;`;
 
-export function Tab5Inspector() {
+export function TabInspector() {
   return (
     <>
       <ColMd>

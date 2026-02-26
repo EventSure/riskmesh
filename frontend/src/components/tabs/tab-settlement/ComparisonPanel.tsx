@@ -1,7 +1,7 @@
 import styled from '@emotion/styled';
 import { Card, CardHeader, CardTitle, CardBody, Divider, SummaryRow } from '@/components/common';
 
-const CmpItem = styled.div<{ variant: 'bad' | 'good' }>`
+const ComparisonItem = styled.div<{ variant: 'bad' | 'good' }>`
   display: flex;
   align-items: center;
   gap: 6px;
@@ -27,16 +27,16 @@ export function ComparisonPanel() {
       <CardHeader><CardTitle>Traditional vs On-Chain</CardTitle></CardHeader>
       <CardBody>
         <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--danger)', textTransform: 'uppercase', marginBottom: 6 }}>기존 방식</div>
-        <CmpItem variant="bad">⏳ 월별 일괄 정산</CmpItem>
-        <CmpItem variant="bad">📋 수동 검토 및 승인</CmpItem>
-        <CmpItem variant="bad">⚠️ 정산 오류 위험</CmpItem>
-        <CmpItem variant="bad" style={{ marginBottom: 10 }}>🕐 T+14~30일</CmpItem>
+        <ComparisonItem variant="bad">⏳ 월별 일괄 정산</ComparisonItem>
+        <ComparisonItem variant="bad">📋 수동 검토 및 승인</ComparisonItem>
+        <ComparisonItem variant="bad">⚠️ 정산 오류 위험</ComparisonItem>
+        <ComparisonItem variant="bad" style={{ marginBottom: 10 }}>🕐 T+14~30일</ComparisonItem>
 
         <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', marginBottom: 6 }}>OpenParametric</div>
-        <CmpItem variant="good">⚡ 건당 실시간 정산</CmpItem>
-        <CmpItem variant="good">🔮 오라클 자동 검증</CmpItem>
-        <CmpItem variant="good">📝 온체인 불변 기록</CmpItem>
-        <CmpItem variant="good" style={{ marginBottom: 10 }}>⚡ T+0 즉시 정산</CmpItem>
+        <ComparisonItem variant="good">⚡ 건당 실시간 정산</ComparisonItem>
+        <ComparisonItem variant="good">🔮 오라클 자동 검증</ComparisonItem>
+        <ComparisonItem variant="good">📝 온체인 불변 기록</ComparisonItem>
+        <ComparisonItem variant="good" style={{ marginBottom: 10 }}>⚡ T+0 즉시 정산</ComparisonItem>
 
         <Divider />
         <SummaryRow>

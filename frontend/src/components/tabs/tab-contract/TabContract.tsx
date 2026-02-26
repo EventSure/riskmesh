@@ -19,7 +19,7 @@ const ColSm = styled(Col)`flex: 0 0 272px;`;
 const ColMd = styled(Col)`flex: 0 0 326px;`;
 const ColLg = styled(Col)`flex: 1;`;
 
-export function Tab1Contract() {
+export function TabContract() {
   return (
     <>
       <ColSm>

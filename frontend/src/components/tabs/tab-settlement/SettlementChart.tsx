@@ -6,21 +6,21 @@ import { Chart, registerables } from 'chart.js';
 Chart.register(...registerables);
 
 export function SettlementChart() {
-  const { acc, totPrem, totClaim } = useProtocolStore();
+  const { acc, totalPremium, totalClaim } = useProtocolStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
 
-  const rIn = totPrem * 0.5;
-  const rOut = totPrem * 0.1;
+  const rIn = totalPremium * 0.5;
+  const rOut = totalPremium * 0.1;
   const rPNet = rIn - rOut;
-  const rcIn = totClaim * 0.5;
-  const rcOut = totClaim * 0.1;
+  const rcIn = totalClaim * 0.5;
+  const rcOut = totalClaim * 0.1;
   const rCNet = -rcIn + rcOut;
 
   const rows = [
-    { label: '리더사', net: acc.lP - acc.lC },
-    { label: '참여사A', net: acc.aP - acc.aC },
-    { label: '참여사B', net: acc.bP - acc.bC },
+    { label: '리더사', net: acc.leaderPrem - acc.leaderClaim },
+    { label: '참여사A', net: acc.partAPrem - acc.partAClaim },
+    { label: '참여사B', net: acc.partBPrem - acc.partBClaim },
     { label: '재보험사', net: rPNet + rCNet },
   ];
 
@@ -63,7 +63,7 @@ export function SettlementChart() {
     });
 
     return () => { chartRef.current?.destroy(); chartRef.current = null; };
-  }, [acc, totPrem, totClaim]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [acc, totalPremium, totalClaim]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <Card>

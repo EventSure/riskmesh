@@ -1,7 +1,7 @@
 import styled from '@emotion/styled';
 import { keyframes } from '@emotion/react';
 import { Mono } from '@/components/common';
-import { useProtocolStore, ROLES, fmt, type Role } from '@/store/useProtocolStore';
+import { useProtocolStore, ROLES, formatNum, type Role } from '@/store/useProtocolStore';
 import { useShallow } from 'zustand/shallow';
 import { useToast } from '@/components/common';
 
@@ -158,8 +158,8 @@ const ROLE_OPTIONS: { value: Role; label: string }[] = [
 ];
 
 export function Header() {
-  const { role, setRole, masterActive, contracts, totPrem, totClaim, poolBal } = useProtocolStore(
-    useShallow(s => ({ role: s.role, setRole: s.setRole, masterActive: s.masterActive, contracts: s.contracts, totPrem: s.totPrem, totClaim: s.totClaim, poolBal: s.poolBal })),
+  const { role, setRole, masterActive, contracts, totalPremium, totalClaim, poolBalance } = useProtocolStore(
+    useShallow(s => ({ role: s.role, setRole: s.setRole, masterActive: s.masterActive, contracts: s.contracts, totalPremium: s.totalPremium, totalClaim: s.totalClaim, poolBalance: s.poolBalance })),
   );
   const { toast } = useToast();
 
@@ -172,10 +172,10 @@ export function Header() {
   const kpis = [
     { label: '마스터 계약', value: masterActive ? '활성' : '미체결', highlight: masterActive },
     { label: '활성 계약 건수', value: contracts.length + '건' },
-    { label: '누적 보험료', value: fmt(totPrem, 2) + ' USDC' },
-    { label: '누적 보험금', value: fmt(totClaim, 2) + ' USDC' },
-    { label: 'Pool 잔액', value: fmt(poolBal, 2) + ' USDC' },
-    { label: 'Pool 건전성', value: fmt(Math.min(100, (poolBal / 10000) * 100), 1) + '%' },
+    { label: '누적 보험료', value: formatNum(totalPremium, 2) + ' USDC' },
+    { label: '누적 보험금', value: formatNum(totalClaim, 2) + ' USDC' },
+    { label: 'Pool 잔액', value: formatNum(poolBalance, 2) + ' USDC' },
+    { label: 'Pool 건전성', value: formatNum(Math.min(100, (poolBalance / 10000) * 100), 1) + '%' },
   ];
 
   return (

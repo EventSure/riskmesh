@@ -23,15 +23,15 @@ const Tab = styled.button<{ active?: boolean }>`
   }
 `;
 
-export const TAB_IDS = ['t1', 't2', 't3', 't4', 't5'] as const;
+export const TAB_IDS = ['tab-contract', 'tab-feed', 'tab-oracle', 'tab-settlement', 'tab-inspector'] as const;
 export type TabId = (typeof TAB_IDS)[number];
 
 const TAB_LABELS: Record<TabId, string> = {
-  t1: '📋 계약 체결',
-  t2: '⚡ 실시간 계약 피드',
-  t3: '🔮 오라클 & 클레임',
-  t4: '💰 정산 현황',
-  t5: '🔍 On-chain Inspector',
+  'tab-contract': '📋 계약 체결',
+  'tab-feed': '⚡ 실시간 계약 피드',
+  'tab-oracle': '🔮 오라클 & 클레임',
+  'tab-settlement': '💰 정산 현황',
+  'tab-inspector': '🔍 On-chain Inspector',
 };
 
 interface TabBarProps {

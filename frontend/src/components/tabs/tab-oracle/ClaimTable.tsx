@@ -1,5 +1,5 @@
 import { Card, CardHeader, CardTitle, DataTable } from '@/components/common';
-import { useProtocolStore, fmt } from '@/store/useProtocolStore';
+import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
 
 export function ClaimTable() {
   const claims = useProtocolStore(s => s.claims);
@@ -35,11 +35,11 @@ export function ClaimTable() {
                       {c.tier}
                     </span>
                   </td>
-                  <td style={{ color: 'var(--danger)', fontWeight: 700 }}>{fmt(c.payout, 0)}</td>
-                  <td style={{ color: '#9945FF' }}>{fmt(c.lNet, 2)}</td>
-                  <td style={{ color: '#14F195' }}>{fmt(c.aNet, 2)}</td>
-                  <td style={{ color: '#F59E0B' }}>{fmt(c.bNet, 2)}</td>
-                  <td style={{ color: '#38BDF8' }}>{fmt(c.totRC, 2)}</td>
+                  <td style={{ color: 'var(--danger)', fontWeight: 700 }}>{formatNum(c.payout, 0)}</td>
+                  <td style={{ color: '#9945FF' }}>{formatNum(c.lNet, 2)}</td>
+                  <td style={{ color: '#14F195' }}>{formatNum(c.aNet, 2)}</td>
+                  <td style={{ color: '#F59E0B' }}>{formatNum(c.bNet, 2)}</td>
+                  <td style={{ color: '#38BDF8' }}>{formatNum(c.totRC, 2)}</td>
                   <td>
                     <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 6px', borderRadius: 4, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', fontFamily: "'DM Mono', monospace",
                       background: statusColor === 'accent' ? 'rgba(20,241,149,.12)' : statusColor === 'warning' ? 'rgba(245,158,11,.12)' : 'rgba(239,68,68,.12)',

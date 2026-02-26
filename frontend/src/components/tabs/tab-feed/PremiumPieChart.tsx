@@ -12,7 +12,7 @@ export function PremiumPieChart() {
 
   useEffect(() => {
     if (!canvasRef.current) return;
-    const data = [acc.lP, acc.aP, acc.bP, acc.rP];
+    const data = [acc.leaderPrem, acc.partAPrem, acc.partBPrem, acc.reinPrem];
     const labels = ['리더사', '참여사A', '참여사B', '재보험사'];
     const colors = ['#9945FF', '#14F195', '#F59E0B', '#38BDF8'];
 
@@ -37,7 +37,7 @@ export function PremiumPieChart() {
     });
 
     return () => { chartRef.current?.destroy(); chartRef.current = null; };
-  }, [acc.lP, acc.aP, acc.bP, acc.rP]);
+  }, [acc.leaderPrem, acc.partAPrem, acc.partBPrem, acc.reinPrem]);
 
   return (
     <Card>

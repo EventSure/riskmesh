@@ -1,8 +1,8 @@
 import { Card, CardHeader, CardTitle, SettlementTable } from '@/components/common';
-import { useProtocolStore, fmt } from '@/store/useProtocolStore';
+import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
 
 export function PremiumSettlementTable() {
-  const { totPrem, shares } = useProtocolStore();
+  const { totalPremium, shares } = useProtocolStore();
   const lS = shares.leader / 100, aS = shares.partA / 100, bS = shares.partB / 100;
 
   const rows = [
@@ -10,15 +10,15 @@ export function PremiumSettlementTable() {
     { label: '참여사 A (현대해상)', s: aS },
     { label: '참여사 B (DB손보)', s: bS },
   ].map(r => {
-    const raw = totPrem * r.s;
+    const raw = totalPremium * r.s;
     const toR = raw * 0.5;
-    const comm = totPrem * 0.1 * r.s;
+    const comm = totalPremium * 0.1 * r.s;
     const net = raw - toR + comm;
     return { ...r, raw, toR, comm, net };
   });
 
-  const rIn = totPrem * 0.5;
-  const rOut = totPrem * 0.1;
+  const rIn = totalPremium * 0.5;
+  const rOut = totalPremium * 0.1;
 
   return (
     <Card>
@@ -32,28 +32,28 @@ export function PremiumSettlementTable() {
             {rows.map(r => (
               <tr key={r.label}>
                 <td>{r.label}</td>
-                <td>{fmt(r.s * 100, 0)}%</td>
-                <td>{fmt(r.raw, 4)}</td>
-                <td style={{ color: 'var(--info)' }}>{fmt(r.toR, 4)}</td>
-                <td style={{ color: 'var(--accent)' }}>{fmt(r.comm, 4)}</td>
-                <td style={{ color: 'var(--success)' }}>{fmt(r.net, 4)}</td>
+                <td>{formatNum(r.s * 100, 0)}%</td>
+                <td>{formatNum(r.raw, 4)}</td>
+                <td style={{ color: 'var(--info)' }}>{formatNum(r.toR, 4)}</td>
+                <td style={{ color: 'var(--accent)' }}>{formatNum(r.comm, 4)}</td>
+                <td style={{ color: 'var(--success)' }}>{formatNum(r.net, 4)}</td>
               </tr>
             ))}
             <tr className="trein">
               <td>재보험사</td>
               <td>50%</td>
               <td>—</td>
-              <td style={{ color: 'var(--info)' }}>{fmt(rIn, 4)}</td>
-              <td style={{ color: 'var(--warning)' }}>-{fmt(rOut, 4)}</td>
-              <td style={{ color: 'var(--info)' }}>{fmt(rIn - rOut, 4)}</td>
+              <td style={{ color: 'var(--info)' }}>{formatNum(rIn, 4)}</td>
+              <td style={{ color: 'var(--warning)' }}>-{formatNum(rOut, 4)}</td>
+              <td style={{ color: 'var(--info)' }}>{formatNum(rIn - rOut, 4)}</td>
             </tr>
             <tr className="ttr">
               <td>합 계</td>
               <td>—</td>
-              <td>{fmt(totPrem, 4)}</td>
+              <td>{formatNum(totalPremium, 4)}</td>
               <td>—</td>
               <td>—</td>
-              <td>{fmt(totPrem, 4)}</td>
+              <td>{formatNum(totalPremium, 4)}</td>
             </tr>
           </tbody>
         </SettlementTable>

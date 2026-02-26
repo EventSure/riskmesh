@@ -3,7 +3,7 @@ import { useProtocolStore } from '@/store/useProtocolStore';
 import { useToast } from '@/components/common';
 
 export function MasterContractSetup() {
-  const { masterActive, cStep, setTerms } = useProtocolStore();
+  const { masterActive, processStep, setTerms } = useProtocolStore();
   const { toast } = useToast();
 
   const handleSetTerms = () => {
@@ -44,7 +44,7 @@ export function MasterContractSetup() {
         <TierItem label="4h~5h59m" value="80 USDC" color="#EF4444" />
         <TierItem label="6h+ / 결항" value="100 USDC" color="#fca5a5" />
         <Divider />
-        <Button variant="primary" fullWidth onClick={handleSetTerms} disabled={cStep >= 1}>
+        <Button variant="primary" fullWidth onClick={handleSetTerms} disabled={processStep >= 1}>
           📄 약관 세팅 &amp; 요율 산정
         </Button>
       </CardBody>

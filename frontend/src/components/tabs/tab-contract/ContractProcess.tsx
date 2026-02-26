@@ -66,7 +66,7 @@ const STEPS = [
 ];
 
 export function ContractProcess() {
-  const { cStep, resetAll } = useProtocolStore();
+  const { processStep, resetAll } = useProtocolStore();
   const { toast } = useToast();
 
   const handleReset = () => {
@@ -82,8 +82,8 @@ export function ContractProcess() {
       </CardHeader>
       <CardBody style={{ padding: 10 }}>
         {STEPS.map((s, i) => {
-          const done = i < cStep;
-          const cur = i === cStep;
+          const done = i < processStep;
+          const cur = i === processStep;
           return (
             <StepItem key={s.n} active={cur} done={done}>
               <StepHeader>

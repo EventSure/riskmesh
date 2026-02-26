@@ -43,14 +43,14 @@ export interface Claim {
 }
 
 export interface Acc {
-  lP: number;
-  aP: number;
-  bP: number;
-  rP: number;
-  lC: number;
-  aC: number;
-  bC: number;
-  rC: number;
+  leaderPrem: number;
+  partAPrem: number;
+  partBPrem: number;
+  reinPrem: number;
+  leaderClaim: number;
+  partAClaim: number;
+  partBClaim: number;
+  reinClaim: number;
 }
 
 export interface LogEntry {
@@ -106,8 +106,8 @@ export const ROLES: Record<Role, { label: string; color: string }> = {
   operator: { label: 'Operator', color: '#EF4444' },
 };
 
-export const SS = ['Draft', 'Open', 'Funded', 'Active', 'Claimable', 'Approved', 'Settled'] as const;
-export const SI = ['📄', '📂', '💰', '⚡', '🔔', '✅', '💸'] as const;
+export const POLICY_STATES = ['Draft', 'Open', 'Funded', 'Active', 'Claimable', 'Approved', 'Settled'] as const;
+export const POLICY_STATE_ICONS = ['📄', '📂', '💰', '⚡', '🔔', '✅', '💸'] as const;
 
 /* ── Utility Functions ── */
 export function getTier(delay: number) {
@@ -117,7 +117,7 @@ export function getTier(delay: number) {
   return null;
 }
 
-export function fpk(s: string): string {
+export function fakePubkey(s: string): string {
   let h = 5381;
   for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
   const c = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
@@ -126,18 +126,18 @@ export function fpk(s: string): string {
   return a;
 }
 
-export const mPDA = () => fpk('master_contract_2026_flight_delay');
-export const pPDA = () => fpk('pool_' + mPDA());
-export const vPDA = () => fpk('vault_' + pPDA());
-export const lPDA = () => fpk('ledger_' + mPDA());
+export const masterPDA = () => fakePubkey('master_contract_2026_flight_delay');
+export const poolPDA = () => fakePubkey('pool_' + masterPDA());
+export const vaultPDA = () => fakePubkey('vault_' + poolPDA());
+export const ledgerPDA = () => fakePubkey('ledger_' + masterPDA());
 
-export const fmt = (n: number, d = 2) =>
+export const formatNum = (n: number, d = 2) =>
   Number(n).toFixed(d).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
-const nowt = () =>
+const nowTime = () =>
   new Date().toLocaleTimeString('ko-KR', { hour12: false });
 
-const nowd = () =>
+const nowDate = () =>
   new Date().toLocaleString('ko-KR', {
     month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
@@ -147,17 +147,17 @@ const nowd = () =>
 interface ProtocolState {
   role: Role;
   masterActive: boolean;
-  cStep: number;
-  psIdx: number;
+  processStep: number;
+  policyStateIdx: number;
   confirms: { partA: boolean; partB: boolean; rein: boolean };
   shares: Shares;
-  poolBal: number;
-  totPrem: number;
-  totClaim: number;
+  poolBalance: number;
+  totalPremium: number;
+  totalClaim: number;
   contracts: Contract[];
   claims: Claim[];
-  cCnt: number;
-  clCnt: number;
+  contractCount: number;
+  claimCount: number;
   acc: Acc;
   logs: LogEntry[];
   logIdCounter: number;
@@ -179,22 +179,22 @@ interface ProtocolState {
   resetAll: () => void;
 }
 
-const INITIAL_ACC: Acc = { lP: 0, aP: 0, bP: 0, rP: 0, lC: 0, aC: 0, bC: 0, rC: 0 };
+const INITIAL_ACC: Acc = { leaderPrem: 0, partAPrem: 0, partBPrem: 0, reinPrem: 0, leaderClaim: 0, partAClaim: 0, partBClaim: 0, reinClaim: 0 };
 
 export const useProtocolStore = create<ProtocolState>((set, get) => ({
   role: 'leader',
   masterActive: false,
-  cStep: 0,
-  psIdx: -1,
+  processStep: 0,
+  policyStateIdx: -1,
   confirms: { partA: false, partB: false, rein: false },
   shares: { leader: 50, partA: 30, partB: 20 },
-  poolBal: 10000,
-  totPrem: 0,
-  totClaim: 0,
+  poolBalance: 10000,
+  totalPremium: 0,
+  totalClaim: 0,
   contracts: [],
   claims: [],
-  cCnt: 0,
-  clCnt: 0,
+  contractCount: 0,
+  claimCount: 0,
   acc: { ...INITIAL_ACC },
   logs: [],
   logIdCounter: 0,
@@ -212,7 +212,7 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
     const { role, shares } = get();
     if (role !== 'leader' && role !== 'operator') return { ok: false, msg: '리더사만 가능합니다' };
     if (shares.leader + shares.partA + shares.partB !== 100) return { ok: false, msg: '지분 합계가 100이어야 합니다' };
-    set({ cStep: 1, psIdx: 0 });
+    set({ processStep: 1, policyStateIdx: 0 });
     get().addLog(
       '약관 세팅 완료. 참여사·재보험사 컨펌 요청', '#9945FF', 'set_terms',
       `담보:2026-01-01~12-31|보험료:1USDC|지분 L${shares.leader}/A${shares.partA}/B${shares.partB}`,
@@ -224,7 +224,7 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
     const step = key === 'partA' ? 2 : key === 'partB' ? 3 : 4;
     set(st => ({
       confirms: { ...st.confirms, [key]: true },
-      cStep: Math.max(st.cStep, step),
+      processStep: Math.max(st.processStep, step),
     }));
     get().addLog(ROLES[key].label + ' 컨펌 완료', ROLES[key].color, 'confirm_party');
   },
@@ -233,10 +233,10 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
     const { role, confirms } = get();
     if (role !== 'leader' && role !== 'operator') return { ok: false, msg: '리더사만 가능합니다' };
     if (!confirms.partA || !confirms.partB || !confirms.rein) return { ok: false, msg: '모든 참여사·재보험사 컨펌이 필요합니다' };
-    set({ masterActive: true, psIdx: 3, cStep: 5 });
+    set({ masterActive: true, policyStateIdx: 3, processStep: 5 });
     get().addLog(
       '마스터 계약 온체인 기록 완료. 실시간 계약 수락 시작', '#14F195', 'activate_master',
-      `PDA:${mPDA().substring(0, 16)}...|Pool:10,000USDC`,
+      `PDA:${masterPDA().substring(0, 16)}...|Pool:10,000USDC`,
     );
     return { ok: true };
   },
@@ -244,7 +244,7 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
   addContract: (autoName, autoFlight, autoDate) => {
     const st = get();
     if (!st.masterActive) return;
-    const newCnt = st.cCnt + 1;
+    const newCnt = st.contractCount + 1;
     const name = autoName || '계약자';
     const flight = autoFlight || 'KE081';
     const date = autoDate || '2026-01-15';
@@ -259,38 +259,38 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
     const bNet = bRaw - bToR + comm * bS;
     const rNet = (lToR + aToR + bToR) - comm;
 
-    const ct: Contract = { id: newCnt, name, flight, date, lNet, aNet, bNet, rNet, status: 'active', ts: nowd() };
+    const ct: Contract = { id: newCnt, name, flight, date, lNet, aNet, bNet, rNet, status: 'active', ts: nowDate() };
     set(prev => ({
-      cCnt: newCnt,
+      contractCount: newCnt,
       contracts: [...prev.contracts, ct],
-      totPrem: prev.totPrem + 1,
+      totalPremium: prev.totalPremium + 1,
       acc: {
         ...prev.acc,
-        lP: prev.acc.lP + lNet,
-        aP: prev.acc.aP + aNet,
-        bP: prev.acc.bP + bNet,
-        rP: prev.acc.rP + rNet,
+        leaderPrem: prev.acc.leaderPrem + lNet,
+        partAPrem: prev.acc.partAPrem + aNet,
+        partBPrem: prev.acc.partBPrem + bNet,
+        reinPrem: prev.acc.reinPrem + rNet,
       },
-      premHist: [...prev.premHist, { t: nowt(), v: prev.totPrem + 1 }],
+      premHist: [...prev.premHist, { t: nowTime(), v: prev.totalPremium + 1 }],
     }));
     get().addLog(
       `계약 #${newCnt}: ${name}|${flight}|${date}`, ROLES.leader.color, 'new_contract',
-      `보험료 1USDC → L:${fmt(lNet, 4)} A:${fmt(aNet, 4)} B:${fmt(bNet, 4)} R:${fmt(rNet, 4)}`,
+      `보험료 1USDC → L:${formatNum(lNet, 4)} A:${formatNum(aNet, 4)} B:${formatNum(bNet, 4)} R:${formatNum(rNet, 4)}`,
     );
   },
 
   clearContracts: () => {
     set({
       contracts: [],
-      cCnt: 0,
+      contractCount: 0,
       acc: { ...INITIAL_ACC },
-      totPrem: 0,
-      totClaim: 0,
-      poolBal: 10000,
+      totalPremium: 0,
+      totalClaim: 0,
+      poolBalance: 10000,
       premHist: [],
       poolHist: [{ t: 'init', v: 10000 }],
       claims: [],
-      clCnt: 0,
+      claimCount: 0,
     });
   },
 
@@ -308,7 +308,7 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
     const contract = st.contracts.find(c => c.id === contractId);
     if (!contract) return { ok: false, msg: `계약 #${contractId}을 찾을 수 없습니다`, type: 'error' as const, code: 'E_CONTRACT_NOT_FOUND' };
     if (contract.status === 'claimed') return { ok: false, msg: `계약 #${contractId}은 이미 클레임 처리됨`, type: 'error' as const, code: 'E_ALREADY_CLAIMED' };
-    const newClCnt = st.clCnt + 1;
+    const newClCnt = st.claimCount + 1;
     const payout = tier.p;
     const lS = st.shares.leader / 100, aS = st.shares.partA / 100, bS = st.shares.partB / 100;
     const lPay = payout * lS, aPay = payout * aS, bPay = payout * bS;
@@ -322,29 +322,29 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
     const cl: Claim = {
       id: newClCnt, contractId, name: contract?.name || '계약자', flight: contract?.flight || '—',
       delay, tier: tier.label, payout, lNet, aNet, bNet, totRC, rNet,
-      status: 'claimable', ts: nowd(), color: tier.color,
+      status: 'claimable', ts: nowDate(), color: tier.color,
     };
 
     set(prev => ({
-      clCnt: newClCnt,
+      claimCount: newClCnt,
       claims: [...prev.claims, cl],
-      totClaim: prev.totClaim + payout,
-      poolBal: Math.max(0, prev.poolBal - payout),
-      psIdx: Math.max(prev.psIdx, 4),
+      totalClaim: prev.totalClaim + payout,
+      poolBalance: Math.max(0, prev.poolBalance - payout),
+      policyStateIdx: Math.max(prev.policyStateIdx, 4),
       acc: {
         ...prev.acc,
-        lC: prev.acc.lC + lNet,
-        aC: prev.acc.aC + aNet,
-        bC: prev.acc.bC + bNet,
-        rC: prev.acc.rC + rNet,
+        leaderClaim: prev.acc.leaderClaim + lNet,
+        partAClaim: prev.acc.partAClaim + aNet,
+        partBClaim: prev.acc.partBClaim + bNet,
+        reinClaim: prev.acc.reinClaim + rNet,
       },
       contracts: prev.contracts.map(c => c.id === contractId ? { ...c, status: 'claimed' as const } : c),
-      poolHist: [...prev.poolHist, { t: nowt(), v: Math.max(0, prev.poolBal - payout) }],
+      poolHist: [...prev.poolHist, { t: nowTime(), v: Math.max(0, prev.poolBalance - payout) }],
     }));
 
     get().addLog(
       `클레임 #${newClCnt} — ${tier.label} → ${payout} USDC`, tier.color, 'create_claim',
-      `L:${fmt(lNet, 2)} A:${fmt(aNet, 2)} B:${fmt(bNet, 2)} 재보:${fmt(totRC, 2)}`,
+      `L:${formatNum(lNet, 2)} A:${formatNum(aNet, 2)} B:${formatNum(bNet, 2)} 재보:${formatNum(totRC, 2)}`,
     );
 
     return { ok: true, msg: `트리거! 지연 ${delay}분 (${tier.label}) → 보험금 ${payout} USDC 클레임 생성`, type: 'ok' as const };
@@ -356,8 +356,8 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
     if (!pend.length) return 0;
     const pendIds = new Set(pend.map(c => c.id));
     set(prev => ({
-      claims: prev.claims.map(c => pendIds.has(c.id) ? { ...c, status: 'approved' as const, approvedAt: nowd() } : c),
-      psIdx: Math.max(prev.psIdx, 5),
+      claims: prev.claims.map(c => pendIds.has(c.id) ? { ...c, status: 'approved' as const, approvedAt: nowDate() } : c),
+      policyStateIdx: Math.max(prev.policyStateIdx, 5),
     }));
     get().addLog(`클레임 ${pend.length}건 승인 by ${ROLES[st.role].label}`, '#22C55E', 'approve_claim');
     return pend.length;
@@ -369,12 +369,12 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
     if (!appr.length) return 0;
     const apprIds = new Set(appr.map(c => c.id));
     set(prev => ({
-      claims: prev.claims.map(c => apprIds.has(c.id) ? { ...c, status: 'settled' as const, settledAt: nowd() } : c),
-      psIdx: 6,
+      claims: prev.claims.map(c => apprIds.has(c.id) ? { ...c, status: 'settled' as const, settledAt: nowDate() } : c),
+      policyStateIdx: 6,
     }));
     get().addLog(
       `클레임 ${appr.length}건 정산 완료. Pool→계약자 이체`, '#14F195', 'settle_claim',
-      `총 지급:${fmt(st.totClaim, 2)}USDC|Pool 잔액:${fmt(st.poolBal, 2)}USDC`,
+      `총 지급:${formatNum(st.totalClaim, 2)}USDC|Pool 잔액:${formatNum(st.poolBalance, 2)}USDC`,
     );
     return appr.length;
   },
@@ -382,17 +382,17 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
   addLog: (msg, color, instruction, detail = '') => {
     set(prev => ({
       logIdCounter: prev.logIdCounter + 1,
-      logs: [{ id: prev.logIdCounter + 1, msg, color, instruction, detail, time: nowt() }, ...prev.logs].slice(0, 80),
+      logs: [{ id: prev.logIdCounter + 1, msg, color, instruction, detail, time: nowTime() }, ...prev.logs].slice(0, 80),
     }));
   },
 
   resetAll: () => {
     set({
-      masterActive: false, psIdx: -1, cStep: 0,
+      masterActive: false, policyStateIdx: -1, processStep: 0,
       confirms: { partA: false, partB: false, rein: false },
       shares: { leader: 50, partA: 30, partB: 20 },
-      poolBal: 10000, totPrem: 0, totClaim: 0,
-      contracts: [], claims: [], cCnt: 0, clCnt: 0,
+      poolBalance: 10000, totalPremium: 0, totalClaim: 0,
+      contracts: [], claims: [], contractCount: 0, claimCount: 0,
       acc: { ...INITIAL_ACC },
       premHist: [], poolHist: [{ t: 'init', v: 10000 }],
       logs: [], logIdCounter: 0,

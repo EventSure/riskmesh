@@ -1,17 +1,17 @@
 import { useEffect, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardBody, SummaryRow } from '@/components/common';
-import { useProtocolStore, fmt } from '@/store/useProtocolStore';
+import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
 import { Chart, registerables } from 'chart.js';
 
 Chart.register(...registerables);
 
 export function PoolStatus() {
-  const { poolBal, totClaim, poolHist } = useProtocolStore();
+  const { poolBalance, totalClaim, poolHist } = useProtocolStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
 
-  const total = poolBal + totClaim;
-  const ratio = fmt((poolBal / 10000) * 100, 1);
+  const total = poolBalance + totalClaim;
+  const ratio = formatNum((poolBalance / 10000) * 100, 1);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -64,11 +64,11 @@ export function PoolStatus() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 7 }}>
           <SummaryRow style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
             <span style={{ fontSize: 10, color: 'var(--sub)' }}>Pool 총액</span>
-            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{fmt(total, 2)} USDC</span>
+            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{formatNum(total, 2)} USDC</span>
           </SummaryRow>
           <SummaryRow style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
             <span style={{ fontSize: 10, color: 'var(--sub)' }}>가용 잔액</span>
-            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{fmt(poolBal, 2)} USDC</span>
+            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{formatNum(poolBalance, 2)} USDC</span>
           </SummaryRow>
           <SummaryRow style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
             <span style={{ fontSize: 10, color: 'var(--sub)' }}>지급 준비율</span>

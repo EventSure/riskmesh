@@ -14,7 +14,7 @@ const Col = styled.div`
 const ColSm = styled(Col)`flex: 0 0 272px;`;
 const ColLg = styled(Col)`flex: 1;`;
 
-export function Tab2Feed() {
+export function TabFeed() {
   return (
     <>
       <ColSm>

@@ -1,9 +1,9 @@
 import styled from '@emotion/styled';
 import { Card, CardHeader, CardTitle, CardBody } from '@/components/common';
-import { useProtocolStore, fmt, mPDA, pPDA, vPDA, lPDA, SS } from '@/store/useProtocolStore';
+import { useProtocolStore, formatNum, masterPDA, poolPDA, vaultPDA, ledgerPDA, POLICY_STATES } from '@/store/useProtocolStore';
 import { useShallow } from 'zustand/shallow';
 
-const Ia = styled.div`
+const AccountCard = styled.div`
   background: var(--card2);
   border: 1px solid var(--border);
   border-radius: 9px;
@@ -11,14 +11,14 @@ const Ia = styled.div`
   margin-bottom: 7px;
 `;
 
-const IaHead = styled.div`
+const AccountHeader = styled.div`
   display: flex;
   align-items: center;
   gap: 7px;
   margin-bottom: 7px;
 `;
 
-const IaIcon = styled.div`
+const AccountIcon = styled.div`
   width: 24px;
   height: 24px;
   border-radius: 5px;
@@ -30,13 +30,13 @@ const IaIcon = styled.div`
   font-size: 10px;
 `;
 
-const IaName = styled.div`
+const AccountName = styled.div`
   font-size: 10px;
   font-weight: 700;
   font-family: 'DM Mono', monospace;
 `;
 
-const IaAddr = styled.div`
+const AccountAddr = styled.div`
   font-size: 8px;
   color: var(--sub);
   font-family: 'DM Mono', monospace;
@@ -61,7 +61,7 @@ const Seed = styled.span`
   color: var(--primary);
 `;
 
-const IaField = styled.div`
+const AccountField = styled.div`
   display: flex;
   justify-content: space-between;
   padding: 2px 0;
@@ -69,13 +69,13 @@ const IaField = styled.div`
   &:last-child { border-bottom: none; }
 `;
 
-const IaKey = styled.div`
+const FieldKey = styled.div`
   font-size: 9px;
   color: var(--sub);
   font-family: 'DM Mono', monospace;
 `;
 
-const IaVal = styled.div<{ variant?: string }>`
+const FieldValue = styled.div<{ variant?: string }>`
   font-size: 9px;
   font-family: 'DM Mono', monospace;
   color: ${p =>
@@ -87,8 +87,8 @@ const IaVal = styled.div<{ variant?: string }>`
 `;
 
 export function InspectorPanel() {
-  const { masterActive, psIdx, contracts, poolBal, totPrem, totClaim, acc, shares } = useProtocolStore(
-    useShallow(s => ({ masterActive: s.masterActive, psIdx: s.psIdx, contracts: s.contracts, poolBal: s.poolBal, totPrem: s.totPrem, totClaim: s.totClaim, acc: s.acc, shares: s.shares })),
+  const { masterActive, policyStateIdx, contracts, poolBalance, totalPremium, totalClaim, acc, shares } = useProtocolStore(
+    useShallow(s => ({ masterActive: s.masterActive, policyStateIdx: s.policyStateIdx, contracts: s.contracts, poolBalance: s.poolBalance, totalPremium: s.totalPremium, totalClaim: s.totalClaim, acc: s.acc, shares: s.shares })),
   );
 
   if (!masterActive) {
@@ -107,37 +107,37 @@ export function InspectorPanel() {
   const accounts = [
     {
       icon: '📋', name: 'MasterContract',
-      seeds: ['master', '2026', 'flight_delay'], addr: mPDA(),
+      seeds: ['master', '2026', 'flight_delay'], addr: masterPDA(),
       fields: [
         { k: 'coverage', v: '2026-01-01 ~ 2026-12-31', c: '' },
         { k: 'premium_per_contract', v: '1 USDC', c: 'ac' },
         { k: 'shares', v: `L${shares.leader}% / A${shares.partA}% / B${shares.partB}%`, c: 'ac' },
         { k: 'rein_share', v: '50%', c: 'in' },
         { k: 'comm_rate', v: '10%', c: '' },
-        { k: 'state', v: SS[psIdx] || '—', c: 'ac' },
+        { k: 'state', v: POLICY_STATES[policyStateIdx] || '—', c: 'ac' },
         { k: 'total_contracts', v: String(contracts.length), c: 'ac' },
       ],
     },
     {
       icon: '🏦', name: 'RiskPool',
-      seeds: ['pool', 'master_contract'], addr: pPDA(),
+      seeds: ['pool', 'master_contract'], addr: poolPDA(),
       fields: [
-        { k: 'vault', v: vPDA().substring(0, 14) + '...', c: '' },
+        { k: 'vault', v: vaultPDA().substring(0, 14) + '...', c: '' },
         { k: 'pool_initial', v: '10,000 USDC', c: 'ac' },
-        { k: 'available', v: fmt(poolBal, 2) + ' USDC', c: poolBal < 5000 ? 'wn' : 'ac' },
-        { k: 'paid_out', v: fmt(totClaim, 2) + ' USDC', c: 'dn' },
+        { k: 'available', v: formatNum(poolBalance, 2) + ' USDC', c: poolBalance < 5000 ? 'wn' : 'ac' },
+        { k: 'paid_out', v: formatNum(totalClaim, 2) + ' USDC', c: 'dn' },
       ],
     },
     {
       icon: '📊', name: 'SettlementLedger',
-      seeds: ['ledger', 'master_contract'], addr: lPDA(),
+      seeds: ['ledger', 'master_contract'], addr: ledgerPDA(),
       fields: [
-        { k: 'total_premium', v: fmt(totPrem, 4) + ' USDC', c: 'ac' },
-        { k: 'total_claims', v: fmt(totClaim, 2) + ' USDC', c: 'dn' },
-        { k: 'leader_net', v: fmt(acc.lP - acc.lC, 4) + ' USDC', c: acc.lP - acc.lC >= 0 ? 'ac' : 'dn' },
-        { k: 'partA_net', v: fmt(acc.aP - acc.aC, 4) + ' USDC', c: acc.aP - acc.aC >= 0 ? 'ac' : 'dn' },
-        { k: 'partB_net', v: fmt(acc.bP - acc.bC, 4) + ' USDC', c: acc.bP - acc.bC >= 0 ? 'ac' : 'dn' },
-        { k: 'rein_net', v: fmt(acc.rP - acc.rC, 4) + ' USDC', c: 'in' },
+        { k: 'total_premium', v: formatNum(totalPremium, 4) + ' USDC', c: 'ac' },
+        { k: 'total_claims', v: formatNum(totalClaim, 2) + ' USDC', c: 'dn' },
+        { k: 'leader_net', v: formatNum(acc.leaderPrem - acc.leaderClaim, 4) + ' USDC', c: acc.leaderPrem - acc.leaderClaim >= 0 ? 'ac' : 'dn' },
+        { k: 'partA_net', v: formatNum(acc.partAPrem - acc.partAClaim, 4) + ' USDC', c: acc.partAPrem - acc.partAClaim >= 0 ? 'ac' : 'dn' },
+        { k: 'partB_net', v: formatNum(acc.partBPrem - acc.partBClaim, 4) + ' USDC', c: acc.partBPrem - acc.partBClaim >= 0 ? 'ac' : 'dn' },
+        { k: 'rein_net', v: formatNum(acc.reinPrem - acc.reinClaim, 4) + ' USDC', c: 'in' },
       ],
     },
   ];
@@ -147,22 +147,22 @@ export function InspectorPanel() {
       <CardHeader><CardTitle>On-chain Inspector (PDA)</CardTitle></CardHeader>
       <CardBody style={{ padding: 10 }}>
         {accounts.map(a => (
-          <Ia key={a.name}>
-            <IaHead>
-              <IaIcon>{a.icon}</IaIcon>
+          <AccountCard key={a.name}>
+            <AccountHeader>
+              <AccountIcon>{a.icon}</AccountIcon>
               <div>
-                <IaName>{a.name}</IaName>
-                <IaAddr>{a.addr}</IaAddr>
+                <AccountName>{a.name}</AccountName>
+                <AccountAddr>{a.addr}</AccountAddr>
               </div>
-            </IaHead>
+            </AccountHeader>
             <Seeds>{a.seeds.map(s => <Seed key={s}>{s}</Seed>)}</Seeds>
             {a.fields.map(f => (
-              <IaField key={f.k}>
-                <IaKey>{f.k}</IaKey>
-                <IaVal variant={f.c}>{f.v}</IaVal>
-              </IaField>
+              <AccountField key={f.k}>
+                <FieldKey>{f.k}</FieldKey>
+                <FieldValue variant={f.c}>{f.v}</FieldValue>
+              </AccountField>
             ))}
-          </Ia>
+          </AccountCard>
         ))}
       </CardBody>
     </Card>
