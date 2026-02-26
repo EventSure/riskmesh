@@ -3,6 +3,7 @@ import { keyframes } from '@emotion/react';
 import { Card, CardHeader, CardTitle, CardBody } from '@/components/common';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { useTranslation } from 'react-i18next';
+import { getExplorerUrl } from '@/lib/tx';
 
 const logIn = keyframes`
   from { opacity: 0; transform: translateX(-4px); }
@@ -47,15 +48,27 @@ const LogTime = styled.span`
 const LogMsg = styled.div`font-size: 10px;`;
 const LogDetail = styled.div`font-size: 9px; color: var(--sub); margin-top: 1px;`;
 
+const TxLink = styled.a`
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  color: var(--primary);
+  text-decoration: none;
+  opacity: 0.8;
+  &:hover { opacity: 1; text-decoration: underline; }
+`;
+
 export function EventLog() {
   const logs = useProtocolStore(s => s.logs);
+  const mode = useProtocolStore(s => s.mode);
   const { t } = useTranslation();
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>{t('log.title')}</CardTitle>
-        <span style={{ fontSize: 9, color: 'var(--success)' }}>● {t('common.live')}</span>
+        <span style={{ fontSize: 9, color: mode === 'onchain' ? 'var(--primary)' : 'var(--success)' }}>
+          {mode === 'onchain' ? '◆ On-chain' : `● ${t('common.live')}`}
+        </span>
       </CardHeader>
       <CardBody style={{ padding: 10 }}>
         <LogWrap>
@@ -69,6 +82,15 @@ export function EventLog() {
                   {log.msg}
                 </LogMsg>
                 {log.detail && <LogDetail>{log.detail}</LogDetail>}
+                {log.txSignature && (
+                  <TxLink
+                    href={getExplorerUrl(log.txSignature, 'tx', 'devnet')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    TX: {log.txSignature.slice(0, 12)}...{log.txSignature.slice(-4)}
+                  </TxLink>
+                )}
               </div>
             </LogEntry>
           ))}

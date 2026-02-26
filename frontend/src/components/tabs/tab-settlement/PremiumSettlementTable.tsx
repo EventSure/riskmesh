@@ -4,8 +4,10 @@ import { useTranslation } from 'react-i18next';
 
 export function PremiumSettlementTable() {
   const { t } = useTranslation();
-  const { totalPremium, shares } = useProtocolStore();
+  const { totalPremium, shares, cededRatioBps, reinsCommissionBps } = useProtocolStore();
   const lS = shares.leader / 100, aS = shares.partA / 100, bS = shares.partB / 100;
+  const ceded = cededRatioBps / 10000;
+  const commRate = reinsCommissionBps / 10000;
 
   const rows = [
     { label: t('settle.party.leader'), s: lS },
@@ -13,14 +15,14 @@ export function PremiumSettlementTable() {
     { label: t('settle.party.partB'), s: bS },
   ].map(r => {
     const raw = totalPremium * r.s;
-    const toR = raw * 0.5;
-    const comm = totalPremium * 0.1 * r.s;
+    const toR = raw * ceded;
+    const comm = totalPremium * commRate * r.s;
     const net = raw - toR + comm;
     return { ...r, raw, toR, comm, net };
   });
 
-  const rIn = totalPremium * 0.5;
-  const rOut = totalPremium * 0.1;
+  const rIn = totalPremium * ceded;
+  const rOut = totalPremium * commRate;
 
   return (
     <Card>
@@ -43,7 +45,7 @@ export function PremiumSettlementTable() {
             ))}
             <tr className="trein">
               <td>{t('settle.party.reinsurer')}</td>
-              <td>50%</td>
+              <td>{formatNum(ceded * 100, 0)}%</td>
               <td>—</td>
               <td style={{ color: 'var(--info)' }}>{formatNum(rIn, 4)}</td>
               <td style={{ color: 'var(--warning)' }}>-{formatNum(rOut, 4)}</td>

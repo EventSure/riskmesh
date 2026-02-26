@@ -61,7 +61,10 @@ export interface LogEntry {
   instruction: string;
   detail: string;
   time: string;
+  txSignature?: string;
 }
+
+export type ProtocolMode = 'simulation' | 'onchain';
 
 export interface PoolHistEntry {
   t: string;
@@ -148,6 +151,7 @@ const nowDate = () =>
 
 /* ── Store ── */
 interface ProtocolState {
+  mode: ProtocolMode;
   role: Role;
   masterActive: boolean;
   processStep: number;
@@ -167,7 +171,16 @@ interface ProtocolState {
   premHist: PremHistEntry[];
   poolHist: PoolHistEntry[];
 
+  // Reinsurance ratios (bps, 10000 = 100%)
+  cededRatioBps: number;
+  reinsCommissionBps: number;
+
+  // On-chain state
+  masterPolicyPDA: string | null;
+  lastTxSignature: string | null;
+
   // Actions
+  setMode: (m: ProtocolMode) => void;
   setRole: (r: Role) => void;
   setShares: (s: Partial<Shares>) => void;
   setTerms: () => { ok: boolean; msg?: string };
@@ -178,13 +191,21 @@ interface ProtocolState {
   runOracle: (contractId: number, delay: number, fresh: number) => { ok: boolean; msg: string; type: 'error' | 'ok' | 'info'; code?: string };
   approveClaims: () => number;
   settleClaims: () => number;
-  addLog: (msg: string, color: string, instruction: string, detail?: string) => void;
+  addLog: (msg: string, color: string, instruction: string, detail?: string, txSignature?: string) => void;
+  setMasterPolicyPDA: (pda: string | null) => void;
+  onChainSetTerms: (txSignature: string, cededRatioBps?: number, reinsCommissionBps?: number) => void;
+  onChainConfirm: (key: 'partA' | 'partB' | 'rein', txSignature: string) => void;
+  onChainActivate: (txSignature: string, pda: string) => void;
+  onChainAddContract: (id: number, name: string, flight: string, date: string, txSignature: string) => void;
+  onChainResolve: (contractId: number, delay: number, txSignature: string) => void;
+  onChainSettle: (contractId: number, txSignature: string) => void;
   resetAll: () => void;
 }
 
 const INITIAL_ACC: Acc = { leaderPrem: 0, partAPrem: 0, partBPrem: 0, reinPrem: 0, leaderClaim: 0, partAClaim: 0, partBClaim: 0, reinClaim: 0 };
 
 export const useProtocolStore = create<ProtocolState>((set, get) => ({
+  mode: 'simulation' as ProtocolMode,
   role: 'leader',
   masterActive: false,
   processStep: 0,
@@ -203,6 +224,19 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
   logIdCounter: 0,
   premHist: [],
   poolHist: [{ t: 'init', v: 10000 }],
+
+  // Reinsurance ratios (bps)
+  cededRatioBps: 5000,       // 50%
+  reinsCommissionBps: 1000,  // 10%
+
+  // On-chain state
+  masterPolicyPDA: null,
+  lastTxSignature: null,
+
+  setMode: (m) => {
+    set({ mode: m });
+    get().addLog(`Mode → ${m}`, '#9945FF', 'system');
+  },
 
   setRole: (r) => {
     set({ role: r });
@@ -254,9 +288,10 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
     const lS = st.shares.leader / 100;
     const aS = st.shares.partA / 100;
     const bS = st.shares.partB / 100;
+    const ceded = st.cededRatioBps / 10000;
+    const comm = st.reinsCommissionBps / 10000;
     const lRaw = lS, aRaw = aS, bRaw = bS;
-    const lToR = lRaw * 0.5, aToR = aRaw * 0.5, bToR = bRaw * 0.5;
-    const comm = 0.10;
+    const lToR = lRaw * ceded, aToR = aRaw * ceded, bToR = bRaw * ceded;
     const lNet = lRaw - lToR + comm * lS;
     const aNet = aRaw - aToR + comm * aS;
     const bNet = bRaw - bToR + comm * bS;
@@ -311,12 +346,14 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
     const contract = st.contracts.find(c => c.id === contractId);
     if (!contract) return { ok: false, msg: i18n.t('store.contractNotFound', { id: contractId }), type: 'error' as const, code: 'E_CONTRACT_NOT_FOUND' };
     if (contract.status === 'claimed') return { ok: false, msg: i18n.t('store.alreadyClaimed', { id: contractId }), type: 'error' as const, code: 'E_ALREADY_CLAIMED' };
+    const ceded = st.cededRatioBps / 10000;
+    const commRate = st.reinsCommissionBps / 10000;
     const newClCnt = st.claimCount + 1;
     const payout = tier.p;
     const lS = st.shares.leader / 100, aS = st.shares.partA / 100, bS = st.shares.partB / 100;
     const lPay = payout * lS, aPay = payout * aS, bPay = payout * bS;
-    const lRC = lPay * 0.5, aRC = aPay * 0.5, bRC = bPay * 0.5, totRC = lRC + aRC + bRC;
-    const clComm = payout * 0.10;
+    const lRC = lPay * ceded, aRC = aPay * ceded, bRC = bPay * ceded, totRC = lRC + aRC + bRC;
+    const clComm = payout * commRate;
     const lNet = lPay - lRC + clComm * lS;
     const aNet = aPay - aRC + clComm * aS;
     const bNet = bPay - bRC + clComm * bS;
@@ -382,11 +419,151 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
     return appr.length;
   },
 
-  addLog: (msg, color, instruction, detail = '') => {
+  addLog: (msg, color, instruction, detail = '', txSignature) => {
     set(prev => ({
       logIdCounter: prev.logIdCounter + 1,
-      logs: [{ id: prev.logIdCounter + 1, msg, color, instruction, detail, time: nowTime() }, ...prev.logs].slice(0, 80),
+      lastTxSignature: txSignature || prev.lastTxSignature,
+      logs: [{ id: prev.logIdCounter + 1, msg, color, instruction, detail, time: nowTime(), txSignature }, ...prev.logs].slice(0, 80),
     }));
+  },
+
+  setMasterPolicyPDA: (pda) => set({ masterPolicyPDA: pda }),
+
+  /* ── On-chain action callbacks (called by components after successful tx) ── */
+
+  onChainSetTerms: (txSignature, cededBps, commBps) => {
+    const { shares } = get();
+    set({
+      processStep: 1,
+      policyStateIdx: 0,
+      ...(cededBps != null && { cededRatioBps: cededBps }),
+      ...(commBps != null && { reinsCommissionBps: commBps }),
+    });
+    get().addLog(
+      i18n.t('store.termsSet'), '#9945FF', 'create_master_policy',
+      i18n.t('store.termsDetail', { leader: shares.leader, partA: shares.partA, partB: shares.partB }),
+      txSignature,
+    );
+  },
+
+  onChainConfirm: (key, txSignature) => {
+    const step = key === 'partA' ? 2 : key === 'partB' ? 3 : 4;
+    set(st => ({
+      confirms: { ...st.confirms, [key]: true },
+      processStep: Math.max(st.processStep, step),
+    }));
+    get().addLog(
+      i18n.t('store.confirmDone', { role: getRoleLabel(key) }), ROLES[key].color, 'confirm_master',
+      '', txSignature,
+    );
+  },
+
+  onChainActivate: (txSignature, pda) => {
+    set({ masterActive: true, policyStateIdx: 3, processStep: 5, masterPolicyPDA: pda });
+    get().addLog(
+      i18n.t('store.masterActivated'), '#14F195', 'activate_master',
+      `PDA: ${pda.substring(0, 16)}...`, txSignature,
+    );
+  },
+
+  onChainAddContract: (id, name, flight, date, txSignature) => {
+    const st = get();
+    const lS = st.shares.leader / 100;
+    const aS = st.shares.partA / 100;
+    const bS = st.shares.partB / 100;
+    const ceded = st.cededRatioBps / 10000;
+    const comm = st.reinsCommissionBps / 10000;
+    const lRaw = lS, aRaw = aS, bRaw = bS;
+    const lToR = lRaw * ceded, aToR = aRaw * ceded, bToR = bRaw * ceded;
+    const lNet = lRaw - lToR + comm * lS;
+    const aNet = aRaw - aToR + comm * aS;
+    const bNet = bRaw - bToR + comm * bS;
+    const rNet = (lToR + aToR + bToR) - comm;
+
+    const ct: Contract = { id, name, flight, date, lNet, aNet, bNet, rNet, status: 'active', ts: nowDate() };
+    set(prev => ({
+      contractCount: id,
+      contracts: [...prev.contracts, ct],
+      totalPremium: prev.totalPremium + 1,
+      acc: {
+        ...prev.acc,
+        leaderPrem: prev.acc.leaderPrem + lNet,
+        partAPrem: prev.acc.partAPrem + aNet,
+        partBPrem: prev.acc.partBPrem + bNet,
+        reinPrem: prev.acc.reinPrem + rNet,
+      },
+      premHist: [...prev.premHist, { t: nowTime(), v: prev.totalPremium + 1 }],
+    }));
+    get().addLog(
+      i18n.t('store.newContract', { id, name, flight, date }), ROLES.leader.color, 'create_flight_policy',
+      i18n.t('store.newContractDetail', { lNet: formatNum(lNet, 4), aNet: formatNum(aNet, 4), bNet: formatNum(bNet, 4), rNet: formatNum(rNet, 4) }),
+      txSignature,
+    );
+  },
+
+  onChainResolve: (contractId, delay, txSignature) => {
+    const st = get();
+    const tier = getTier(delay);
+    if (!tier) return;
+    const contract = st.contracts.find(c => c.id === contractId);
+    if (!contract) return;
+
+    const ceded = st.cededRatioBps / 10000;
+    const commRate = st.reinsCommissionBps / 10000;
+    const newClCnt = st.claimCount + 1;
+    const payout = tier.p;
+    const lS = st.shares.leader / 100, aS = st.shares.partA / 100, bS = st.shares.partB / 100;
+    const lPay = payout * lS, aPay = payout * aS, bPay = payout * bS;
+    const lRC = lPay * ceded, aRC = aPay * ceded, bRC = bPay * ceded, totRC = lRC + aRC + bRC;
+    const clComm = payout * commRate;
+    const lNet = lPay - lRC + clComm * lS;
+    const aNet = aPay - aRC + clComm * aS;
+    const bNet = bPay - bRC + clComm * bS;
+    const rNet = totRC - clComm;
+
+    const cl: Claim = {
+      id: newClCnt, contractId, name: contract.name, flight: contract.flight,
+      delay, tier: tier.label, payout, lNet, aNet, bNet, totRC, rNet,
+      status: 'claimable', ts: nowDate(), color: tier.color,
+    };
+
+    set(prev => ({
+      claimCount: newClCnt,
+      claims: [...prev.claims, cl],
+      totalClaim: prev.totalClaim + payout,
+      poolBalance: Math.max(0, prev.poolBalance - payout),
+      policyStateIdx: Math.max(prev.policyStateIdx, 4),
+      acc: {
+        ...prev.acc,
+        leaderClaim: prev.acc.leaderClaim + lNet,
+        partAClaim: prev.acc.partAClaim + aNet,
+        partBClaim: prev.acc.partBClaim + bNet,
+        reinClaim: prev.acc.reinClaim + rNet,
+      },
+      contracts: prev.contracts.map(c => c.id === contractId ? { ...c, status: 'claimed' as const } : c),
+      poolHist: [...prev.poolHist, { t: nowTime(), v: Math.max(0, prev.poolBalance - payout) }],
+    }));
+
+    get().addLog(
+      i18n.t('store.claimLog', { id: newClCnt, tier: tier.label, payout }), tier.color, 'resolve_flight_delay',
+      i18n.t('store.claimDetail', { lNet: formatNum(lNet, 2), aNet: formatNum(aNet, 2), bNet: formatNum(bNet, 2), totRC: formatNum(totRC, 2) }),
+      txSignature,
+    );
+  },
+
+  onChainSettle: (contractId, txSignature) => {
+    set(prev => ({
+      claims: prev.claims.map(c =>
+        c.contractId === contractId && c.status !== 'settled'
+          ? { ...c, status: 'settled' as const, settledAt: nowDate() }
+          : c,
+      ),
+      policyStateIdx: 6,
+    }));
+    get().addLog(
+      `Claim for contract #${contractId} settled on-chain`, '#14F195', 'settle_flight_claim',
+      '', txSignature,
+    );
   },
 
   resetAll: () => {
@@ -394,11 +571,13 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
       masterActive: false, policyStateIdx: -1, processStep: 0,
       confirms: { partA: false, partB: false, rein: false },
       shares: { leader: 50, partA: 30, partB: 20 },
+      cededRatioBps: 5000, reinsCommissionBps: 1000,
       poolBalance: 10000, totalPremium: 0, totalClaim: 0,
       contracts: [], claims: [], contractCount: 0, claimCount: 0,
       acc: { ...INITIAL_ACC },
       premHist: [], poolHist: [{ t: 'init', v: 10000 }],
       logs: [], logIdCounter: 0,
+      masterPolicyPDA: null, lastTxSignature: null,
     });
     get().addLog(i18n.t('store.resetMsg'), '#9945FF', 'system_init');
   },

@@ -8,15 +8,17 @@ Chart.register(...registerables);
 
 export function SettlementChart() {
   const { t, i18n: { language } } = useTranslation();
-  const { acc, totalPremium, totalClaim } = useProtocolStore();
+  const { acc, totalPremium, totalClaim, cededRatioBps, reinsCommissionBps } = useProtocolStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
+  const ceded = cededRatioBps / 10000;
+  const commRate = reinsCommissionBps / 10000;
 
-  const rIn = totalPremium * 0.5;
-  const rOut = totalPremium * 0.1;
+  const rIn = totalPremium * ceded;
+  const rOut = totalPremium * commRate;
   const rPNet = rIn - rOut;
-  const rcIn = totalClaim * 0.5;
-  const rcOut = totalClaim * 0.1;
+  const rcIn = totalClaim * ceded;
+  const rcOut = totalClaim * commRate;
   const rCNet = -rcIn + rcOut;
 
   const rows = [
@@ -65,7 +67,7 @@ export function SettlementChart() {
     });
 
     return () => { chartRef.current?.destroy(); chartRef.current = null; };
-  }, [acc, totalPremium, totalClaim, language]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [acc, totalPremium, totalClaim, cededRatioBps, reinsCommissionBps, language]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <Card>
