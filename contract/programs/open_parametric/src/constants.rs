@@ -6,9 +6,15 @@ pub const MAX_POLICYHOLDERS: usize = 128;
 pub const MAX_ROUTE_LEN: usize = 16;
 pub const MAX_FLIGHT_NO_LEN: usize = 16;
 pub const MAX_EXTERNAL_REF_LEN: usize = 32;
+pub const MAX_MASTER_PARTICIPANTS: usize = 8;
+pub const MAX_SUBSCRIBER_REF_LEN: usize = 64;
 
 pub const POLICY_SPACE: usize = 260;
 pub const UNDERWRITING_SPACE: usize = 1292;
 pub const RISK_POOL_SPACE: usize = 122;
 pub const CLAIM_SPACE: usize = 106;
 pub const REGISTRY_SPACE: usize = 13000;
+
+// Generous buffer to simplify migration; can be tightened after schema finalization.
+pub const MASTER_POLICY_SPACE: usize = 4096;
+pub const FLIGHT_POLICY_SPACE: usize = 1024;

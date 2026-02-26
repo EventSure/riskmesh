@@ -30,4 +30,20 @@ pub enum OpenParamError {
     InvalidDelayThreshold,
     #[msg("Input too long")]
     InputTooLong,
+    #[msg("Math overflow")]
+    MathOverflow,
+    #[msg("Master policy is not active")]
+    MasterNotActive,
+    #[msg("Master policy confirmation is incomplete")]
+    MasterNotConfirmed,
+    #[msg("Invalid role for confirmation")]
+    InvalidRole,
+    #[msg("Invalid payout amount")]
+    InvalidPayout,
+    #[msg("Settlement already completed")]
+    AlreadySettled,
+    #[msg("Invalid settlement target")]
+    InvalidSettlementTarget,
+    #[msg("Invalid account list")]
+    InvalidAccountList,
 }
