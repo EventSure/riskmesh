@@ -3,6 +3,7 @@ use anchor_lang::prelude::*;
 pub mod constants;
 pub mod errors;
 pub mod instructions;
+pub mod math;
 pub mod state;
 
 use instructions::*;
@@ -63,5 +64,47 @@ pub mod open_parametric {
         entry: PolicyholderEntryInput,
     ) -> Result<()> {
         instructions::register_policyholder::handler(ctx, entry)
+    }
+
+    pub fn create_master_policy(
+        ctx: Context<CreateMasterPolicy>,
+        params: CreateMasterPolicyParams,
+    ) -> Result<()> {
+        instructions::create_master_policy::handler(ctx, params)
+    }
+
+    pub fn register_participant_wallets(ctx: Context<RegisterParticipantWallets>) -> Result<()> {
+        instructions::register_participant_wallets::handler(ctx)
+    }
+
+    pub fn confirm_master(ctx: Context<ConfirmMaster>, role: u8) -> Result<()> {
+        instructions::confirm_master::handler(ctx, role)
+    }
+
+    pub fn activate_master(ctx: Context<ActivateMaster>) -> Result<()> {
+        instructions::activate_master::handler(ctx)
+    }
+
+    pub fn create_flight_policy_from_master(
+        ctx: Context<CreateFlightPolicyFromMaster>,
+        params: CreateFlightPolicyParams,
+    ) -> Result<()> {
+        instructions::create_flight_policy_from_master::handler(ctx, params)
+    }
+
+    pub fn resolve_flight_delay(
+        ctx: Context<ResolveFlightDelay>,
+        delay_minutes: u16,
+        cancelled: bool,
+    ) -> Result<()> {
+        instructions::resolve_flight_delay::handler(ctx, delay_minutes, cancelled)
+    }
+
+    pub fn settle_flight_claim(ctx: Context<SettleFlightClaim>) -> Result<()> {
+        instructions::settle_flight_claim::handler(ctx)
+    }
+
+    pub fn settle_flight_no_claim(ctx: Context<SettleFlightNoClaim>) -> Result<()> {
+        instructions::settle_flight_no_claim::handler(ctx)
     }
 }
