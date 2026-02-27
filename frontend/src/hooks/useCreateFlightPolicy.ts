@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { useProgram } from './useProgram';
 import { getFlightPolicyPDA } from '@/lib/pda';
 import { sendTx, type TxResult } from '@/lib/tx';
@@ -51,6 +52,7 @@ export function useCreateFlightPolicy() {
               flightPolicy: flightPolicyPDA,
               payerToken: input.payerToken,
               leaderDepositToken: input.leaderDepositToken,
+              tokenProgram: TOKEN_PROGRAM_ID,
             })
             .rpc(),
         );

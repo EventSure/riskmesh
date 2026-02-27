@@ -10,7 +10,7 @@ import { useActivateMaster } from '@/hooks/useActivateMaster';
 import { useProgram } from '@/hooks/useProgram';
 import { ConfirmRole } from '@/lib/idl/open_parametric';
 import { CURRENCY_MINT } from '@/lib/constants';
-import { getAssociatedTokenAddress } from '@solana/spl-token';
+import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { getDemoKeypair } from '@/lib/demo-keypairs';
 
 const ParticipantRow = styled.div<{ confirmed?: boolean }>`
@@ -116,6 +116,7 @@ export function ParticipantConfirm() {
           masterPolicy: masterPubkey,
           poolWallet: ata,
           depositWallet: ata,
+          tokenProgram: TOKEN_PROGRAM_ID,
         })
         .instruction();
 

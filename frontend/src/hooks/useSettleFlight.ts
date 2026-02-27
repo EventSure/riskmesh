@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { PublicKey } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { useProgram } from './useProgram';
 import { sendTx, type TxResult } from '@/lib/tx';
 import type { MasterPolicyAccount } from '@/lib/idl/open_parametric';
@@ -45,6 +46,7 @@ export function useSettleFlight() {
               flightPolicy: input.flightPolicy,
               leaderDepositToken: input.leaderDepositToken,
               reinsurerPoolToken: input.reinsurerPoolToken,
+              tokenProgram: TOKEN_PROGRAM_ID,
             })
             .remainingAccounts(
               input.participantPoolWallets.map((pk) => ({
@@ -85,6 +87,7 @@ export function useSettleFlight() {
               flightPolicy: input.flightPolicy,
               leaderDepositToken: input.leaderDepositToken,
               reinsurerDepositToken: input.reinsurerDepositToken,
+              tokenProgram: TOKEN_PROGRAM_ID,
             })
             .remainingAccounts(
               input.participantDepositWallets.map((pk) => ({

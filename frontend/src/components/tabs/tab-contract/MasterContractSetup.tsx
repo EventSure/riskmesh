@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import BN from 'bn.js';
 import { Transaction, SystemProgram } from '@solana/web3.js';
-import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction } from '@solana/spl-token';
+import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { Card, CardHeader, CardTitle, CardBody, Button, FormGroup, FormLabel, FormInput, Divider, Tag, TierItem } from '@/components/common';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { useToast } from '@/components/common';
@@ -111,6 +111,7 @@ export function MasterContractSetup() {
           leaderDepositWallet: leaderATA,
           reinsurerPoolWallet: leaderATA,
           reinsurerDepositWallet: leaderATA,
+          tokenProgram: TOKEN_PROGRAM_ID,
         })
         .instruction();
 
@@ -121,6 +122,7 @@ export function MasterContractSetup() {
           masterPolicy: masterPolicyPDA,
           poolWallet: leaderATA,
           depositWallet: leaderATA,
+          tokenProgram: TOKEN_PROGRAM_ID,
         })
         .instruction();
 
