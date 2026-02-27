@@ -106,9 +106,11 @@ export function ClaimApproval() {
           <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{t('common.count', { count: setlCnt })}</span>
         </SummaryRow>
         <Divider />
-        <Button variant="warning" fullWidth onClick={handleApprove} disabled={!canAct || pendCnt === 0} style={{ marginBottom: 6 }}>
-          {mode === 'onchain' ? t('claim.approveAutoBtn') : t('claim.approveBtn')}
-        </Button>
+        {mode !== 'onchain' && (
+          <Button variant="warning" fullWidth onClick={handleApprove} disabled={!canAct || pendCnt === 0} style={{ marginBottom: 6 }}>
+            {t('claim.approveBtn')}
+          </Button>
+        )}
         <Button variant="accent" fullWidth onClick={handleSettle} disabled={!canAct || (pendCnt === 0 && appCnt === 0) || loading}>
           {loading ? t('claim.settling') : t('claim.settleBtn')}
         </Button>

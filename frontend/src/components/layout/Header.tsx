@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useProgram } from '@/hooks/useProgram';
 import { useNavigate } from 'react-router-dom';
+import { MasterPolicyDropdown } from './MasterPolicyDropdown';
 
 const blink = keyframes`
   0%, 100% { opacity: 1 }
@@ -291,6 +292,7 @@ export function Header() {
               DEVNET
             </ModeBtn>
           </ModeToggleWrap>
+          <MasterPolicyDropdown />
           <SelectBase value={role} onChange={handleRoleChange}>
             {ROLE_OPTIONS.map(o => (
               <option key={o.value} value={o.value}>{o.label}</option>

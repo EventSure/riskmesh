@@ -1,4 +1,7 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { MasterPolicyStatus, FlightPolicyStatus, type MasterPolicyAccount } from '@/lib/idl/open_parametric';
+import type { FlightPolicyWithKey } from '@/hooks/useFlightPolicies';
 import i18n from '@/i18n';
 
 /* ── Types ── */
@@ -65,6 +68,13 @@ export interface LogEntry {
 }
 
 export type ProtocolMode = 'simulation' | 'onchain';
+
+export interface MasterPolicySummary {
+  pda: string;
+  masterId: string;
+  status: number;
+  coverageEndTs: number;
+}
 
 export interface PoolHistEntry {
   t: string;
@@ -178,6 +188,7 @@ interface ProtocolState {
   // On-chain state
   masterPolicyPDA: string | null;
   lastTxSignature: string | null;
+  masterPolicies: MasterPolicySummary[];
 
   // Actions
   setMode: (m: ProtocolMode) => void;
@@ -193,6 +204,8 @@ interface ProtocolState {
   settleClaims: () => number;
   addLog: (msg: string, color: string, instruction: string, detail?: string, txSignature?: string) => void;
   setMasterPolicyPDA: (pda: string | null) => void;
+  setMasterPolicies: (list: MasterPolicySummary[]) => void;
+  selectMasterPolicy: (pda: string | null) => void;
   onChainSetTerms: (txSignature: string, cededRatioBps?: number, reinsCommissionBps?: number) => void;
   onChainConfirm: (key: 'partA' | 'partB' | 'rein', txSignature: string) => void;
   onChainActivate: (txSignature: string, pda: string) => void;
@@ -200,11 +213,13 @@ interface ProtocolState {
   onChainResolve: (contractId: number, delay: number, cancelled: boolean, txSignature: string) => void;
   onChainSettle: (contractId: number, txSignature: string) => void;
   resetAll: () => void;
+  syncMasterFromChain: (data: MasterPolicyAccount) => void;
+  syncFlightPoliciesFromChain: (policies: FlightPolicyWithKey[]) => void;
 }
 
 const INITIAL_ACC: Acc = { leaderPrem: 0, partAPrem: 0, partBPrem: 0, reinPrem: 0, leaderClaim: 0, partAClaim: 0, partBClaim: 0, reinClaim: 0 };
 
-export const useProtocolStore = create<ProtocolState>((set, get) => ({
+export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
   mode: 'simulation' as ProtocolMode,
   role: 'leader',
   masterActive: false,
@@ -232,6 +247,7 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
   // On-chain state
   masterPolicyPDA: null,
   lastTxSignature: null,
+  masterPolicies: [],
 
   setMode: (m) => {
     set({ mode: m });
@@ -433,6 +449,28 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
 
   setMasterPolicyPDA: (pda) => set({ masterPolicyPDA: pda }),
 
+  setMasterPolicies: (list) => set({ masterPolicies: list }),
+
+  selectMasterPolicy: (pda) => {
+    const resetMirror = {
+      masterActive: false,
+      processStep: 0,
+      policyStateIdx: -1,
+      confirms: { partA: false, partB: false, rein: false },
+      contracts: [],
+      claims: [],
+      contractCount: 0,
+      claimCount: 0,
+    };
+    if (pda === null) {
+      set({ masterPolicyPDA: null, ...resetMirror });
+      get().addLog('새 마스터계약 생성 모드', '#94A3B8', 'select_master');
+    } else {
+      set({ masterPolicyPDA: pda, ...resetMirror });
+      get().addLog(`마스터계약 전환: ${pda.slice(0, 8)}...`, '#9945FF', 'select_master', '체인에서 상태 조회 중...');
+    }
+  },
+
   /* ── On-chain action callbacks (called by components after successful tx) ── */
 
   onChainSetTerms: (txSignature, cededBps, commBps) => {
@@ -599,5 +637,184 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
       masterPolicyPDA: null, lastTxSignature: null,
     });
     get().addLog(i18n.t('store.resetMsg'), '#9945FF', 'system_init');
+  },
+
+  syncMasterFromChain: (data: MasterPolicyAccount) => {
+    const isActive = data.status === MasterPolicyStatus.Active;
+    const partAConfirmed = data.participants[1]?.confirmed ?? false;
+    const partBConfirmed = data.participants[2]?.confirmed ?? false;
+    const reinConfirmed = data.reinsurerConfirmed;
+    const confirms = { partA: partAConfirmed, partB: partBConfirmed, rein: reinConfirmed };
+
+    let processStep = 1;
+    if (partAConfirmed) processStep = 2;
+    if (partAConfirmed && partBConfirmed) processStep = 3;
+    if (partAConfirmed && partBConfirmed && reinConfirmed) processStep = 4;
+    if (isActive) processStep = 5;
+
+    const newShares: Shares = {
+      leader: Math.round((data.participants[0]?.shareBps ?? 5000) / 100),
+      partA: Math.round((data.participants[1]?.shareBps ?? 3000) / 100),
+      partB: Math.round((data.participants[2]?.shareBps ?? 2000) / 100),
+    };
+
+    set({
+      masterActive: isActive,
+      confirms,
+      processStep,
+      shares: newShares,
+      cededRatioBps: data.cededRatioBps,
+      reinsCommissionBps: data.reinsCommissionBps,
+      policyStateIdx: isActive ? 3 : processStep > 0 ? 0 : -1,
+    });
+  },
+
+  syncFlightPoliciesFromChain: (policies: FlightPolicyWithKey[]) => {
+    const st = get();
+    const lS = st.shares.leader / 100;
+    const aS = st.shares.partA / 100;
+    const bS = st.shares.partB / 100;
+    const ceded = st.cededRatioBps / 10000;
+    const comm = st.reinsCommissionBps / 10000;
+
+    // Per-contract premium net (1 premium unit each)
+    const lToR = lS * ceded, aToR = aS * ceded, bToR = bS * ceded;
+    const ctLNet = lS - lToR + comm * lS;
+    const ctANet = aS - aToR + comm * aS;
+    const ctBNet = bS - bToR + comm * bS;
+    const ctRNet = (lToR + aToR + bToR) - comm;
+
+    const formatTs = (unixSec: number) =>
+      new Date(unixSec * 1000).toLocaleString('ko-KR', {
+        month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+      });
+
+    const contracts: Contract[] = [];
+    const claims: Claim[] = [];
+    let claimIdCounter = 0;
+
+    for (const fp of policies) {
+      const a = fp.account;
+      const id = a.childPolicyId.toNumber();
+      const isStillActive =
+        a.status === FlightPolicyStatus.Issued ||
+        a.status === FlightPolicyStatus.AwaitingOracle;
+      const date = new Date(a.departureTs.toNumber() * 1000).toISOString().slice(0, 10);
+
+      const ct: Contract = {
+        id,
+        name: a.subscriberRef,
+        flight: a.flightNo,
+        date,
+        lNet: ctLNet,
+        aNet: ctANet,
+        bNet: ctBNet,
+        rNet: ctRNet,
+        status: isStillActive ? 'active' : 'claimed',
+        ts: formatTs(a.createdAt.toNumber()),
+      };
+      contracts.push(ct);
+
+      // Only create Claim entries for Claimable (2) and Paid (3)
+      if (
+        a.status === FlightPolicyStatus.Claimable ||
+        a.status === FlightPolicyStatus.Paid
+      ) {
+        claimIdCounter++;
+        const delay = a.delayMinutes;
+        const tier = a.cancelled ? TIERS[3] : getTier(delay);
+        if (tier) {
+          const payout = a.payoutAmount.toNumber() / 1_000_000;
+          const lPay = payout * lS, aPay = payout * aS, bPay = payout * bS;
+          const lRC = lPay * ceded, aRC = aPay * ceded, bRC = bPay * ceded;
+          const totRC = lRC + aRC + bRC;
+          const clComm = payout * comm;
+          const clLNet = lPay - lRC + clComm * lS;
+          const clANet = aPay - aRC + clComm * aS;
+          const clBNet = bPay - bRC + clComm * bS;
+          const clRNet = totRC - clComm;
+
+          const cl: Claim = {
+            id: claimIdCounter,
+            contractId: id,
+            name: a.subscriberRef,
+            flight: a.flightNo,
+            delay,
+            tier: tier.label,
+            payout,
+            lNet: clLNet,
+            aNet: clANet,
+            bNet: clBNet,
+            totRC,
+            rNet: clRNet,
+            status: a.status === FlightPolicyStatus.Paid ? 'settled' : 'claimable',
+            ts: formatTs(a.updatedAt.toNumber()),
+            color: tier.color,
+          };
+          claims.push(cl);
+        }
+      }
+    }
+
+    // Recalculate acc from all contracts + claims
+    const acc: Acc = { ...INITIAL_ACC };
+    for (const ct of contracts) {
+      acc.leaderPrem += ct.lNet;
+      acc.partAPrem += ct.aNet;
+      acc.partBPrem += ct.bNet;
+      acc.reinPrem += ct.rNet;
+    }
+    for (const cl of claims) {
+      acc.leaderClaim += cl.lNet;
+      acc.partAClaim += cl.aNet;
+      acc.partBClaim += cl.bNet;
+      acc.reinClaim += cl.rNet;
+    }
+
+    const totalPremium = contracts.length;
+    const totalClaim = claims.reduce((s, c) => s + c.payout, 0);
+
+    set({
+      contracts,
+      claims,
+      contractCount: contracts.length,
+      claimCount: claimIdCounter,
+      acc,
+      totalPremium,
+      totalClaim,
+    });
+  },
+}), {
+  name: 'riskmesh-protocol',
+  partialize: (state) => {
+    const always = {
+      mode: state.mode,
+      role: state.role,
+      masterPolicyPDA: state.masterPolicyPDA,
+      shares: state.shares,
+      cededRatioBps: state.cededRatioBps,
+      reinsCommissionBps: state.reinsCommissionBps,
+    };
+    if (state.mode !== 'onchain') {
+      return {
+        ...always,
+        masterActive: state.masterActive,
+        processStep: state.processStep,
+        policyStateIdx: state.policyStateIdx,
+        confirms: state.confirms,
+        contracts: state.contracts,
+        claims: state.claims,
+        contractCount: state.contractCount,
+        claimCount: state.claimCount,
+        acc: state.acc,
+        totalPremium: state.totalPremium,
+        totalClaim: state.totalClaim,
+        poolBalance: state.poolBalance,
+        premHist: state.premHist,
+        poolHist: state.poolHist,
+      };
+    }
+    return always;
   },
 }));
