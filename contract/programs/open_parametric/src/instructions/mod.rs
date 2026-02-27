@@ -17,7 +17,17 @@ pub mod settle_flight_claim;
 pub mod settle_flight_no_claim;
 
 #[cfg(test)]
+mod accept_share_test;
+#[cfg(test)]
+mod activate_master_test;
+#[cfg(test)]
+mod create_master_policy_test;
+#[cfg(test)]
+mod create_policy_test;
+#[cfg(test)]
 mod settle_flight_claim_test;
+#[cfg(test)]
+mod settle_flight_no_claim_test;
 
 pub use accept_share::*;
 pub use activate_master::*;

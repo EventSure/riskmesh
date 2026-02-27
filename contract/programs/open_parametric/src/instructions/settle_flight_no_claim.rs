@@ -36,17 +36,9 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightNoClaim<'a>>) -> Res
 
     require!(ctx.remaining_accounts.len() == master.participants.len(), OpenParamError::InvalidAccountList);
 
-    let premium = flight.premium_paid;
-    let reinsurer_amount = premium
-        .checked_mul(master.reinsurer_effective_bps as u64)
-        .ok_or(OpenParamError::MathOverflow)?
-        / BPS_DENOM;
-    let insurer_total = premium
-        .checked_sub(reinsurer_amount)
-        .ok_or(OpenParamError::MathOverflow)?;
-
     let insurer_ratios: Vec<u16> = master.participants.iter().map(|p| p.share_bps).collect();
-    let insurer_amounts = split_by_bps(insurer_total, &insurer_ratios)?;
+    let (reinsurer_amount, insurer_amounts) =
+        calc_no_claim_split(flight.premium_paid, master.reinsurer_effective_bps, &insurer_ratios)?;
 
     let seed_master_id = master.master_id.to_le_bytes();
     let seeds = &[
@@ -97,4 +89,20 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightNoClaim<'a>>) -> Res
     flight.updated_at = Clock::get()?.unix_timestamp;
 
     Ok(())
+}
+
+pub(crate) fn calc_no_claim_split(
+    premium: u64,
+    reinsurer_effective_bps: u16,
+    insurer_share_bps: &[u16],
+) -> std::result::Result<(u64, Vec<u64>), OpenParamError> {
+    let reinsurer_amount = premium
+        .checked_mul(reinsurer_effective_bps as u64)
+        .ok_or(OpenParamError::MathOverflow)?
+        / BPS_DENOM;
+    let insurer_total = premium
+        .checked_sub(reinsurer_amount)
+        .ok_or(OpenParamError::MathOverflow)?;
+    let insurer_amounts = split_by_bps(insurer_total, insurer_share_bps)?;
+    Ok((reinsurer_amount, insurer_amounts))
 }

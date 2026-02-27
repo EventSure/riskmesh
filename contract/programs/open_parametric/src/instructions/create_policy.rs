@@ -79,7 +79,7 @@ pub fn handler(ctx: Context<CreatePolicy>, params: CreatePolicyParams) -> Result
     require!(delay_threshold_min == DELAY_THRESHOLD_MIN, OpenParamError::InvalidDelayThreshold);
     require!(route.len() <= MAX_ROUTE_LEN, OpenParamError::InputTooLong);
     require!(flight_no.len() <= MAX_FLIGHT_NO_LEN, OpenParamError::InputTooLong);
-    require!(participants.len() <= MAX_PARTICIPANTS, OpenParamError::InvalidInput);
+    let total_ratio = validate_policy_participants(&participants)?;
 
     policy.policy_id = policy_id;
     policy.leader = ctx.accounts.leader.key();
@@ -100,8 +100,6 @@ pub fn handler(ctx: Context<CreatePolicy>, params: CreatePolicyParams) -> Result
 
     uw.policy = policy.key();
     uw.leader = policy.leader;
-    let total_ratio: u32 = participants.iter().map(|p| p.ratio_bps as u32).sum();
-    require!(total_ratio == 10000, OpenParamError::InvalidRatio);
     uw.participants = participants
         .into_iter()
         .map(|p| ParticipantShare {
@@ -112,7 +110,7 @@ pub fn handler(ctx: Context<CreatePolicy>, params: CreatePolicyParams) -> Result
             escrowed_amount: 0,
         })
         .collect();
-    uw.total_ratio = total_ratio as u16;
+    uw.total_ratio = total_ratio;
     uw.status = UnderwritingStatus::Proposed as u8;
     uw.created_at = policy.created_at;
     uw.bump = ctx.bumps.underwriting;
@@ -130,4 +128,23 @@ pub fn handler(ctx: Context<CreatePolicy>, params: CreatePolicyParams) -> Result
     registry.bump = ctx.bumps.registry;
 
     Ok(())
+}
+
+pub(crate) fn validate_policy_participants(
+    participants: &[ParticipantInit],
+) -> std::result::Result<u16, OpenParamError> {
+    if participants.len() > MAX_PARTICIPANTS {
+        return Err(OpenParamError::InvalidInput);
+    }
+
+    let mut total_ratio: u32 = 0;
+    for p in participants {
+        total_ratio = total_ratio
+            .checked_add(p.ratio_bps as u32)
+            .ok_or(OpenParamError::MathOverflow)?;
+    }
+    if total_ratio != 10_000 {
+        return Err(OpenParamError::InvalidRatio);
+    }
+    u16::try_from(total_ratio).map_err(|_| OpenParamError::MathOverflow)
 }

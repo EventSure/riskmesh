@@ -38,14 +38,7 @@ pub fn handler(ctx: Context<CreateMasterPolicy>, params: CreateMasterPolicyParam
 
     require!(params.coverage_start_ts < params.coverage_end_ts, OpenParamError::InvalidTimeWindow);
     require!(params.premium_per_policy > 0, OpenParamError::InvalidAmount);
-    require!(params.participants.len() > 0, OpenParamError::InvalidInput);
-    require!(params.participants.len() <= MAX_MASTER_PARTICIPANTS, OpenParamError::InvalidInput);
-
-    let total_share: u32 = params.participants.iter().map(|p| p.share_bps as u32).sum();
-    require!(total_share == 10_000, OpenParamError::InvalidRatio);
-
-    let has_leader = params.participants.iter().any(|p| p.insurer == ctx.accounts.leader.key());
-    require!(has_leader, OpenParamError::InvalidInput);
+    validate_master_participants(&params.participants, ctx.accounts.leader.key())?;
 
     require!(ctx.accounts.leader_deposit_wallet.mint == ctx.accounts.currency_mint.key(), OpenParamError::InvalidInput);
     require!(ctx.accounts.reinsurer_pool_wallet.mint == ctx.accounts.currency_mint.key(), OpenParamError::InvalidInput);
@@ -87,5 +80,33 @@ pub fn handler(ctx: Context<CreateMasterPolicy>, params: CreateMasterPolicyParam
         })
         .collect();
 
+    Ok(())
+}
+
+pub(crate) fn validate_master_participants(
+    participants: &[MasterParticipantInit],
+    leader: Pubkey,
+) -> std::result::Result<(), OpenParamError> {
+    if participants.is_empty() || participants.len() > MAX_MASTER_PARTICIPANTS {
+        return Err(OpenParamError::InvalidInput);
+    }
+
+    let mut total_share: u32 = 0;
+    let mut has_leader = false;
+    for p in participants {
+        total_share = total_share
+            .checked_add(p.share_bps as u32)
+            .ok_or(OpenParamError::MathOverflow)?;
+        if p.insurer == leader {
+            has_leader = true;
+        }
+    }
+
+    if total_share != 10_000 {
+        return Err(OpenParamError::InvalidRatio);
+    }
+    if !has_leader {
+        return Err(OpenParamError::InvalidInput);
+    }
     Ok(())
 }

@@ -16,11 +16,15 @@ pub fn handler(ctx: Context<ActivateMaster>) -> Result<()> {
     require!(ctx.accounts.operator.key() == master.operator, OpenParamError::Unauthorized);
     require!(master.reinsurer_confirmed, OpenParamError::MasterNotConfirmed);
 
-    let all_confirmed = master.participants.iter().all(|p| {
-        p.confirmed && p.pool_wallet != Pubkey::default() && p.deposit_wallet != Pubkey::default()
-    });
+    let all_confirmed = all_participants_confirmed(&master.participants);
     require!(all_confirmed, OpenParamError::MasterNotConfirmed);
 
     master.status = MasterPolicyStatus::Active as u8;
     Ok(())
+}
+
+pub(crate) fn all_participants_confirmed(participants: &[MasterParticipant]) -> bool {
+    participants.iter().all(|p| {
+        p.confirmed && p.pool_wallet != Pubkey::default() && p.deposit_wallet != Pubkey::default()
+    })
 }
