@@ -289,8 +289,8 @@ export function Header() {
             ))}
           </SelectBase>
           <SelectBase value={i18n.language} onChange={(e) => i18n.changeLanguage(e.target.value)}>
-            <option value="ko">한국어</option>
             <option value="en">English</option>
+            <option value="ko">한국어</option>
           </SelectBase>
           <WalletWrap dimmed={mode === 'simulation'}>
             <WalletMultiButton />
