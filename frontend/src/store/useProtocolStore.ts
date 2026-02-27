@@ -188,7 +188,7 @@ interface ProtocolState {
   activateMaster: () => { ok: boolean; msg?: string };
   addContract: (name?: string, flight?: string, date?: string) => void;
   clearContracts: () => void;
-  runOracle: (contractId: number, delay: number, fresh: number) => { ok: boolean; msg: string; type: 'error' | 'ok' | 'info'; code?: string };
+  runOracle: (contractId: number, delay: number, fresh: number, cancelled: boolean) => { ok: boolean; msg: string; type: 'error' | 'ok' | 'info'; code?: string };
   approveClaims: () => number;
   settleClaims: () => number;
   addLog: (msg: string, color: string, instruction: string, detail?: string, txSignature?: string) => void;
@@ -197,7 +197,7 @@ interface ProtocolState {
   onChainConfirm: (key: 'partA' | 'partB' | 'rein', txSignature: string) => void;
   onChainActivate: (txSignature: string, pda: string) => void;
   onChainAddContract: (id: number, name: string, flight: string, date: string, txSignature: string) => void;
-  onChainResolve: (contractId: number, delay: number, txSignature: string) => void;
+  onChainResolve: (contractId: number, delay: number, cancelled: boolean, txSignature: string) => void;
   onChainSettle: (contractId: number, txSignature: string) => void;
   resetAll: () => void;
 }
@@ -335,12 +335,13 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
     });
   },
 
-  runOracle: (contractId, delay, fresh) => {
+  runOracle: (contractId, delay, fresh, cancelled) => {
     const st = get();
     if (fresh < 0 || fresh > 30) return { ok: false, msg: i18n.t('store.oracleStale', { fresh }), type: 'error' as const, code: 'E_ORACLE_STALE' };
     if (delay < 0 || delay % 10 !== 0) return { ok: false, msg: i18n.t('store.oracleFormat', { delay }), type: 'error' as const, code: 'E_ORACLE_FORMAT' };
 
-    const tier = getTier(delay);
+    // Cancellation overrides delay: treat as highest tier regardless of actual delay
+    const tier = cancelled ? TIERS[3] : getTier(delay);
     if (!tier) {
       get().addLog(i18n.t('store.oracleNoTrigger', { delay }), '#22C55E', 'check_oracle');
       return { ok: true, msg: i18n.t('store.oracleNoTriggerMsg', { delay }), type: 'ok' as const };
@@ -507,12 +508,13 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
     );
   },
 
-  onChainResolve: (contractId, delay, txSignature) => {
+  onChainResolve: (contractId, delay, cancelled, txSignature) => {
     const st = get();
     const contract = st.contracts.find(c => c.id === contractId);
     if (!contract) return;
 
-    const tier = getTier(delay);
+    // Cancellation overrides delay: treat as highest tier regardless of actual delay
+    const tier = cancelled ? TIERS[3] : getTier(delay);
     // No trigger (delay < 120min): on-chain status → NoClaim, mark contract resolved
     if (!tier) {
       set(prev => ({
@@ -578,7 +580,7 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
       policyStateIdx: 6,
     }));
     get().addLog(
-      `Claim for contract #${contractId} settled on-chain`, '#14F195', 'settle_flight_claim',
+      i18n.t('store.settledOnchain', { id: contractId }), '#14F195', 'settle_flight_claim',
       '', txSignature,
     );
   },

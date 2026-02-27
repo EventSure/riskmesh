@@ -670,7 +670,10 @@ export function LandingPage() {
             {t('landing.heroTitle1')}{' '}
             <GradientText>{t('landing.heroTitle2')}</GradientText>
           </HeroTitle>
-          <HeroSub>{t('landing.heroSub')}</HeroSub>
+          <HeroSub>
+            {t('landing.heroSub1')}<br />
+            {t('landing.heroSub2')}
+          </HeroSub>
           <HeroActions>
             <HeroCta onClick={goDemo}>{t('landing.cta')}</HeroCta>
             <HeroCtaOutline href="https://github.com/EventSure/riskmesh" target="_blank" rel="noopener noreferrer">
