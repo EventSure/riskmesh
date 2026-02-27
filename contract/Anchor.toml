@@ -1,5 +1,9 @@
 [programs.localnet]
+<<<<<<< feature/oracle
 open_parametric = "BXxqMY3f9y7dzvoQWJjhX95GMEyuRjD61kgfgherhSX7"
+=======
+open_parametric = "3dBd52Do2ZBbaMboLyuVZSJTupAFKGoorEydQ6MkfiPL"
+>>>>>>> main
 
 [registry]
 url = "https://api.apr.dev"
@@ -9,4 +13,4 @@ cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "yarn mocha -t 1000000 tests/*.ts"
+test = "yarn test"

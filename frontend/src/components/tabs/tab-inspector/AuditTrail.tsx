@@ -3,6 +3,7 @@ import { keyframes } from '@emotion/react';
 import { Card, CardHeader, CardTitle, CardBody } from '@/components/common';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { useTranslation } from 'react-i18next';
+import { getExplorerUrl } from '@/lib/tx';
 
 const logIn = keyframes`
   from { opacity: 0; transform: translateX(-4px); }
@@ -44,6 +45,16 @@ const LogTime = styled.span`
   white-space: nowrap;
 `;
 
+const TxLink = styled.a`
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  color: var(--primary);
+  text-decoration: none;
+  opacity: 0.8;
+  word-break: break-all;
+  &:hover { opacity: 1; text-decoration: underline; }
+`;
+
 export function AuditTrail() {
   const { t } = useTranslation();
   const logs = useProtocolStore(s => s.logs);
@@ -63,6 +74,15 @@ export function AuditTrail() {
                   {log.msg}
                 </div>
                 {log.detail && <div style={{ fontSize: 9, color: 'var(--sub)', marginTop: 1 }}>{log.detail}</div>}
+                {log.txSignature && (
+                  <TxLink
+                    href={getExplorerUrl(log.txSignature, 'tx', 'devnet')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    TX: {log.txSignature}
+                  </TxLink>
+                )}
               </div>
             </LogEntry>
           ))}

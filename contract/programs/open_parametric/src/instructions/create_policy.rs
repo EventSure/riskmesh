@@ -74,13 +74,15 @@ pub fn handler(ctx: Context<CreatePolicy>, params: CreatePolicyParams) -> Result
         participants,
     } = params;
 
+    // 정책 생성 입력 검증(기간/금액/지연 임계치/문자열 길이/참여자 지분).
     require!(active_from < active_to, OpenParamError::InvalidTimeWindow);
     require!(payout_amount > 0, OpenParamError::InvalidAmount);
     require!(delay_threshold_min == DELAY_THRESHOLD_MIN, OpenParamError::InvalidDelayThreshold);
     require!(route.len() <= MAX_ROUTE_LEN, OpenParamError::InputTooLong);
     require!(flight_no.len() <= MAX_FLIGHT_NO_LEN, OpenParamError::InputTooLong);
-    require!(participants.len() <= MAX_PARTICIPANTS, OpenParamError::InvalidInput);
+    let total_ratio = validate_policy_participants(&participants)?;
 
+    // Policy 본문 필드를 초기화한다.
     policy.policy_id = policy_id;
     policy.leader = ctx.accounts.leader.key();
     policy.route = route;
@@ -98,10 +100,9 @@ pub fn handler(ctx: Context<CreatePolicy>, params: CreatePolicyParams) -> Result
     policy.active_to = active_to;
     policy.bump = ctx.bumps.policy;
 
+    // Underwriting은 참여자 지분과 초기 상태(Proposed)를 저장한다.
     uw.policy = policy.key();
     uw.leader = policy.leader;
-    let total_ratio: u32 = participants.iter().map(|p| p.ratio_bps as u32).sum();
-    require!(total_ratio == 10000, OpenParamError::InvalidRatio);
     uw.participants = participants
         .into_iter()
         .map(|p| ParticipantShare {
@@ -112,11 +113,12 @@ pub fn handler(ctx: Context<CreatePolicy>, params: CreatePolicyParams) -> Result
             escrowed_amount: 0,
         })
         .collect();
-    uw.total_ratio = total_ratio as u16;
+    uw.total_ratio = total_ratio;
     uw.status = UnderwritingStatus::Proposed as u8;
     uw.created_at = policy.created_at;
     uw.bump = ctx.bumps.underwriting;
 
+    // RiskPool은 금고(vault) 기준으로 잔액 상태를 0에서 시작한다.
     pool.policy = policy.key();
     pool.currency_mint = ctx.accounts.currency_mint.key();
     pool.vault = ctx.accounts.vault.key();
@@ -125,9 +127,30 @@ pub fn handler(ctx: Context<CreatePolicy>, params: CreatePolicyParams) -> Result
     pool.status = 0;
     pool.bump = ctx.bumps.risk_pool;
 
+    // Registry는 빈 엔트리로 시작한다.
     registry.policy = policy.key();
     registry.entries = vec![];
     registry.bump = ctx.bumps.registry;
 
     Ok(())
+}
+
+pub(crate) fn validate_policy_participants(
+    participants: &[ParticipantInit],
+) -> std::result::Result<u16, OpenParamError> {
+    // 참여자 지분 총합은 반드시 10000bps여야 한다.
+    if participants.len() > MAX_PARTICIPANTS {
+        return Err(OpenParamError::InvalidInput);
+    }
+
+    let mut total_ratio: u32 = 0;
+    for p in participants {
+        total_ratio = total_ratio
+            .checked_add(p.ratio_bps as u32)
+            .ok_or(OpenParamError::MathOverflow)?;
+    }
+    if total_ratio != 10_000 {
+        return Err(OpenParamError::InvalidRatio);
+    }
+    u16::try_from(total_ratio).map_err(|_| OpenParamError::MathOverflow)
 }

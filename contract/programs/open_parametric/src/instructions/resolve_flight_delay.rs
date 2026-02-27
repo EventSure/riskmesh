@@ -16,6 +16,7 @@ pub fn handler(ctx: Context<ResolveFlightDelay>, delay_minutes: u16, cancelled: 
     let master = &ctx.accounts.master_policy;
     let flight = &mut ctx.accounts.flight_policy;
 
+    // 지연 결과 확정은 권한자(leader/operator)만 수행할 수 있다.
     require!(master.status == MasterPolicyStatus::Active as u8, OpenParamError::MasterNotActive);
     require!(ctx.accounts.resolver.key() == master.leader || ctx.accounts.resolver.key() == master.operator, OpenParamError::Unauthorized);
     require!(flight.master == master.key(), OpenParamError::InvalidInput);
@@ -24,6 +25,7 @@ pub fn handler(ctx: Context<ResolveFlightDelay>, delay_minutes: u16, cancelled: 
         OpenParamError::InvalidState
     );
 
+    // 지연 구간별 테이블에 따라 payout을 계산한다.
     let payout = tiered_payout(
         delay_minutes,
         cancelled,
@@ -35,6 +37,7 @@ pub fn handler(ctx: Context<ResolveFlightDelay>, delay_minutes: u16, cancelled: 
         },
     );
 
+    // payout 존재 여부에 따라 Claimable/NoClaim 상태를 결정한다.
     flight.delay_minutes = delay_minutes;
     flight.cancelled = cancelled;
     flight.payout_amount = payout;

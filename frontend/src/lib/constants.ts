@@ -2,8 +2,9 @@ import { PublicKey } from '@solana/web3.js';
 
 export const RPC_ENDPOINT = 'https://api.devnet.solana.com';
 
-// TODO: Replace with actual program ID after `anchor keys list`
-export const PROGRAM_ID = new PublicKey('11111111111111111111111111111111');
+export const PROGRAM_ID = new PublicKey('3dBd52Do2ZBbaMboLyuVZSJTupAFKGoorEydQ6MkfiPL');
+
+export const CURRENCY_MINT = new PublicKey('5YsAiRYU3tTFc5B8aaGwVL1oC9DVxBEddnXCaHcQQg2k');
 
 export const POLICY_STATES = [
   'Draft',
@@ -18,6 +19,23 @@ export const POLICY_STATES = [
 
 export type PolicyStateLabel = (typeof POLICY_STATES)[number];
 
+export const MASTER_POLICY_STATES = [
+  'Draft',
+  'PendingConfirm',
+  'Active',
+  'Closed',
+  'Cancelled',
+] as const;
+
+export const FLIGHT_POLICY_STATES = [
+  'Issued',
+  'AwaitingOracle',
+  'Claimable',
+  'Paid',
+  'NoClaim',
+  'Expired',
+] as const;
+
 export const UNDERWRITING_STATUSES = ['Proposed', 'Open', 'Finalized', 'Failed'] as const;
 
 export const CLAIM_STATUSES = [
@@ -28,3 +46,20 @@ export const CLAIM_STATUSES = [
   'Settled',
   'Rejected',
 ] as const;
+
+/** Default payout tiers in token base units (6 decimals for USDC-like) */
+export const DEFAULT_PAYOUT_TIERS = {
+  delay2h: 40_000_000,      // 40 USDC
+  delay3h: 60_000_000,      // 60 USDC
+  delay4to5h: 80_000_000,   // 80 USDC
+  delay6hOrCancelled: 100_000_000, // 100 USDC
+} as const;
+
+/** Default premium per policy in token base units */
+export const DEFAULT_PREMIUM = 1_000_000; // 1 USDC
+
+/** Token decimals for display conversion */
+export const TOKEN_DECIMALS = 6;
+
+/** BPS denominator */
+export const BPS_DENOM = 10_000;

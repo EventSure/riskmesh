@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardBody } from '@/components/common';
 import { useProtocolStore, formatNum, masterPDA, poolPDA, vaultPDA, ledgerPDA, POLICY_STATES } from '@/store/useProtocolStore';
 import { useShallow } from 'zustand/shallow';
 import { useTranslation } from 'react-i18next';
+import { getExplorerUrl, shortenAddress } from '@/lib/tx';
 
 const AccountCard = styled.div`
   background: var(--card2);
@@ -43,6 +44,12 @@ const AccountAddr = styled.div`
   font-family: 'DM Mono', monospace;
   word-break: break-all;
   margin-top: 1px;
+`;
+
+const AddrLink = styled.a`
+  color: var(--primary);
+  text-decoration: none;
+  &:hover { text-decoration: underline; }
 `;
 
 const Seeds = styled.div`
@@ -87,16 +94,37 @@ const FieldValue = styled.div<{ variant?: string }>`
     'var(--text)'};
 `;
 
+const ModeBadge = styled.span<{ isOnChain: boolean }>`
+  font-size: 8px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'DM Mono', monospace;
+  font-weight: 700;
+  background: ${p => p.isOnChain ? 'rgba(153,69,255,.12)' : 'rgba(148,163,184,.1)'};
+  color: ${p => p.isOnChain ? 'var(--primary)' : 'var(--sub)'};
+  border: 1px solid ${p => p.isOnChain ? 'rgba(153,69,255,.3)' : 'rgba(148,163,184,.2)'};
+`;
+
 export function InspectorPanel() {
   const { t } = useTranslation();
-  const { masterActive, policyStateIdx, contracts, poolBalance, totalPremium, totalClaim, acc, shares } = useProtocolStore(
-    useShallow(s => ({ masterActive: s.masterActive, policyStateIdx: s.policyStateIdx, contracts: s.contracts, poolBalance: s.poolBalance, totalPremium: s.totalPremium, totalClaim: s.totalClaim, acc: s.acc, shares: s.shares })),
+  const { mode, masterActive, policyStateIdx, contracts, poolBalance, totalPremium, totalClaim, acc, shares, masterPolicyPDA, lastTxSignature } = useProtocolStore(
+    useShallow(s => ({
+      mode: s.mode, masterActive: s.masterActive, policyStateIdx: s.policyStateIdx,
+      contracts: s.contracts, poolBalance: s.poolBalance, totalPremium: s.totalPremium,
+      totalClaim: s.totalClaim, acc: s.acc, shares: s.shares,
+      masterPolicyPDA: s.masterPolicyPDA, lastTxSignature: s.lastTxSignature,
+    })),
   );
+
+  const isOnChain = mode === 'onchain';
 
   if (!masterActive) {
     return (
       <Card>
-        <CardHeader><CardTitle>On-chain Inspector (PDA)</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>On-chain Inspector (PDA)</CardTitle>
+          <ModeBadge isOnChain={isOnChain}>{isOnChain ? 'DEVNET' : 'SIM'}</ModeBadge>
+        </CardHeader>
         <CardBody style={{ padding: 10 }}>
           <div style={{ fontSize: 10, color: 'var(--sub)', textAlign: 'center', padding: 20 }}>
             {t('inspector.placeholder')}
@@ -106,25 +134,32 @@ export function InspectorPanel() {
     );
   }
 
+  const masterAddr = isOnChain && masterPolicyPDA ? masterPolicyPDA : masterPDA();
+  const poolAddr = isOnChain && masterPolicyPDA ? `pool_${masterPolicyPDA.slice(0, 8)}` : poolPDA();
+  const vaultAddr = isOnChain ? `vault_${masterAddr.slice(0, 8)}` : vaultPDA();
+
   const accounts = [
     {
-      icon: '📋', name: 'MasterContract',
-      seeds: ['master', '2026', 'flight_delay'], addr: masterPDA(),
+      icon: '📋', name: 'MasterPolicy',
+      seeds: isOnChain ? ['master_policy', 'leader', 'master_id'] : ['master', '2026', 'flight_delay'],
+      addr: masterAddr,
       fields: [
         { k: 'coverage', v: '2026-01-01 ~ 2026-12-31', c: '' },
-        { k: 'premium_per_contract', v: '1 USDC', c: 'ac' },
+        { k: 'premium_per_policy', v: '1 USDC', c: 'ac' },
         { k: 'shares', v: `L${shares.leader}% / A${shares.partA}% / B${shares.partB}%`, c: 'ac' },
-        { k: 'rein_share', v: '50%', c: 'in' },
-        { k: 'comm_rate', v: '10%', c: '' },
+        { k: 'ceded_ratio', v: '50% (5000 bps)', c: 'in' },
+        { k: 'reins_commission', v: '10% (1000 bps)', c: '' },
         { k: 'state', v: POLICY_STATES[policyStateIdx] || '—', c: 'ac' },
-        { k: 'total_contracts', v: String(contracts.length), c: 'ac' },
+        { k: 'total_flight_policies', v: String(contracts.length), c: 'ac' },
+        ...(isOnChain && lastTxSignature ? [{ k: 'last_tx', v: shortenAddress(lastTxSignature, 8), c: 'in' }] : []),
       ],
     },
     {
-      icon: '🏦', name: 'RiskPool',
-      seeds: ['pool', 'master_contract'], addr: poolPDA(),
+      icon: '🏦', name: 'RiskPool / Vault',
+      seeds: isOnChain ? ['ATA', 'master_policy_pda'] : ['pool', 'master_contract'],
+      addr: poolAddr,
       fields: [
-        { k: 'vault', v: vaultPDA().substring(0, 14) + '...', c: '' },
+        { k: 'vault', v: vaultAddr.substring(0, 14) + '...', c: '' },
         { k: 'pool_initial', v: '10,000 USDC', c: 'ac' },
         { k: 'available', v: formatNum(poolBalance, 2) + ' USDC', c: poolBalance < 5000 ? 'wn' : 'ac' },
         { k: 'paid_out', v: formatNum(totalClaim, 2) + ' USDC', c: 'dn' },
@@ -132,7 +167,8 @@ export function InspectorPanel() {
     },
     {
       icon: '📊', name: 'SettlementLedger',
-      seeds: ['ledger', 'master_contract'], addr: ledgerPDA(),
+      seeds: isOnChain ? ['derived', 'from_flight_policies'] : ['ledger', 'master_contract'],
+      addr: isOnChain ? 'Aggregated from FlightPolicy accounts' : ledgerPDA(),
       fields: [
         { k: 'total_premium', v: formatNum(totalPremium, 4) + ' USDC', c: 'ac' },
         { k: 'total_claims', v: formatNum(totalClaim, 2) + ' USDC', c: 'dn' },
@@ -146,7 +182,10 @@ export function InspectorPanel() {
 
   return (
     <Card>
-      <CardHeader><CardTitle>On-chain Inspector (PDA)</CardTitle></CardHeader>
+      <CardHeader>
+        <CardTitle>On-chain Inspector (PDA)</CardTitle>
+        <ModeBadge isOnChain={isOnChain}>{isOnChain ? 'DEVNET' : 'SIM'}</ModeBadge>
+      </CardHeader>
       <CardBody style={{ padding: 10 }}>
         {accounts.map(a => (
           <AccountCard key={a.name}>
@@ -154,7 +193,19 @@ export function InspectorPanel() {
               <AccountIcon>{a.icon}</AccountIcon>
               <div>
                 <AccountName>{a.name}</AccountName>
-                <AccountAddr>{a.addr}</AccountAddr>
+                <AccountAddr>
+                  {isOnChain && masterPolicyPDA && a.addr.length === 44 ? (
+                    <AddrLink
+                      href={getExplorerUrl(a.addr, 'address', 'devnet')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {a.addr}
+                    </AddrLink>
+                  ) : (
+                    a.addr
+                  )}
+                </AccountAddr>
               </div>
             </AccountHeader>
             <Seeds>{a.seeds.map(s => <Seed key={s}>{s}</Seed>)}</Seeds>

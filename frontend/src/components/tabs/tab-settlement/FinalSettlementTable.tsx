@@ -4,15 +4,14 @@ import { useTranslation } from 'react-i18next';
 
 export function FinalSettlementTable() {
   const { t } = useTranslation();
-  const { acc, totalPremium, totalClaim } = useProtocolStore();
+  const { acc, totalPremium, totalClaim, cededRatioBps, reinsCommissionBps } = useProtocolStore();
+  const ceded = cededRatioBps / 10000;
+  const commRate = reinsCommissionBps / 10000;
+  const reinsEff = ceded * (1 - commRate);
 
-  const rIn = totalPremium * 0.5;
-  const rOut = totalPremium * 0.1;
-  const rPNet = rIn - rOut;
+  const rPNet = totalPremium * reinsEff;
 
-  const rcIn = totalClaim * 0.5;
-  const rcOut = totalClaim * 0.1;
-  const rCNet = -rcIn + rcOut;
+  const rCNet = -totalClaim * reinsEff;
 
   const rows = [
     { label: t('settle.party.leader'), p: acc.leaderPrem, c: acc.leaderClaim, rein: false },

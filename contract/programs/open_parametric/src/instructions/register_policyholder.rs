@@ -16,6 +16,7 @@ pub struct RegisterPolicyholder<'info> {
 pub fn handler(ctx: Context<RegisterPolicyholder>, entry: PolicyholderEntryInput) -> Result<()> {
     let registry = &mut ctx.accounts.registry;
 
+    // 리더 권한과 입력 길이/최대 인원 제한을 확인한 뒤 레지스트리에 추가한다.
     require!(ctx.accounts.policy.leader == ctx.accounts.leader.key(), OpenParamError::Unauthorized);
     require!(registry.policy == ctx.accounts.policy.key(), OpenParamError::InvalidInput);
     require!(entry.external_ref.len() <= MAX_EXTERNAL_REF_LEN, OpenParamError::InputTooLong);

@@ -15,6 +15,7 @@ pub struct ExpirePolicy<'info> {
 pub fn expire_handler(ctx: Context<ExpirePolicy>) -> Result<()> {
     let policy = &mut ctx.accounts.policy;
 
+    // 만기 시각(active_to) 경과 후에만 Expired 전환을 허용한다.
     require!(policy.state == PolicyState::Active as u8, OpenParamError::InvalidState);
     let now = Clock::get()?.unix_timestamp;
     require!(now > policy.active_to, OpenParamError::InvalidTimeWindow);
@@ -46,6 +47,7 @@ pub struct RefundAfterExpiry<'info> {
 pub fn refund_handler(ctx: Context<RefundAfterExpiry>, share_index: u8) -> Result<()> {
     let policy = &mut ctx.accounts.policy;
 
+    // Expired 이후 참여사별 에스크로를 원래 지갑으로 환급한다.
     require!(policy.state == PolicyState::Expired as u8, OpenParamError::InvalidState);
 
     let uw = &mut ctx.accounts.underwriting;
@@ -68,6 +70,7 @@ pub fn refund_handler(ctx: Context<RefundAfterExpiry>, share_index: u8) -> Resul
         &[ctx.accounts.risk_pool.bump],
     ];
     let signer = &[&seeds[..]];
+    // RiskPool PDA 서명으로 vault -> 참여사 토큰계정 환급 이체를 수행한다.
     let cpi_ctx = CpiContext::new_with_signer(
         ctx.accounts.token_program.to_account_info(),
         Transfer {

@@ -22,6 +22,7 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightClaim<'a>>) -> Resul
     let master = &ctx.accounts.master_policy;
     let flight = &mut ctx.accounts.flight_policy;
 
+    // Claimable 상태의 child 정책만 청구 정산할 수 있다.
     require!(master.status == MasterPolicyStatus::Active as u8, OpenParamError::MasterNotActive);
     require!(ctx.accounts.executor.key() == master.leader || ctx.accounts.executor.key() == master.operator, OpenParamError::Unauthorized);
     require!(flight.master == master.key(), OpenParamError::InvalidInput);
@@ -37,16 +38,9 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightClaim<'a>>) -> Resul
     let payout = flight.payout_amount;
     require!(payout > 0, OpenParamError::InvalidPayout);
 
-    let reinsurer_amount = payout
-        .checked_mul(master.reinsurer_effective_bps as u64)
-        .ok_or(OpenParamError::MathOverflow)?
-        / BPS_DENOM;
-    let insurer_total = payout
-        .checked_sub(reinsurer_amount)
-        .ok_or(OpenParamError::MathOverflow)?;
-
     let insurer_ratios: Vec<u16> = master.participants.iter().map(|p| p.share_bps).collect();
-    let insurer_amounts = split_by_bps(insurer_total, &insurer_ratios)?;
+    // 총 payout을 재보험사 몫 + 보험사(leader/A/B...) 몫으로 분리한다.
+    let (reinsurer_amount, insurer_amounts) = calc_claim_split(payout, master.reinsurer_effective_bps, &insurer_ratios)?;
 
     let seed_master_id = master.master_id.to_le_bytes();
     let seeds = &[
@@ -58,6 +52,7 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightClaim<'a>>) -> Resul
     let signer = &[&seeds[..]];
 
     if reinsurer_amount > 0 {
+        // 재보험 풀에서 리더 deposit으로 재보험사 부담분을 이동한다.
         let reins_transfer_ctx = CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             Transfer {
@@ -81,6 +76,7 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightClaim<'a>>) -> Resul
         require!(pool_wallet.mint == master.currency_mint, OpenParamError::InvalidInput);
         require!(pool_wallet.owner == master.key(), OpenParamError::InvalidSettlementTarget);
 
+        // 각 참여사 풀 지갑에서 리더 deposit으로 해당 부담분을 이체한다.
         let transfer_ctx = CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             Transfer {
@@ -96,4 +92,21 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightClaim<'a>>) -> Resul
     flight.status = FlightPolicyStatus::Paid as u8;
     flight.updated_at = Clock::get()?.unix_timestamp;
     Ok(())
+}
+
+pub(crate) fn calc_claim_split(
+    payout: u64,
+    reinsurer_effective_bps: u16,
+    insurer_share_bps: &[u16],
+) -> std::result::Result<(u64, Vec<u64>), OpenParamError> {
+    // payout을 재보험사 실효 지분율 기준으로 분할하고, 잔여는 참여사 비율로 재분배한다.
+    let reinsurer_amount = payout
+        .checked_mul(reinsurer_effective_bps as u64)
+        .ok_or(OpenParamError::MathOverflow)?
+        / BPS_DENOM;
+    let insurer_total = payout
+        .checked_sub(reinsurer_amount)
+        .ok_or(OpenParamError::MathOverflow)?;
+    let insurer_amounts = split_by_bps(insurer_total, insurer_share_bps)?;
+    Ok((reinsurer_amount, insurer_amounts))
 }

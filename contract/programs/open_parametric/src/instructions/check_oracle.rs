@@ -34,6 +34,7 @@ pub struct CheckOracle<'info> {
 
 pub fn handler(ctx: Context<CheckOracle>, oracle_round: u64) -> Result<()> {
     let policy = &mut ctx.accounts.policy;
+    // 오라클 체크는 Active 상태의 정책만 처리한다.
     require!(policy.state == PolicyState::Active as u8, OpenParamError::InvalidState);
     require!(ctx.accounts.oracle_feed.key() == policy.oracle_feed, OpenParamError::InvalidInput);
 
@@ -46,17 +47,17 @@ pub fn handler(ctx: Context<CheckOracle>, oracle_round: u64) -> Result<()> {
         .verify_instruction_at(0)
         .map_err(|_| OpenParamError::OracleStale)?;
 
-    // Staleness check
+    // 스테일 데이터(허용 슬롯 초과)는 즉시 거절한다.
     let current_slot = Clock::get()?.slot;
     let staleness = current_slot.saturating_sub(oracle_quote.slot());
     require!(staleness <= ORACLE_MAX_STALENESS_SLOTS, OpenParamError::OracleStale);
 
-    // Read feed value
+    // 피드 값 형식을 검증한 뒤 지연 분(minutes) 값을 읽는다.
     let feeds = oracle_quote.feeds();
     require!(!feeds.is_empty(), OpenParamError::OracleFormat);
     let feed = &feeds[0];
 
-    // Convert rust_decimal::Decimal to i64 (oracle provides whole minutes, scale must be 0)
+    // 오라클 값은 "분 단위 정수"만 허용한다(scale=0, 음수 불가, 10분 단위).
     let decimal_value = feed.value();
     require!(decimal_value.scale() == 0, OpenParamError::OracleFormat);
     let mantissa = decimal_value.mantissa();
@@ -66,6 +67,7 @@ pub fn handler(ctx: Context<CheckOracle>, oracle_round: u64) -> Result<()> {
     require!(oracle_delay_min % 10 == 0, OpenParamError::OracleFormat);
 
     if oracle_delay_min >= policy.delay_threshold_min as i64 {
+        // 임계치 이상이면 Claim 계정을 생성/기록하고 정책 상태를 Claimable로 바꾼다.
         let claim = &mut ctx.accounts.claim;
         claim.policy = policy.key();
         claim.oracle_round = oracle_round;
