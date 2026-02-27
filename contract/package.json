@@ -1,0 +1,31 @@
+{
+  "license": "UNLICENSED",
+  "scripts": {
+    "test": "ts-mocha -p ./tsconfig.json -t 1000000 tests/*.ts",
+    "demo:setup": "ts-node -P tsconfig.json scripts/1-setup.ts",
+    "demo:create-policy": "ts-node -P tsconfig.json scripts/2-create-policy.ts",
+    "demo:open-uw": "ts-node -P tsconfig.json scripts/3-open-underwriting.ts",
+    "demo:accept-shares": "ts-node -P tsconfig.json scripts/4-accept-shares.ts",
+    "demo:activate": "ts-node -P tsconfig.json scripts/5-activate.ts",
+    "demo:expire": "ts-node -P tsconfig.json scripts/6-expire.ts",
+    "demo:refund": "ts-node -P tsconfig.json scripts/7-refund.ts",
+    "demo:oracle-feed-create": "ts-node -P tsconfig.json scripts/oracle-feed-create.ts",
+    "demo:oracle-resolve": "ts-node -P tsconfig.json scripts/oracle-resolve.ts",
+    "demo:oracle-claim": "ts-node -P tsconfig.json scripts/oracle-claim.ts"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "0.32.1",
+    "@solana/spl-token": "^0.4.9",
+    "@solana/web3.js": "^1.98.0",
+    "@switchboard-xyz/on-demand": "^3.9.0"
+  },
+  "devDependencies": {
+    "@types/chai": "^4",
+    "@types/mocha": "^10",
+    "chai": "^4",
+    "mocha": "^10",
+    "ts-mocha": "^10",
+    "ts-node": "^10",
+    "typescript": "^5"
+  }
+}

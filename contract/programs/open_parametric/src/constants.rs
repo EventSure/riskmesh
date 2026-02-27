@@ -13,7 +13,9 @@ pub const POLICY_SPACE: usize = 260;
 pub const UNDERWRITING_SPACE: usize = 1292;
 pub const RISK_POOL_SPACE: usize = 122;
 pub const CLAIM_SPACE: usize = 106;
-pub const REGISTRY_SPACE: usize = 13000;
+// create_policy에서 Policy(260)+UW(1292)+Pool(122)+Registry를 한 트랜잭션에 init.
+// Solana CPI 내 누적 데이터 증가 한도 10240 bytes → Registry는 8566 이하여야 함.
+pub const REGISTRY_SPACE: usize = 8192;
 
 // Generous buffer to simplify migration; can be tightened after schema finalization.
 pub const MASTER_POLICY_SPACE: usize = 4096;
