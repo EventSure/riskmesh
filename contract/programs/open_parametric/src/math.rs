@@ -76,6 +76,7 @@ pub fn split_by_bps(total: u64, ratios_bps: &[u16]) -> Result<Vec<u64>, OpenPara
     Ok(out)
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -113,4 +114,5 @@ mod tests {
         let parts2 = split_by_bps(1, &[5_000, 3_000, 2_000]).unwrap();
         assert_eq!(parts2.iter().sum::<u64>(), 1);
     }
+
 }

@@ -7,6 +7,7 @@ export function ClaimSettlementTable() {
   const { totalClaim, shares, cededRatioBps, reinsCommissionBps } = useProtocolStore();
   const lS = shares.leader / 100, aS = shares.partA / 100, bS = shares.partB / 100;
   const ceded = cededRatioBps / 10000;
+  const retained = 1 - ceded;
   const commRate = reinsCommissionBps / 10000;
 
   const rows = [
@@ -16,13 +17,13 @@ export function ClaimSettlementTable() {
   ].map(r => {
     const gross = totalClaim * r.s;
     const rc = gross * ceded;
-    const comm = totalClaim * commRate * r.s;
+    const comm = rc * commRate;
     const net = gross - rc + comm;
     return { ...r, gross, rc, comm, net };
   });
 
   const rcIn = totalClaim * ceded;
-  const rcOut = totalClaim * commRate;
+  const rcOut = rcIn * commRate;
 
   return (
     <Card>
@@ -36,7 +37,7 @@ export function ClaimSettlementTable() {
             {rows.map(r => (
               <tr key={r.label}>
                 <td>{r.label}</td>
-                <td>{formatNum(r.s * 100, 0)}%</td>
+                <td>{formatNum(r.s * retained * 100, 0)}%</td>
                 <td style={{ color: 'var(--danger)' }}>{formatNum(r.gross, 4)}</td>
                 <td style={{ color: 'var(--info)' }}>{formatNum(r.rc, 4)}</td>
                 <td style={{ color: 'var(--warning)' }}>{formatNum(r.comm, 4)}</td>

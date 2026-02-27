@@ -136,7 +136,10 @@ export const vaultPDA = () => fakePubkey('vault_' + poolPDA());
 export const ledgerPDA = () => fakePubkey('ledger_' + masterPDA());
 
 export const formatNum = (n: number, d = 2) =>
-  Number(n).toFixed(d).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: d,
+    maximumFractionDigits: d,
+  }).format(Number(n));
 
 export const getRoleLabel = (role: Role): string => i18n.t(`role.${role}Short`);
 
@@ -293,12 +296,12 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
     const bS = st.shares.partB / 100;
     const ceded = st.cededRatioBps / 10000;
     const comm = st.reinsCommissionBps / 10000;
+    const reinsEff = ceded * (1 - comm);
     const lRaw = lS, aRaw = aS, bRaw = bS;
-    const lToR = lRaw * ceded, aToR = aRaw * ceded, bToR = bRaw * ceded;
-    const lNet = lRaw - lToR + comm * lS;
-    const aNet = aRaw - aToR + comm * aS;
-    const bNet = bRaw - bToR + comm * bS;
-    const rNet = (lToR + aToR + bToR) - comm;
+    const lNet = lRaw * (1 - reinsEff);
+    const aNet = aRaw * (1 - reinsEff);
+    const bNet = bRaw * (1 - reinsEff);
+    const rNet = reinsEff;
 
     const ct: Contract = { id: newCnt, name, flight, date, lNet, aNet, bNet, rNet, status: 'active', ts: nowDate() };
     set(prev => ({
@@ -351,16 +354,16 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
     if (contract.status === 'claimed') return { ok: false, msg: i18n.t('store.alreadyClaimed', { id: contractId }), type: 'error' as const, code: 'E_ALREADY_CLAIMED' };
     const ceded = st.cededRatioBps / 10000;
     const commRate = st.reinsCommissionBps / 10000;
+    const reinsEff = ceded * (1 - commRate);
     const newClCnt = st.claimCount + 1;
     const payout = tier.p;
     const lS = st.shares.leader / 100, aS = st.shares.partA / 100, bS = st.shares.partB / 100;
-    const lPay = payout * lS, aPay = payout * aS, bPay = payout * bS;
-    const lRC = lPay * ceded, aRC = aPay * ceded, bRC = bPay * ceded, totRC = lRC + aRC + bRC;
-    const clComm = payout * commRate;
-    const lNet = lPay - lRC + clComm * lS;
-    const aNet = aPay - aRC + clComm * aS;
-    const bNet = bPay - bRC + clComm * bS;
-    const rNet = totRC - clComm;
+    const insurerEff = 1 - reinsEff;
+    const totRC = payout * reinsEff;
+    const lNet = payout * insurerEff * lS;
+    const aNet = payout * insurerEff * aS;
+    const bNet = payout * insurerEff * bS;
+    const rNet = totRC;
 
     const cl: Claim = {
       id: newClCnt, contractId, name: contract?.name || i18n.t('store.defaultName'), flight: contract?.flight || '—',
@@ -479,12 +482,12 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
     const bS = st.shares.partB / 100;
     const ceded = st.cededRatioBps / 10000;
     const comm = st.reinsCommissionBps / 10000;
+    const reinsEff = ceded * (1 - comm);
     const lRaw = lS, aRaw = aS, bRaw = bS;
-    const lToR = lRaw * ceded, aToR = aRaw * ceded, bToR = bRaw * ceded;
-    const lNet = lRaw - lToR + comm * lS;
-    const aNet = aRaw - aToR + comm * aS;
-    const bNet = bRaw - bToR + comm * bS;
-    const rNet = (lToR + aToR + bToR) - comm;
+    const lNet = lRaw * (1 - reinsEff);
+    const aNet = aRaw * (1 - reinsEff);
+    const bNet = bRaw * (1 - reinsEff);
+    const rNet = reinsEff;
 
     const ct: Contract = { id, name, flight, date, lNet, aNet, bNet, rNet, status: 'active', ts: nowDate() };
     set(prev => ({
@@ -527,16 +530,16 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
 
     const ceded = st.cededRatioBps / 10000;
     const commRate = st.reinsCommissionBps / 10000;
+    const reinsEff = ceded * (1 - commRate);
     const newClCnt = st.claimCount + 1;
     const payout = tier.p;
     const lS = st.shares.leader / 100, aS = st.shares.partA / 100, bS = st.shares.partB / 100;
-    const lPay = payout * lS, aPay = payout * aS, bPay = payout * bS;
-    const lRC = lPay * ceded, aRC = aPay * ceded, bRC = bPay * ceded, totRC = lRC + aRC + bRC;
-    const clComm = payout * commRate;
-    const lNet = lPay - lRC + clComm * lS;
-    const aNet = aPay - aRC + clComm * aS;
-    const bNet = bPay - bRC + clComm * bS;
-    const rNet = totRC - clComm;
+    const insurerEff = 1 - reinsEff;
+    const totRC = payout * reinsEff;
+    const lNet = payout * insurerEff * lS;
+    const aNet = payout * insurerEff * aS;
+    const bNet = payout * insurerEff * bS;
+    const rNet = totRC;
 
     const cl: Claim = {
       id: newClCnt, contractId, name: contract.name, flight: contract.flight,

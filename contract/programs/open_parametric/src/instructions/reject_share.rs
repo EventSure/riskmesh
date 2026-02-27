@@ -17,6 +17,7 @@ pub fn handler(ctx: Context<RejectShare>, index: u8) -> Result<()> {
     let policy = &ctx.accounts.policy;
     let uw = &mut ctx.accounts.underwriting;
 
+    // 참여 거절은 Open 상태에서 Pending 참여자만 가능하다.
     require!(policy.state == PolicyState::Open as u8, OpenParamError::InvalidState);
 
     let i = index as usize;

@@ -7,6 +7,7 @@ export function PremiumSettlementTable() {
   const { totalPremium, shares, cededRatioBps, reinsCommissionBps } = useProtocolStore();
   const lS = shares.leader / 100, aS = shares.partA / 100, bS = shares.partB / 100;
   const ceded = cededRatioBps / 10000;
+  const retained = 1 - ceded;
   const commRate = reinsCommissionBps / 10000;
 
   const rows = [
@@ -16,13 +17,13 @@ export function PremiumSettlementTable() {
   ].map(r => {
     const raw = totalPremium * r.s;
     const toR = raw * ceded;
-    const comm = totalPremium * commRate * r.s;
+    const comm = toR * commRate;
     const net = raw - toR + comm;
     return { ...r, raw, toR, comm, net };
   });
 
   const rIn = totalPremium * ceded;
-  const rOut = totalPremium * commRate;
+  const rOut = rIn * commRate;
 
   return (
     <Card>
@@ -36,7 +37,7 @@ export function PremiumSettlementTable() {
             {rows.map(r => (
               <tr key={r.label}>
                 <td>{r.label}</td>
-                <td>{formatNum(r.s * 100, 0)}%</td>
+                <td>{formatNum(r.s * retained * 100, 0)}%</td>
                 <td>{formatNum(r.raw, 4)}</td>
                 <td style={{ color: 'var(--info)' }}>{formatNum(r.toR, 4)}</td>
                 <td style={{ color: 'var(--accent)' }}>{formatNum(r.comm, 4)}</td>
