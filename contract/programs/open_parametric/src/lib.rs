@@ -9,8 +9,7 @@ pub mod state;
 use instructions::*;
 use state::*;
 
-// TODO: Replace with actual program id after `anchor keys list`
-declare_id!("3dBd52Do2ZBbaMboLyuVZSJTupAFKGoorEydQ6MkfiPL");
+declare_id!("BXxqMY3f9y7dzvoQWJjhX95GMEyuRjD61kgfgherhSX7");
 
 #[program]
 pub mod open_parametric {
