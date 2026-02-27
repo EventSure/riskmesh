@@ -105,7 +105,7 @@ export function ContractForm() {
           <FormInput value={`${premiumPerPolicy} USDC`} readOnly style={{ opacity: 0.6, fontFamily: "'DM Mono', monospace" }} />
         </FormGroup>
         <Divider />
-        <Button variant="primary" fullWidth onClick={handleAdd} disabled={!masterActive || loading} style={{ marginBottom: 6 }}>
+        <Button variant="primary" fullWidth onClick={handleAdd} disabled={!masterActive || loading} style={{ marginBottom: 6 }} data-guide="create-contract-btn">
           {loading ? 'Sending TX...' : t('feed.addBtn')}
         </Button>
         {mode !== 'onchain' && (

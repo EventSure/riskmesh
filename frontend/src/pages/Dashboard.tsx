@@ -6,6 +6,7 @@ import { TabFeed } from '@/components/tabs/tab-feed/TabFeed';
 import { TabOracle } from '@/components/tabs/tab-oracle/TabOracle';
 import { TabSettlement } from '@/components/tabs/tab-settlement/TabSettlement';
 import { TabInspector } from '@/components/tabs/tab-inspector/TabInspector';
+import { GuideTour } from '@/components/guide/GuideTour';
 
 const TabContent = styled.div<{ visible: boolean }>`
   display: ${p => (p.visible ? 'flex' : 'none')};
@@ -24,6 +25,7 @@ export function Dashboard() {
       <TabContent visible={activeTab === 'tab-oracle'}><TabOracle /></TabContent>
       <TabContent visible={activeTab === 'tab-settlement'}><TabSettlement /></TabContent>
       <TabContent visible={activeTab === 'tab-inspector'}><TabInspector /></TabContent>
+      <GuideTour activeTab={activeTab} />
     </>
   );
 }

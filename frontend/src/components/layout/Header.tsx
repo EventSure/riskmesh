@@ -9,6 +9,7 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useProgram } from '@/hooks/useProgram';
 import { useNavigate } from 'react-router-dom';
 import { MasterPolicyDropdown } from './MasterPolicyDropdown';
+import { useGuideTour } from '@/components/guide/useGuideTour';
 
 const blink = keyframes`
   0%, 100% { opacity: 1 }
@@ -146,6 +147,33 @@ const SelectBase = styled.select`
 
 /* ── Wallet Button Override ── */
 
+const guideGlow = keyframes`
+  0%, 100% { box-shadow: 0 0 4px rgba(153,69,255,0.3); }
+  50% { box-shadow: 0 0 12px rgba(153,69,255,0.6); }
+`;
+
+const GuideBtn = styled.button`
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(153, 69, 255, 0.4);
+  background: rgba(153, 69, 255, 0.1);
+  color: #9945FF;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  animation: ${guideGlow} 2s ease-in-out infinite;
+
+  &:hover {
+    background: rgba(153, 69, 255, 0.2);
+    transform: scale(1.1);
+  }
+`;
+
 const WalletWrap = styled.div<{ dimmed?: boolean }>`
   opacity: ${p => p.dimmed ? 0.4 : 1};
   transition: opacity 0.2s;
@@ -231,6 +259,7 @@ export function Header() {
   const { t, i18n } = useTranslation();
   const { connected } = useProgram();
   const navigate = useNavigate();
+  const { startTour } = useGuideTour();
 
   const ROLE_OPTIONS: { value: Role; label: string }[] = [
     { value: 'leader', label: t('role.leader') },
@@ -274,6 +303,7 @@ export function Header() {
           </div>
         </Logo>
         <HeaderRight>
+          <GuideBtn onClick={startTour} title="Guide Tour">?</GuideBtn>
           <ModeToggleWrap>
             <ModeBtn
               variant="sim"
@@ -293,7 +323,7 @@ export function Header() {
             </ModeBtn>
           </ModeToggleWrap>
           <MasterPolicyDropdown />
-          <SelectBase value={role} onChange={handleRoleChange}>
+          <SelectBase value={role} onChange={handleRoleChange} data-guide="role-select">
             {ROLE_OPTIONS.map(o => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
