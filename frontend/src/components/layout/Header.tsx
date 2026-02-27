@@ -148,29 +148,29 @@ const SelectBase = styled.select`
 /* ── Wallet Button Override ── */
 
 const guideGlow = keyframes`
-  0%, 100% { box-shadow: 0 0 4px rgba(153,69,255,0.3); }
-  50% { box-shadow: 0 0 12px rgba(153,69,255,0.6); }
+  0%, 100% { box-shadow: 0 0 4px rgba(20,241,149,0.3); }
+  50% { box-shadow: 0 0 12px rgba(20,241,149,0.5); }
 `;
 
 const GuideBtn = styled.button`
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  border: 1px solid rgba(153, 69, 255, 0.4);
-  background: rgba(153, 69, 255, 0.1);
-  color: #9945FF;
-  font-size: 13px;
-  font-weight: 800;
+  padding: 2px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(20, 241, 149, 0.4);
+  background: rgba(20, 241, 149, 0.08);
+  color: #14F195;
+  font-size: 10px;
+  font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
   animation: ${guideGlow} 2s ease-in-out infinite;
+  white-space: nowrap;
 
   &:hover {
-    background: rgba(153, 69, 255, 0.2);
-    transform: scale(1.1);
+    background: rgba(20, 241, 149, 0.18);
+    transform: scale(1.05);
   }
 `;
 
@@ -303,7 +303,7 @@ export function Header() {
           </div>
         </Logo>
         <HeaderRight>
-          <GuideBtn onClick={startTour} title="Guide Tour">?</GuideBtn>
+          <GuideBtn onClick={startTour} title="Guide Tour">Guide</GuideBtn>
           <ModeToggleWrap>
             <ModeBtn
               variant="sim"
