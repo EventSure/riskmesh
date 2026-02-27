@@ -16,12 +16,14 @@ pub struct RegisterParticipantWallets<'info> {
 
 pub fn handler(ctx: Context<RegisterParticipantWallets>) -> Result<()> {
     let master = &mut ctx.accounts.master_policy;
+    // 활성 이후에는 정산 지갑 정보를 바꿀 수 없도록 막는다.
     require!(master.status != MasterPolicyStatus::Closed as u8, OpenParamError::InvalidState);
     require!(master.status != MasterPolicyStatus::Cancelled as u8, OpenParamError::InvalidState);
     require!(master.status != MasterPolicyStatus::Active as u8, OpenParamError::InvalidState);
     require!(ctx.accounts.pool_wallet.mint == master.currency_mint, OpenParamError::InvalidInput);
     require!(ctx.accounts.deposit_wallet.mint == master.currency_mint, OpenParamError::InvalidInput);
 
+    // signer와 매칭되는 참여자를 찾아 pool/deposit 정산 지갑을 기록한다.
     let idx = master
         .participants
         .iter()

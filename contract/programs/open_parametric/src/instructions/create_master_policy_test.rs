@@ -7,6 +7,7 @@ use super::create_master_policy::validate_master_participants;
 
 #[test]
 fn master_participants_require_10000_bps_and_include_leader() {
+    // 총 지분 100% + 리더 포함 조건을 만족하면 검증 통과.
     let leader = Pubkey::new_unique();
     let participants = vec![
         MasterParticipantInit {
@@ -27,6 +28,7 @@ fn master_participants_require_10000_bps_and_include_leader() {
 
 #[test]
 fn master_participants_reject_missing_leader_or_invalid_sum() {
+    // 리더 누락 또는 지분 합계 오류는 각각 실패해야 한다.
     let leader = Pubkey::new_unique();
     let missing_leader = vec![
         MasterParticipantInit {

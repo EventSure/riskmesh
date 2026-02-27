@@ -19,6 +19,7 @@ pub fn approve_handler(ctx: Context<ApproveClaim>) -> Result<()> {
     let policy = &mut ctx.accounts.policy;
     let claim = &mut ctx.accounts.claim;
 
+    // 리더 승인 단계: Claimable -> Approved 로 상태를 올린다.
     require!(policy.state == PolicyState::Claimable as u8, OpenParamError::InvalidState);
     require!(claim.status == ClaimStatus::Claimable as u8, OpenParamError::InvalidState);
 
@@ -51,6 +52,7 @@ pub fn settle_handler(ctx: Context<SettleClaim>) -> Result<()> {
     let policy = &mut ctx.accounts.policy;
     let claim = &mut ctx.accounts.claim;
 
+    // 정산 단계: 승인된 청구만 풀 잔액 범위에서 지급한다.
     require!(policy.state == PolicyState::Approved as u8, OpenParamError::InvalidState);
     require!(claim.status == ClaimStatus::Approved as u8, OpenParamError::InvalidState);
     require!(
@@ -70,6 +72,7 @@ pub fn settle_handler(ctx: Context<SettleClaim>) -> Result<()> {
         &[ctx.accounts.risk_pool.bump],
     ];
     let signer = &[&seeds[..]];
+    // RiskPool PDA 서명으로 vault -> 수익자 토큰계정으로 이체한다.
     let cpi_ctx = CpiContext::new_with_signer(
         ctx.accounts.token_program.to_account_info(),
         Transfer {

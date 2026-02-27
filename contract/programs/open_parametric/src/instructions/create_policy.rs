@@ -74,6 +74,7 @@ pub fn handler(ctx: Context<CreatePolicy>, params: CreatePolicyParams) -> Result
         participants,
     } = params;
 
+    // 정책 생성 입력 검증(기간/금액/지연 임계치/문자열 길이/참여자 지분).
     require!(active_from < active_to, OpenParamError::InvalidTimeWindow);
     require!(payout_amount > 0, OpenParamError::InvalidAmount);
     require!(delay_threshold_min == DELAY_THRESHOLD_MIN, OpenParamError::InvalidDelayThreshold);
@@ -81,6 +82,7 @@ pub fn handler(ctx: Context<CreatePolicy>, params: CreatePolicyParams) -> Result
     require!(flight_no.len() <= MAX_FLIGHT_NO_LEN, OpenParamError::InputTooLong);
     let total_ratio = validate_policy_participants(&participants)?;
 
+    // Policy 본문 필드를 초기화한다.
     policy.policy_id = policy_id;
     policy.leader = ctx.accounts.leader.key();
     policy.route = route;
@@ -98,6 +100,7 @@ pub fn handler(ctx: Context<CreatePolicy>, params: CreatePolicyParams) -> Result
     policy.active_to = active_to;
     policy.bump = ctx.bumps.policy;
 
+    // Underwriting은 참여자 지분과 초기 상태(Proposed)를 저장한다.
     uw.policy = policy.key();
     uw.leader = policy.leader;
     uw.participants = participants
@@ -115,6 +118,7 @@ pub fn handler(ctx: Context<CreatePolicy>, params: CreatePolicyParams) -> Result
     uw.created_at = policy.created_at;
     uw.bump = ctx.bumps.underwriting;
 
+    // RiskPool은 금고(vault) 기준으로 잔액 상태를 0에서 시작한다.
     pool.policy = policy.key();
     pool.currency_mint = ctx.accounts.currency_mint.key();
     pool.vault = ctx.accounts.vault.key();
@@ -123,6 +127,7 @@ pub fn handler(ctx: Context<CreatePolicy>, params: CreatePolicyParams) -> Result
     pool.status = 0;
     pool.bump = ctx.bumps.risk_pool;
 
+    // Registry는 빈 엔트리로 시작한다.
     registry.policy = policy.key();
     registry.entries = vec![];
     registry.bump = ctx.bumps.registry;
@@ -133,6 +138,7 @@ pub fn handler(ctx: Context<CreatePolicy>, params: CreatePolicyParams) -> Result
 pub(crate) fn validate_policy_participants(
     participants: &[ParticipantInit],
 ) -> std::result::Result<u16, OpenParamError> {
+    // 참여자 지분 총합은 반드시 10000bps여야 한다.
     if participants.len() > MAX_PARTICIPANTS {
         return Err(OpenParamError::InvalidInput);
     }

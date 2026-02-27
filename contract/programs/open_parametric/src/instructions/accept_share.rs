@@ -25,6 +25,7 @@ pub fn handler(ctx: Context<AcceptShare>, index: u8, deposit_amount: u64) -> Res
     let policy = &mut ctx.accounts.policy;
     let uw = &mut ctx.accounts.underwriting;
 
+    // 언더라이팅 참여 수락 전에 계정/상태 일관성을 먼저 검증한다.
     require!(policy.state == PolicyState::Open as u8, OpenParamError::InvalidState);
     require!(policy.underwriting == uw.key(), OpenParamError::InvalidInput);
     require!(policy.pool == ctx.accounts.risk_pool.key(), OpenParamError::InvalidInput);
@@ -48,6 +49,7 @@ pub fn handler(ctx: Context<AcceptShare>, index: u8, deposit_amount: u64) -> Res
     let required = calc_required_deposit(policy.payout_amount, share.ratio_bps)?;
     require!(deposit_amount >= required, OpenParamError::InsufficientEscrow);
 
+    // 참여자 지갑에서 풀 금고(vault)로 담보금을 이체한다.
     let cpi_ctx = CpiContext::new(
         ctx.accounts.token_program.to_account_info(),
         Transfer {
@@ -76,6 +78,7 @@ pub fn handler(ctx: Context<AcceptShare>, index: u8, deposit_amount: u64) -> Res
 
     let accepted_sum = calc_accepted_ratio_sum(&uw.participants)?;
     require!(accepted_sum <= 10000, OpenParamError::InvalidRatio);
+    // 전체 지분이 100%가 되면 언더라이팅을 완료 상태로 전환한다.
     if accepted_sum == 10000 {
         uw.status = UnderwritingStatus::Finalized as u8;
         policy.state = PolicyState::Funded as u8;
@@ -88,6 +91,7 @@ pub(crate) fn calc_required_deposit(
     payout_amount: u64,
     ratio_bps: u16,
 ) -> std::result::Result<u64, OpenParamError> {
+    // 보장금액 * 지분율(BPS)로 최소 예치금을 계산한다.
     if ratio_bps == 0 || ratio_bps > 10_000 {
         return Err(OpenParamError::InvalidRatio);
     }
@@ -100,6 +104,7 @@ pub(crate) fn calc_required_deposit(
 pub(crate) fn calc_accepted_ratio_sum(
     participants: &[ParticipantShare],
 ) -> std::result::Result<u32, OpenParamError> {
+    // Accepted 상태인 참여자 지분만 합산한다.
     let mut sum: u32 = 0;
     for p in participants {
         if p.status == ParticipantStatus::Accepted as u8 {

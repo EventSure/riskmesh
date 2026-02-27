@@ -30,6 +30,7 @@ pub struct CreateFlightPolicyFromMaster<'info> {
 
 pub fn handler(ctx: Context<CreateFlightPolicyFromMaster>, params: CreateFlightPolicyParams) -> Result<()> {
     let master = &ctx.accounts.master_policy;
+    // 마스터 활성 상태/호출 권한/입력 길이를 먼저 검증한다.
     require!(master.status == MasterPolicyStatus::Active as u8, OpenParamError::MasterNotActive);
     require!(ctx.accounts.creator.key() == master.leader || ctx.accounts.creator.key() == master.operator, OpenParamError::Unauthorized);
     require!(params.subscriber_ref.len() <= MAX_SUBSCRIBER_REF_LEN, OpenParamError::InputTooLong);
@@ -41,6 +42,7 @@ pub fn handler(ctx: Context<CreateFlightPolicyFromMaster>, params: CreateFlightP
     require!(ctx.accounts.payer_token.mint == master.currency_mint, OpenParamError::InvalidInput);
     require!(ctx.accounts.leader_deposit_token.mint == master.currency_mint, OpenParamError::InvalidInput);
 
+    // 가입 프리미엄은 생성자 지갑에서 leader_deposit 지갑으로 선납된다.
     let transfer_ctx = CpiContext::new(
         ctx.accounts.token_program.to_account_info(),
         Transfer {
@@ -51,6 +53,7 @@ pub fn handler(ctx: Context<CreateFlightPolicyFromMaster>, params: CreateFlightP
     );
     token::transfer(transfer_ctx, master.premium_per_policy)?;
 
+    // Child(Flight) 정책 스냅샷을 생성 시점 값으로 초기화한다.
     let now = Clock::get()?.unix_timestamp;
     let flight = &mut ctx.accounts.flight_policy;
     flight.child_policy_id = params.child_policy_id;

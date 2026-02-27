@@ -7,12 +7,14 @@ use super::accept_share::{calc_accepted_ratio_sum, calc_required_deposit};
 
 #[test]
 fn required_deposit_is_calculated_by_ratio() {
+    // 80 USDC 보장금액에서 30% 지분이면 24 USDC를 예치해야 한다.
     let required = calc_required_deposit(80_000_000, 3_000).unwrap();
     assert_eq!(required, 24_000_000);
 }
 
 #[test]
 fn required_deposit_rejects_invalid_ratio() {
+    // 0bps, 10000bps 초과는 잘못된 지분율이다.
     assert!(matches!(
         calc_required_deposit(80_000_000, 0),
         Err(OpenParamError::InvalidRatio)
@@ -25,6 +27,7 @@ fn required_deposit_rejects_invalid_ratio() {
 
 #[test]
 fn accepted_ratio_sum_counts_only_accepted_participants() {
+    // Accepted 상태의 지분만 합산되는지 확인한다.
     let participants = vec![
         ParticipantShare {
             insurer: Pubkey::new_unique(),

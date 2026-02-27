@@ -1,3 +1,4 @@
+// 인스트럭션별 실행 로직 모듈
 pub mod accept_share;
 pub mod activate_master;
 pub mod activate_policy;
@@ -16,6 +17,7 @@ pub mod resolve_flight_delay;
 pub mod settle_flight_claim;
 pub mod settle_flight_no_claim;
 
+// 인스트럭션별 단위 테스트 모듈
 #[cfg(test)]
 mod accept_share_test;
 #[cfg(test)]

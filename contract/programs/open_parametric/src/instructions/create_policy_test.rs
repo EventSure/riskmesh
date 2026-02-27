@@ -7,6 +7,7 @@ use super::create_policy::validate_policy_participants;
 
 #[test]
 fn policy_participant_ratio_must_sum_to_10000() {
+    // 참여사 지분 합계가 10000bps면 유효하다.
     let participants = vec![
         ParticipantInit {
             insurer: Pubkey::new_unique(),
@@ -26,6 +27,7 @@ fn policy_participant_ratio_must_sum_to_10000() {
 
 #[test]
 fn policy_participant_ratio_rejects_invalid_sum() {
+    // 합계가 10000bps가 아니면 InvalidRatio를 반환해야 한다.
     let participants = vec![
         ParticipantInit {
             insurer: Pubkey::new_unique(),

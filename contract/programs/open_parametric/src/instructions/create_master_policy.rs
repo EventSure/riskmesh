@@ -36,6 +36,7 @@ pub struct CreateMasterPolicy<'info> {
 pub fn handler(ctx: Context<CreateMasterPolicy>, params: CreateMasterPolicyParams) -> Result<()> {
     let master = &mut ctx.accounts.master_policy;
 
+    // 마스터 계약 생성 시점 기본 유효성 검증.
     require!(params.coverage_start_ts < params.coverage_end_ts, OpenParamError::InvalidTimeWindow);
     require!(params.premium_per_policy > 0, OpenParamError::InvalidAmount);
     validate_master_participants(&params.participants, ctx.accounts.leader.key())?;
@@ -44,6 +45,7 @@ pub fn handler(ctx: Context<CreateMasterPolicy>, params: CreateMasterPolicyParam
     require!(ctx.accounts.reinsurer_pool_wallet.mint == ctx.accounts.currency_mint.key(), OpenParamError::InvalidInput);
     require!(ctx.accounts.reinsurer_deposit_wallet.mint == ctx.accounts.currency_mint.key(), OpenParamError::InvalidInput);
 
+    // 재보험 실효 지분율(출재율 - 수수료 반영)을 사전에 계산해 저장한다.
     let eff_reinsurer_bps = effective_reinsurer_bps(params.ceded_ratio_bps, params.reins_commission_bps)?;
 
     master.master_id = params.master_id;
@@ -68,6 +70,7 @@ pub fn handler(ctx: Context<CreateMasterPolicy>, params: CreateMasterPolicyParam
     master.status = MasterPolicyStatus::PendingConfirm as u8;
     master.created_at = Clock::get()?.unix_timestamp;
     master.bump = ctx.bumps.master_policy;
+    // 참여사 목록은 지분/확인여부/정산지갑 정보를 포함한 내부 구조로 변환한다.
     master.participants = params
         .participants
         .into_iter()
@@ -87,6 +90,7 @@ pub(crate) fn validate_master_participants(
     participants: &[MasterParticipantInit],
     leader: Pubkey,
 ) -> std::result::Result<(), OpenParamError> {
+    // 참여자 수, 총 지분 10000bps, 리더 포함 여부를 검증한다.
     if participants.is_empty() || participants.len() > MAX_MASTER_PARTICIPANTS {
         return Err(OpenParamError::InvalidInput);
     }
