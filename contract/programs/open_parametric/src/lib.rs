@@ -10,7 +10,7 @@ use instructions::*;
 use state::*;
 
 // TODO: Replace with actual program id after `anchor keys list`
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("3dBd52Do2ZBbaMboLyuVZSJTupAFKGoorEydQ6MkfiPL");
 
 #[program]
 pub mod open_parametric {
@@ -100,11 +100,11 @@ pub mod open_parametric {
         instructions::resolve_flight_delay::handler(ctx, delay_minutes, cancelled)
     }
 
-    pub fn settle_flight_claim(ctx: Context<SettleFlightClaim>) -> Result<()> {
+    pub fn settle_flight_claim<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightClaim<'a>>) -> Result<()> {
         instructions::settle_flight_claim::handler(ctx)
     }
 
-    pub fn settle_flight_no_claim(ctx: Context<SettleFlightNoClaim>) -> Result<()> {
+    pub fn settle_flight_no_claim<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightNoClaim<'a>>) -> Result<()> {
         instructions::settle_flight_no_claim::handler(ctx)
     }
 }

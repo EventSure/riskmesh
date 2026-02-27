@@ -4,8 +4,10 @@ import { useTranslation } from 'react-i18next';
 
 export function ClaimSettlementTable() {
   const { t } = useTranslation();
-  const { totalClaim, shares } = useProtocolStore();
+  const { totalClaim, shares, cededRatioBps, reinsCommissionBps } = useProtocolStore();
   const lS = shares.leader / 100, aS = shares.partA / 100, bS = shares.partB / 100;
+  const ceded = cededRatioBps / 10000;
+  const commRate = reinsCommissionBps / 10000;
 
   const rows = [
     { label: t('settle.party.leader'), s: lS },
@@ -13,14 +15,14 @@ export function ClaimSettlementTable() {
     { label: t('settle.party.partB'), s: bS },
   ].map(r => {
     const gross = totalClaim * r.s;
-    const rc = gross * 0.5;
-    const comm = totalClaim * 0.1 * r.s;
+    const rc = gross * ceded;
+    const comm = totalClaim * commRate * r.s;
     const net = gross - rc + comm;
     return { ...r, gross, rc, comm, net };
   });
 
-  const rcIn = totalClaim * 0.5;
-  const rcOut = totalClaim * 0.1;
+  const rcIn = totalClaim * ceded;
+  const rcOut = totalClaim * commRate;
 
   return (
     <Card>
@@ -43,7 +45,7 @@ export function ClaimSettlementTable() {
             ))}
             <tr className="trein">
               <td>{t('settle.party.reinsurer')}</td>
-              <td>50%</td>
+              <td>{formatNum(ceded * 100, 0)}%</td>
               <td style={{ color: 'var(--info)' }}>-{formatNum(rcIn, 4)}</td>
               <td>—</td>
               <td style={{ color: 'var(--accent)' }}>+{formatNum(rcOut, 4)}</td>
