@@ -11,7 +11,7 @@ import { useProgram } from '@/hooks/useProgram';
 import { ConfirmRole } from '@/lib/idl/open_parametric';
 import { CURRENCY_MINT } from '@/lib/constants';
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { getDemoKeypair } from '@/lib/demo-keypairs';
+import { getDemoKeypair, getPoolWallet } from '@/lib/demo-keypairs';
 
 const ParticipantRow = styled.div<{ confirmed?: boolean }>`
   background: var(--card2);
@@ -83,7 +83,7 @@ export function ParticipantConfirm() {
     }
 
     if (key === 'rein') {
-      // TODO.demo: leader=reinsurer — reinsurer confirms using the connected wallet (Phantom)
+      // demo: leader=reinsurer — reinsurer confirms using the connected wallet (Phantom)
       if (!provider) { toast('No provider — connect wallet', 'd'); return; }
       setConfirmLoading(true);
       try {
@@ -107,7 +107,7 @@ export function ParticipantConfirm() {
       return;
     }
 
-    // TODO.demo: partA/partB는 데모용 인메모리 키페어로 프로그래밍 방식 서명
+    // demo: partA/partB는 데모용 인메모리 키페어로 프로그래밍 방식 서명
     // 실제 환경에서는 각 참여사가 자체 지갑(Phantom 등)으로 직접 서명해야 함
     const demoKp = getDemoKeypair(key);
     if (!demoKp) {
@@ -121,9 +121,14 @@ export function ParticipantConfirm() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const prog = program as any;
 
-      // TODO.demo: 데모에서는 leader의 ATA를 pool/deposit 지갑으로 사용
-      // 실제 환경에서는 각 participant의 고유 ATA 필요
-      const ata = await getAssociatedTokenAddress(CURRENCY_MINT, demoKp.publicKey);
+      // deposit wallet = 참여사의 ATA, pool wallet = PDA-owned (handleSetTerms에서 생성됨)
+      const depositAta = await getAssociatedTokenAddress(CURRENCY_MINT, demoKp.publicKey);
+      const poolWallet = getPoolWallet(key);
+      if (!poolWallet) {
+        toast('Pool wallet not found — create master policy first', 'd');
+        setConfirmLoading(false);
+        return;
+      }
 
       // Build register_participant_wallets instruction
       const regIx = await prog.methods
@@ -131,8 +136,8 @@ export function ParticipantConfirm() {
         .accounts({
           insurer: demoKp.publicKey,
           masterPolicy: masterPubkey,
-          poolWallet: ata,
-          depositWallet: ata,
+          poolWallet,
+          depositWallet: depositAta,
           tokenProgram: TOKEN_PROGRAM_ID,
         })
         .instruction();
@@ -146,7 +151,7 @@ export function ParticipantConfirm() {
         })
         .instruction();
 
-      // TODO.demo: 데모 키페어로 프로그래밍 방식 서명 — Phantom 팝업 없음
+      // demo: 데모 키페어로 프로그래밍 방식 서명 — Phantom 팝업 없음
       // 실제 환경에서는 각 participant가 자체 지갑으로 서명
       const tx = new Transaction().add(regIx, confirmIx);
       tx.feePayer = demoKp.publicKey;

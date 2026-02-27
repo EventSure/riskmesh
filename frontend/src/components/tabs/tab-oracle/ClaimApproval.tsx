@@ -1,11 +1,8 @@
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import { getAssociatedTokenAddress } from '@solana/spl-token';
 import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardBody, Button, SummaryRow, Divider } from '@/components/common';
 import { useProtocolStore } from '@/store/useProtocolStore';
-import { CURRENCY_MINT } from '@/lib/constants';
-import { getDemoKeypair } from '@/lib/demo-keypairs';
 import { useToast } from '@/components/common';
 import { useSettleFlight } from '@/hooks/useSettleFlight';
 import { useProgram } from '@/hooks/useProgram';
@@ -15,8 +12,8 @@ export function ClaimApproval() {
   const { t } = useTranslation();
   const { mode, role, claims, masterPolicyPDA, approveClaims, settleClaims, onChainSettle } = useProtocolStore();
   const { toast } = useToast();
-  const { settleFlightClaim, loading } = useSettleFlight();
-  const { wallet } = useProgram();
+  const { settleFlightClaim, buildSettleAccounts, loading } = useSettleFlight();
+  const { wallet, program } = useProgram();
 
   const pendCnt = claims.filter(c => c.status === 'claimable').length;
   const appCnt = claims.filter(c => c.status === 'approved').length;
@@ -44,7 +41,7 @@ export function ClaimApproval() {
     }
 
     // On-chain: settle each claimable flight policy
-    if (!masterPolicyPDA || !wallet) {
+    if (!masterPolicyPDA || !wallet || !program) {
       toast(t('toast.walletNotAvailable'), 'd');
       return;
     }
@@ -52,21 +49,15 @@ export function ClaimApproval() {
     const claimable = claims.filter(c => c.status === 'claimable' || c.status === 'approved');
     if (claimable.length === 0) { toast(t('toast.noClaimSettle'), 'w'); return; }
 
-    // TODO.demo: settle_flight_claim은 PDA 소유 풀 지갑에 USDC 잔액이 필요함
-    // 현재 데모에서는 accept_share(입금) 단계가 미구현이므로 풀 지갑에 잔액 없음
-    // → on-chain settle은 InsufficientFunds 에러 예상
-    // 실제 환경: create_master 시 PDA 소유 vault 생성 → accept_share로 입금 → settle로 출금
     const masterPK = new PublicKey(masterPolicyPDA);
-    const leaderATA = await getAssociatedTokenAddress(CURRENCY_MINT, wallet.publicKey);
 
-    // TODO.demo: 데모 키페어의 ATA를 participant pool wallet로 사용
-    const partAKp = getDemoKeypair('partA');
-    const partBKp = getDemoKeypair('partB');
-    const participantPoolWallets = [
-      leaderATA,
-      ...(partAKp ? [await getAssociatedTokenAddress(CURRENCY_MINT, partAKp.publicKey)] : []),
-      ...(partBKp ? [await getAssociatedTokenAddress(CURRENCY_MINT, partBKp.publicKey)] : []),
-    ];
+    // 온체인 master 데이터에서 등록된 pool/deposit 지갑 주소를 읽어 사용
+    // (registerParticipantWallets로 저장된 PDA-owned pool 계정)
+    // demo: pool 지갑에 USDC 잔액이 없으면 InsufficientFunds 에러 발생
+    // (Step 4: 데모 풀 충전 기능 구현 후 해결)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const masterData = await (program as any).account.masterPolicy.fetch(masterPK);
+    const { participantPoolWallets, reinsurerPoolWallet, leaderDepositWallet } = buildSettleAccounts(masterData);
 
     let settled = 0;
 
@@ -75,8 +66,8 @@ export function ClaimApproval() {
       const result = await settleFlightClaim({
         masterPolicy: masterPK,
         flightPolicy: flightPolicyPDA,
-        leaderDepositToken: leaderATA,
-        reinsurerPoolToken: leaderATA,
+        leaderDepositToken: leaderDepositWallet,
+        reinsurerPoolToken: reinsurerPoolWallet,
         participantPoolWallets,
       });
 

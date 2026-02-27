@@ -184,11 +184,16 @@ interface ProtocolState {
   premHist: PremHistEntry[];
   poolHist: PoolHistEntry[];
 
+  // Master policy terms (USDC display units)
+  premiumPerPolicy: number;
+  payoutTiers: { delay2h: number; delay3h: number; delay4to5h: number; delay6hOrCancelled: number };
+
   // Reinsurance ratios (bps, 10000 = 100%)
   cededRatioBps: number;
   reinsCommissionBps: number;
 
   // On-chain state
+  poolRefreshKey: number;
   masterPolicyPDA: string | null;
   lastTxSignature: string | null;
   masterPolicies: MasterPolicySummary[];
@@ -209,12 +214,13 @@ interface ProtocolState {
   setMasterPolicyPDA: (pda: string | null) => void;
   setMasterPolicies: (list: MasterPolicySummary[]) => void;
   selectMasterPolicy: (pda: string | null) => void;
-  onChainSetTerms: (txSignature: string, cededRatioBps?: number, reinsCommissionBps?: number) => void;
+  onChainSetTerms: (txSignature: string, cededRatioBps?: number, reinsCommissionBps?: number, premium?: number, payoutTiers?: { delay2h: number; delay3h: number; delay4to5h: number; delay6hOrCancelled: number }) => void;
   onChainConfirm: (key: 'partA' | 'partB' | 'rein', txSignature: string) => void;
   onChainActivate: (txSignature: string, pda: string) => void;
   onChainAddContract: (id: number, name: string, flight: string, date: string, txSignature: string) => void;
   onChainResolve: (contractId: number, delay: number, cancelled: boolean, txSignature: string) => void;
   onChainSettle: (contractId: number, txSignature: string) => void;
+  refreshPool: () => void;
   resetAll: () => void;
   syncMasterFromChain: (data: MasterPolicyAccount) => void;
   syncFlightPoliciesFromChain: (policies: FlightPolicyWithKey[]) => void;
@@ -243,11 +249,16 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
   premHist: [],
   poolHist: [{ t: 'init', v: 10000 }],
 
+  // Master policy terms
+  premiumPerPolicy: 3,
+  payoutTiers: { delay2h: 5, delay3h: 8, delay4to5h: 12, delay6hOrCancelled: 15 },
+
   // Reinsurance ratios (bps)
   cededRatioBps: 5000,       // 50%
   reinsCommissionBps: 1000,  // 10%
 
   // On-chain state
+  poolRefreshKey: 0,
   masterPolicyPDA: null,
   lastTxSignature: null,
   masterPolicies: [],
@@ -476,13 +487,15 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
 
   /* ── On-chain action callbacks (called by components after successful tx) ── */
 
-  onChainSetTerms: (txSignature, cededBps, commBps) => {
+  onChainSetTerms: (txSignature, cededBps, commBps, premium, payoutTiers) => {
     const { shares } = get();
     set({
       processStep: 1,
       policyStateIdx: 0,
       ...(cededBps != null && { cededRatioBps: cededBps }),
       ...(commBps != null && { reinsCommissionBps: commBps }),
+      ...(premium != null && { premiumPerPolicy: premium }),
+      ...(payoutTiers != null && { payoutTiers }),
     });
     get().addLog(
       i18n.t('store.termsSet'), '#9945FF', 'create_master_policy',
@@ -626,11 +639,14 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     );
   },
 
+  refreshPool: () => set(st => ({ poolRefreshKey: st.poolRefreshKey + 1 })),
+
   resetAll: () => {
     set({
       masterActive: false, policyStateIdx: -1, processStep: 0,
       confirms: { partA: false, partB: false, rein: false },
       shares: { leader: 50, partA: 30, partB: 20 },
+      premiumPerPolicy: 3, payoutTiers: { delay2h: 5, delay3h: 8, delay4to5h: 12, delay6hOrCancelled: 15 },
       cededRatioBps: 5000, reinsCommissionBps: 1000,
       poolBalance: 10000, totalPremium: 0, totalClaim: 0,
       contracts: [], claims: [], contractCount: 0, claimCount: 0,
@@ -668,6 +684,15 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       shares: newShares,
       cededRatioBps: data.cededRatioBps,
       reinsCommissionBps: data.reinsCommissionBps,
+      ...(data.premiumPerPolicy && { premiumPerPolicy: data.premiumPerPolicy.toNumber() / 1_000_000 }),
+      ...(data.payoutDelay2h && {
+        payoutTiers: {
+          delay2h: data.payoutDelay2h.toNumber() / 1_000_000,
+          delay3h: data.payoutDelay3h.toNumber() / 1_000_000,
+          delay4to5h: data.payoutDelay4to5h.toNumber() / 1_000_000,
+          delay6hOrCancelled: data.payoutDelay6hOrCancelled.toNumber() / 1_000_000,
+        },
+      }),
       policyStateIdx: isActive ? 3 : processStep > 0 ? 0 : -1,
     });
   },

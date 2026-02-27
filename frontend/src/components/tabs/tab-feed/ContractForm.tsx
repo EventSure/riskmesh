@@ -11,7 +11,7 @@ import { useProgram } from '@/hooks/useProgram';
 
 export function ContractForm() {
   const { t } = useTranslation();
-  const { mode, masterActive, masterPolicyPDA, contractCount, addContract, onChainAddContract } = useProtocolStore();
+  const { mode, masterActive, masterPolicyPDA, contractCount, premiumPerPolicy, addContract, onChainAddContract } = useProtocolStore();
   const { toast } = useToast();
   const { createFlightPolicy, loading } = useCreateFlightPolicy();
   const { wallet } = useProgram();
@@ -102,7 +102,7 @@ export function ContractForm() {
         </FormGroup>
         <FormGroup>
           <FormLabel>{t('feed.premium')}</FormLabel>
-          <FormInput value="1 USDC" readOnly style={{ opacity: 0.6, fontFamily: "'DM Mono', monospace" }} />
+          <FormInput value={`${premiumPerPolicy} USDC`} readOnly style={{ opacity: 0.6, fontFamily: "'DM Mono', monospace" }} />
         </FormGroup>
         <Divider />
         <Button variant="primary" fullWidth onClick={handleAdd} disabled={!masterActive || loading} style={{ marginBottom: 6 }}>

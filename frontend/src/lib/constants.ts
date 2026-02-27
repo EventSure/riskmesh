@@ -47,12 +47,12 @@ export const CLAIM_STATUSES = [
   'Rejected',
 ] as const;
 
-/** Default payout tiers in token base units (6 decimals for USDC-like) */
+/** Default payout tiers in USDC (UI display units, not raw) */
 export const DEFAULT_PAYOUT_TIERS = {
-  delay2h: 40_000_000,      // 40 USDC
-  delay3h: 60_000_000,      // 60 USDC
-  delay4to5h: 80_000_000,   // 80 USDC
-  delay6hOrCancelled: 100_000_000, // 100 USDC
+  delay2h: 5,
+  delay3h: 8,
+  delay4to5h: 12,
+  delay6hOrCancelled: 15,
 } as const;
 
 /** Default premium per policy in token base units */

@@ -33,7 +33,7 @@ const MsgText = styled.div<{ variant: 'error' | 'ok' }>`
 
 export function OracleConsole() {
   const { t } = useTranslation();
-  const { mode, contracts, masterActive, masterPolicyPDA, runOracle, onChainResolve } = useProtocolStore();
+  const { mode, contracts, masterActive, masterPolicyPDA, payoutTiers, runOracle, onChainResolve } = useProtocolStore();
   const { toast } = useToast();
   const { resolveFlightDelay, loading } = useResolveFlightDelay();
   const { wallet } = useProgram();
@@ -122,10 +122,10 @@ export function OracleConsole() {
           </FormGroup>
         )}
         <Divider />
-        <TierItem label={t('oracle.tier120')} value="→ 40 USDC" color="#F59E0B" />
-        <TierItem label={t('oracle.tier180')} value="→ 60 USDC" color="#f97316" />
-        <TierItem label={t('oracle.tier240')} value="→ 80 USDC" color="#EF4444" />
-        <TierItem label={t('oracle.tier360')} value="→ 100 USDC" color="#fca5a5" />
+        <TierItem label={t('oracle.tier120')} value={`→ ${payoutTiers.delay2h} USDC`} color="#F59E0B" />
+        <TierItem label={t('oracle.tier180')} value={`→ ${payoutTiers.delay3h} USDC`} color="#f97316" />
+        <TierItem label={t('oracle.tier240')} value={`→ ${payoutTiers.delay4to5h} USDC`} color="#EF4444" />
+        <TierItem label={t('oracle.tier360')} value={`→ ${payoutTiers.delay6hOrCancelled} USDC`} color="#fca5a5" />
         <Divider />
         {result?.type === 'error' && (
           <MsgBox variant="error">
