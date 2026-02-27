@@ -39,8 +39,8 @@ export function useMasterPolicies() {
         coverageEndTs: a.account.coverageEndTs.toNumber(),
       }));
 
-      // Most recent coverage end date first
-      mapped.sort((a, b) => b.coverageEndTs - a.coverageEndTs);
+      // Most recently created first (masterId is a sequential counter)
+      mapped.sort((a, b) => Number(b.masterId) - Number(a.masterId));
       setPolicies(mapped);
     } catch {
       setPolicies([]);
