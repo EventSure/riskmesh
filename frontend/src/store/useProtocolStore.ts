@@ -136,7 +136,10 @@ export const vaultPDA = () => fakePubkey('vault_' + poolPDA());
 export const ledgerPDA = () => fakePubkey('ledger_' + masterPDA());
 
 export const formatNum = (n: number, d = 2) =>
-  Number(n).toFixed(d).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: d,
+    maximumFractionDigits: d,
+  }).format(Number(n));
 
 export const getRoleLabel = (role: Role): string => i18n.t(`role.${role}Short`);
 
