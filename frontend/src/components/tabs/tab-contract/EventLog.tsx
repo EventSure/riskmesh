@@ -88,7 +88,7 @@ export function EventLog() {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    TX: {log.txSignature.slice(0, 12)}...{log.txSignature.slice(-4)}
+                    TX: {log.txSignature}
                   </TxLink>
                 )}
               </div>

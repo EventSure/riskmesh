@@ -13,7 +13,7 @@ import { generateDemoKeypairs } from '@/lib/demo-keypairs';
 import { ConfirmRole } from '@/lib/idl/open_parametric';
 
 export function MasterContractSetup() {
-  const { mode, masterActive, processStep, shares, setTerms, onChainSetTerms, onChainConfirm, setMasterPolicyPDA } = useProtocolStore();
+  const { mode, masterActive, processStep, shares, setTerms, onChainSetTerms, setMasterPolicyPDA } = useProtocolStore();
   const { toast } = useToast();
   const { t } = useTranslation();
   const { program, provider, wallet, connected } = useProgram();
@@ -134,29 +134,19 @@ export function MasterContractSetup() {
         })
         .instruction();
 
-      const confirmReinIx = await prog.methods
-        .confirmMaster(ConfirmRole.Reinsurer)
-        .accounts({
-          actor: leaderKey,
-          masterPolicy: masterPolicyPDA,
-        })
-        .instruction();
-
-      // ── Single TX: fund + create ATAs + create master + register leader + confirm leader + confirm rein ──
+      // ── Single TX: fund + create ATAs + create master + register leader + confirm leader ──
       // TODO.demo: 1개 TX로 합쳐 Phantom 서명 1회만 요청 (TX 크기 초과 시 2개로 분리 필요)
       const tx = new Transaction().add(
         fundPartA, fundPartB,
         createPartAATAIx, createPartBATAIx,
         createMasterIx,
-        regLeaderIx, confirmLeaderIx, confirmReinIx,
+        regLeaderIx, confirmLeaderIx,
       );
       const sig = await provider.sendAndConfirm(tx);
 
       // ── Update store ──
       setMasterPolicyPDA(masterPolicyPDA.toBase58());
       onChainSetTerms(sig, 5000, 1000);
-      // Leader (participant[0]) and reinsurer already confirmed
-      onChainConfirm('rein', sig);
 
       toast(`Master policy created! TX: ${sig.slice(0, 8)}...`, 's');
     } catch (err: unknown) {

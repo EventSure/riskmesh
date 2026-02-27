@@ -56,7 +56,7 @@ export function ParticipantConfirm() {
   const { toast } = useToast();
   const { t } = useTranslation();
   const { activateMaster: activateMasterOnChain, loading: activateLoading } = useActivateMaster();
-  const { program, wallet, connection } = useProgram();
+  const { program, provider, wallet, connection } = useProgram();
   const [confirmLoading, setConfirmLoading] = useState(false);
 
   const PT_DEF = [
@@ -82,11 +82,28 @@ export function ParticipantConfirm() {
       return;
     }
 
-    // TODO.demo: reinsurer는 MasterContractSetup TX2에서 이미 confirm됨 (leader=reinsurer)
-    // 실제 환경에서는 reinsurer가 별도 지갑으로 직접 confirm해야 함
     if (key === 'rein') {
-      onChainConfirm('rein', 'auto-confirmed-during-setup');
-      toast(t('toast.confirmDone', { role: t('role.reinShort') }) + ' (auto)', 's');
+      // TODO.demo: leader=reinsurer — reinsurer confirms using the connected wallet (Phantom)
+      if (!provider) { toast('No provider — connect wallet', 'd'); return; }
+      setConfirmLoading(true);
+      try {
+        const masterPubkey = new PublicKey(masterPolicyPDA);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const prog = program as any;
+        const confirmReinIx = await prog.methods
+          .confirmMaster(ConfirmRole.Reinsurer)
+          .accounts({ actor: wallet!.publicKey, masterPolicy: masterPubkey })
+          .instruction();
+        const tx = new Transaction().add(confirmReinIx);
+        const sig = await provider.sendAndConfirm(tx);
+        onChainConfirm('rein', sig);
+        toast(t('toast.confirmDone', { role: t('role.reinShort') }) + ` TX: ${sig.slice(0, 8)}...`, 's');
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        toast(`TX failed: ${message}`, 'd');
+      } finally {
+        setConfirmLoading(false);
+      }
       return;
     }
 
