@@ -7,6 +7,7 @@ import { QueryProvider } from '@/providers/QueryProvider';
 import { ToastProvider } from '@/components/common';
 import { Layout } from '@/components/layout/Layout';
 import { Dashboard } from '@/pages/Dashboard';
+import { LandingPage } from '@/pages/LandingPage';
 import { useProtocolStore, type LogEntry } from '@/store/useProtocolStore';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -52,10 +53,12 @@ export function App() {
             <InitLogger />
             <BrowserRouter basename="/riskmesh">
               <Routes>
+                <Route path="/" element={<LandingPage />} />
                 <Route element={<Layout />}>
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/demo" element={<Dashboard />} />
                 </Route>
+                <Route path="/dashboard" element={<Navigate to="/demo" replace />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </BrowserRouter>
           </ToastProvider>
