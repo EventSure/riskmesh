@@ -14,3 +14,6 @@ To generate and set a real program id:
 ## Build/Test
 - `anchor build`
 - `anchor test`
+
+## CI Trigger Note
+- Any change under `contract/**` should trigger `.github/workflows/contract-ci.yml` on pull requests.

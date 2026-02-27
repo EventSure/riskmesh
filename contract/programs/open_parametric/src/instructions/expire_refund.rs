@@ -16,7 +16,10 @@ pub fn expire_handler(ctx: Context<ExpirePolicy>) -> Result<()> {
     let policy = &mut ctx.accounts.policy;
 
     // 만기 시각(active_to) 경과 후에만 Expired 전환을 허용한다.
-    require!(policy.state == PolicyState::Active as u8, OpenParamError::InvalidState);
+    require!(
+        policy.state == PolicyState::Active as u8,
+        OpenParamError::InvalidState
+    );
     let now = Clock::get()?.unix_timestamp;
     require!(now > policy.active_to, OpenParamError::InvalidTimeWindow);
 
@@ -48,16 +51,31 @@ pub fn refund_handler(ctx: Context<RefundAfterExpiry>, share_index: u8) -> Resul
     let policy = &mut ctx.accounts.policy;
 
     // Expired 이후 참여사별 에스크로를 원래 지갑으로 환급한다.
-    require!(policy.state == PolicyState::Expired as u8, OpenParamError::InvalidState);
+    require!(
+        policy.state == PolicyState::Expired as u8,
+        OpenParamError::InvalidState
+    );
 
     let uw = &mut ctx.accounts.underwriting;
     let index = share_index as usize;
     require!(index < uw.participants.len(), OpenParamError::NotFound);
     let share = &mut uw.participants[index];
-    require!(share.insurer == ctx.accounts.participant.key(), OpenParamError::Unauthorized);
-    require!(share.status == ParticipantStatus::Accepted as u8, OpenParamError::InvalidState);
-    require!(share.escrowed_amount > 0, OpenParamError::InsufficientEscrow);
-    require!(ctx.accounts.vault.key() == ctx.accounts.risk_pool.vault, OpenParamError::InvalidInput);
+    require!(
+        share.insurer == ctx.accounts.participant.key(),
+        OpenParamError::Unauthorized
+    );
+    require!(
+        share.status == ParticipantStatus::Accepted as u8,
+        OpenParamError::InvalidState
+    );
+    require!(
+        share.escrowed_amount > 0,
+        OpenParamError::InsufficientEscrow
+    );
+    require!(
+        ctx.accounts.vault.key() == ctx.accounts.risk_pool.vault,
+        OpenParamError::InvalidInput
+    );
     require!(
         ctx.accounts.participant_token.mint == policy.currency_mint,
         OpenParamError::InvalidInput

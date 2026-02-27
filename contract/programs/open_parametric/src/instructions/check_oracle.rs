@@ -35,13 +35,19 @@ pub struct CheckOracle<'info> {
 pub fn handler(ctx: Context<CheckOracle>, oracle_round: u64) -> Result<()> {
     let policy = &mut ctx.accounts.policy;
     // 오라클 체크는 Active 상태의 정책만 처리한다.
-    require!(policy.state == PolicyState::Active as u8, OpenParamError::InvalidState);
-    require!(ctx.accounts.oracle_feed.key() == policy.oracle_feed, OpenParamError::InvalidInput);
+    require!(
+        policy.state == PolicyState::Active as u8,
+        OpenParamError::InvalidState
+    );
+    require!(
+        ctx.accounts.oracle_feed.key() == policy.oracle_feed,
+        OpenParamError::InvalidInput
+    );
 
     let oracle_quote = QuoteVerifier::new()
-        .queue(&ctx.accounts.queue.to_account_info())
-        .slothash_sysvar(&ctx.accounts.slot_hashes.to_account_info())
-        .ix_sysvar(&ctx.accounts.instructions.to_account_info())
+        .queue(ctx.accounts.queue.to_account_info())
+        .slothash_sysvar(ctx.accounts.slot_hashes.to_account_info())
+        .ix_sysvar(ctx.accounts.instructions.to_account_info())
         .clock_slot(Clock::get()?.slot)
         .max_age(ORACLE_MAX_STALENESS_SLOTS)
         .verify_instruction_at(0)
@@ -50,7 +56,10 @@ pub fn handler(ctx: Context<CheckOracle>, oracle_round: u64) -> Result<()> {
     // 스테일 데이터(허용 슬롯 초과)는 즉시 거절한다.
     let current_slot = Clock::get()?.slot;
     let staleness = current_slot.saturating_sub(oracle_quote.slot());
-    require!(staleness <= ORACLE_MAX_STALENESS_SLOTS, OpenParamError::OracleStale);
+    require!(
+        staleness <= ORACLE_MAX_STALENESS_SLOTS,
+        OpenParamError::OracleStale
+    );
 
     // 피드 값 형식을 검증한 뒤 지연 분(minutes) 값을 읽는다.
     let feeds = oracle_quote.feeds();

@@ -1,0 +1,37 @@
+name: Contract CI
+
+on:
+  pull_request:
+    paths:
+      - 'contract/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'contract/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contract-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contract
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: contract -> target
+
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --all-targets -- -D warnings -A unexpected_cfgs -A deprecated
+      - run: cargo test --locked

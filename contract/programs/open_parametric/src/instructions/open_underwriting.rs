@@ -17,10 +17,19 @@ pub fn handler(ctx: Context<OpenUnderwriting>) -> Result<()> {
     let uw = &mut ctx.accounts.underwriting;
 
     // Draft/Proposed 조합에서만 Open 상태로 전환한다.
-    require!(policy.state == PolicyState::Draft as u8, OpenParamError::InvalidState);
+    require!(
+        policy.state == PolicyState::Draft as u8,
+        OpenParamError::InvalidState
+    );
     // Phase 1 수정: Underwriting 상태 검증 추가
-    require!(uw.status == UnderwritingStatus::Proposed as u8, OpenParamError::InvalidState);
-    require!(policy.underwriting == uw.key(), OpenParamError::InvalidInput);
+    require!(
+        uw.status == UnderwritingStatus::Proposed as u8,
+        OpenParamError::InvalidState
+    );
+    require!(
+        policy.underwriting == uw.key(),
+        OpenParamError::InvalidInput
+    );
 
     policy.state = PolicyState::Open as u8;
     uw.status = UnderwritingStatus::Open as u8;

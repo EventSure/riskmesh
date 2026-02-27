@@ -23,24 +23,53 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightClaim<'a>>) -> Resul
     let flight = &mut ctx.accounts.flight_policy;
 
     // Claimable 상태의 child 정책만 청구 정산할 수 있다.
-    require!(master.status == MasterPolicyStatus::Active as u8, OpenParamError::MasterNotActive);
-    require!(ctx.accounts.executor.key() == master.leader || ctx.accounts.executor.key() == master.operator, OpenParamError::Unauthorized);
+    require!(
+        master.status == MasterPolicyStatus::Active as u8,
+        OpenParamError::MasterNotActive
+    );
+    require!(
+        ctx.accounts.executor.key() == master.leader
+            || ctx.accounts.executor.key() == master.operator,
+        OpenParamError::Unauthorized
+    );
     require!(flight.master == master.key(), OpenParamError::InvalidInput);
-    require!(flight.status == FlightPolicyStatus::Claimable as u8, OpenParamError::InvalidState);
-    require!(ctx.accounts.leader_deposit_token.key() == master.leader_deposit_wallet, OpenParamError::InvalidInput);
-    require!(ctx.accounts.reinsurer_pool_token.key() == master.reinsurer_pool_wallet, OpenParamError::InvalidInput);
-    require!(ctx.accounts.leader_deposit_token.mint == master.currency_mint, OpenParamError::InvalidInput);
-    require!(ctx.accounts.reinsurer_pool_token.mint == master.currency_mint, OpenParamError::InvalidInput);
-    require!(ctx.accounts.reinsurer_pool_token.owner == master.key(), OpenParamError::InvalidSettlementTarget);
+    require!(
+        flight.status == FlightPolicyStatus::Claimable as u8,
+        OpenParamError::InvalidState
+    );
+    require!(
+        ctx.accounts.leader_deposit_token.key() == master.leader_deposit_wallet,
+        OpenParamError::InvalidInput
+    );
+    require!(
+        ctx.accounts.reinsurer_pool_token.key() == master.reinsurer_pool_wallet,
+        OpenParamError::InvalidInput
+    );
+    require!(
+        ctx.accounts.leader_deposit_token.mint == master.currency_mint,
+        OpenParamError::InvalidInput
+    );
+    require!(
+        ctx.accounts.reinsurer_pool_token.mint == master.currency_mint,
+        OpenParamError::InvalidInput
+    );
+    require!(
+        ctx.accounts.reinsurer_pool_token.owner == master.key(),
+        OpenParamError::InvalidSettlementTarget
+    );
 
-    require!(ctx.remaining_accounts.len() == master.participants.len(), OpenParamError::InvalidAccountList);
+    require!(
+        ctx.remaining_accounts.len() == master.participants.len(),
+        OpenParamError::InvalidAccountList
+    );
 
     let payout = flight.payout_amount;
     require!(payout > 0, OpenParamError::InvalidPayout);
 
     let insurer_ratios: Vec<u16> = master.participants.iter().map(|p| p.share_bps).collect();
     // 총 payout을 재보험사 몫 + 보험사(leader/A/B...) 몫으로 분리한다.
-    let (reinsurer_amount, insurer_amounts) = calc_claim_split(payout, master.reinsurer_effective_bps, &insurer_ratios)?;
+    let (reinsurer_amount, insurer_amounts) =
+        calc_claim_split(payout, master.reinsurer_effective_bps, &insurer_ratios)?;
 
     let seed_master_id = master.master_id.to_le_bytes();
     let seeds = &[
@@ -72,9 +101,18 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightClaim<'a>>) -> Resul
         let pool_info = &ctx.remaining_accounts[i];
         let pool_wallet: Account<TokenAccount> = Account::try_from(pool_info)?;
 
-        require!(pool_wallet.key() == master.participants[i].pool_wallet, OpenParamError::InvalidInput);
-        require!(pool_wallet.mint == master.currency_mint, OpenParamError::InvalidInput);
-        require!(pool_wallet.owner == master.key(), OpenParamError::InvalidSettlementTarget);
+        require!(
+            pool_wallet.key() == master.participants[i].pool_wallet,
+            OpenParamError::InvalidInput
+        );
+        require!(
+            pool_wallet.mint == master.currency_mint,
+            OpenParamError::InvalidInput
+        );
+        require!(
+            pool_wallet.owner == master.key(),
+            OpenParamError::InvalidSettlementTarget
+        );
 
         // 각 참여사 풀 지갑에서 리더 deposit으로 해당 부담분을 이체한다.
         let transfer_ctx = CpiContext::new_with_signer(

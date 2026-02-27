@@ -14,7 +14,10 @@ pub fn handler(ctx: Context<ActivatePolicy>) -> Result<()> {
     let policy = &mut ctx.accounts.policy;
 
     // 자금 조달(Funded) 완료 + 시작 시각 도달 시점부터만 Active 전환을 허용한다.
-    require!(policy.state == PolicyState::Funded as u8, OpenParamError::InvalidState);
+    require!(
+        policy.state == PolicyState::Funded as u8,
+        OpenParamError::InvalidState
+    );
     let now = Clock::get()?.unix_timestamp;
     require!(now >= policy.active_from, OpenParamError::InvalidTimeWindow);
 

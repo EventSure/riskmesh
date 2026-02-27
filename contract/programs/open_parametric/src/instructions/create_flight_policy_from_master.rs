@@ -28,19 +28,50 @@ pub struct CreateFlightPolicyFromMaster<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<CreateFlightPolicyFromMaster>, params: CreateFlightPolicyParams) -> Result<()> {
+pub fn handler(
+    ctx: Context<CreateFlightPolicyFromMaster>,
+    params: CreateFlightPolicyParams,
+) -> Result<()> {
     let master = &ctx.accounts.master_policy;
     // 마스터 활성 상태/호출 권한/입력 길이를 먼저 검증한다.
-    require!(master.status == MasterPolicyStatus::Active as u8, OpenParamError::MasterNotActive);
-    require!(ctx.accounts.creator.key() == master.leader || ctx.accounts.creator.key() == master.operator, OpenParamError::Unauthorized);
-    require!(params.subscriber_ref.len() <= MAX_SUBSCRIBER_REF_LEN, OpenParamError::InputTooLong);
-    require!(params.flight_no.len() <= MAX_FLIGHT_NO_LEN, OpenParamError::InputTooLong);
-    require!(params.route.len() <= MAX_ROUTE_LEN, OpenParamError::InputTooLong);
+    require!(
+        master.status == MasterPolicyStatus::Active as u8,
+        OpenParamError::MasterNotActive
+    );
+    require!(
+        ctx.accounts.creator.key() == master.leader
+            || ctx.accounts.creator.key() == master.operator,
+        OpenParamError::Unauthorized
+    );
+    require!(
+        params.subscriber_ref.len() <= MAX_SUBSCRIBER_REF_LEN,
+        OpenParamError::InputTooLong
+    );
+    require!(
+        params.flight_no.len() <= MAX_FLIGHT_NO_LEN,
+        OpenParamError::InputTooLong
+    );
+    require!(
+        params.route.len() <= MAX_ROUTE_LEN,
+        OpenParamError::InputTooLong
+    );
 
-    require!(ctx.accounts.leader_deposit_token.key() == master.leader_deposit_wallet, OpenParamError::InvalidInput);
-    require!(ctx.accounts.payer_token.owner == ctx.accounts.creator.key(), OpenParamError::Unauthorized);
-    require!(ctx.accounts.payer_token.mint == master.currency_mint, OpenParamError::InvalidInput);
-    require!(ctx.accounts.leader_deposit_token.mint == master.currency_mint, OpenParamError::InvalidInput);
+    require!(
+        ctx.accounts.leader_deposit_token.key() == master.leader_deposit_wallet,
+        OpenParamError::InvalidInput
+    );
+    require!(
+        ctx.accounts.payer_token.owner == ctx.accounts.creator.key(),
+        OpenParamError::Unauthorized
+    );
+    require!(
+        ctx.accounts.payer_token.mint == master.currency_mint,
+        OpenParamError::InvalidInput
+    );
+    require!(
+        ctx.accounts.leader_deposit_token.mint == master.currency_mint,
+        OpenParamError::InvalidInput
+    );
 
     // 가입 프리미엄은 생성자 지갑에서 leader_deposit 지갑으로 선납된다.
     let transfer_ctx = CpiContext::new(

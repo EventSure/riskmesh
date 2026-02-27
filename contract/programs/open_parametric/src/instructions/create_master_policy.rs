@@ -37,16 +37,29 @@ pub fn handler(ctx: Context<CreateMasterPolicy>, params: CreateMasterPolicyParam
     let master = &mut ctx.accounts.master_policy;
 
     // 마스터 계약 생성 시점 기본 유효성 검증.
-    require!(params.coverage_start_ts < params.coverage_end_ts, OpenParamError::InvalidTimeWindow);
+    require!(
+        params.coverage_start_ts < params.coverage_end_ts,
+        OpenParamError::InvalidTimeWindow
+    );
     require!(params.premium_per_policy > 0, OpenParamError::InvalidAmount);
     validate_master_participants(&params.participants, ctx.accounts.leader.key())?;
 
-    require!(ctx.accounts.leader_deposit_wallet.mint == ctx.accounts.currency_mint.key(), OpenParamError::InvalidInput);
-    require!(ctx.accounts.reinsurer_pool_wallet.mint == ctx.accounts.currency_mint.key(), OpenParamError::InvalidInput);
-    require!(ctx.accounts.reinsurer_deposit_wallet.mint == ctx.accounts.currency_mint.key(), OpenParamError::InvalidInput);
+    require!(
+        ctx.accounts.leader_deposit_wallet.mint == ctx.accounts.currency_mint.key(),
+        OpenParamError::InvalidInput
+    );
+    require!(
+        ctx.accounts.reinsurer_pool_wallet.mint == ctx.accounts.currency_mint.key(),
+        OpenParamError::InvalidInput
+    );
+    require!(
+        ctx.accounts.reinsurer_deposit_wallet.mint == ctx.accounts.currency_mint.key(),
+        OpenParamError::InvalidInput
+    );
 
     // 재보험 실효 지분율(출재율 - 수수료 반영)을 사전에 계산해 저장한다.
-    let eff_reinsurer_bps = effective_reinsurer_bps(params.ceded_ratio_bps, params.reins_commission_bps)?;
+    let eff_reinsurer_bps =
+        effective_reinsurer_bps(params.ceded_ratio_bps, params.reins_commission_bps)?;
 
     master.master_id = params.master_id;
     master.leader = ctx.accounts.leader.key();

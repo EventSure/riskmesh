@@ -20,8 +20,14 @@ pub fn approve_handler(ctx: Context<ApproveClaim>) -> Result<()> {
     let claim = &mut ctx.accounts.claim;
 
     // 리더 승인 단계: Claimable -> Approved 로 상태를 올린다.
-    require!(policy.state == PolicyState::Claimable as u8, OpenParamError::InvalidState);
-    require!(claim.status == ClaimStatus::Claimable as u8, OpenParamError::InvalidState);
+    require!(
+        policy.state == PolicyState::Claimable as u8,
+        OpenParamError::InvalidState
+    );
+    require!(
+        claim.status == ClaimStatus::Claimable as u8,
+        OpenParamError::InvalidState
+    );
 
     claim.status = ClaimStatus::Approved as u8;
     claim.approved_by = ctx.accounts.leader.key();
@@ -53,13 +59,22 @@ pub fn settle_handler(ctx: Context<SettleClaim>) -> Result<()> {
     let claim = &mut ctx.accounts.claim;
 
     // 정산 단계: 승인된 청구만 풀 잔액 범위에서 지급한다.
-    require!(policy.state == PolicyState::Approved as u8, OpenParamError::InvalidState);
-    require!(claim.status == ClaimStatus::Approved as u8, OpenParamError::InvalidState);
+    require!(
+        policy.state == PolicyState::Approved as u8,
+        OpenParamError::InvalidState
+    );
+    require!(
+        claim.status == ClaimStatus::Approved as u8,
+        OpenParamError::InvalidState
+    );
     require!(
         claim.payout_amount <= ctx.accounts.risk_pool.available_balance,
         OpenParamError::PoolInsufficient
     );
-    require!(ctx.accounts.vault.key() == ctx.accounts.risk_pool.vault, OpenParamError::InvalidInput);
+    require!(
+        ctx.accounts.vault.key() == ctx.accounts.risk_pool.vault,
+        OpenParamError::InvalidInput
+    );
     require!(
         ctx.accounts.beneficiary_token.mint == policy.currency_mint,
         OpenParamError::InvalidInput
