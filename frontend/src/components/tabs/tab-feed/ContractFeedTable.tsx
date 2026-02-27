@@ -5,8 +5,8 @@ import { useShallow } from 'zustand/react/shallow';
 
 export function ContractFeedTable() {
   const { t } = useTranslation();
-  const { contracts, clearContracts, premiumPerPolicy } = useProtocolStore(
-    useShallow(s => ({ contracts: s.contracts, clearContracts: s.clearContracts, premiumPerPolicy: s.premiumPerPolicy })),
+  const { contracts, clearContracts, premiumPerPolicy, mode } = useProtocolStore(
+    useShallow(s => ({ contracts: s.contracts, clearContracts: s.clearContracts, premiumPerPolicy: s.premiumPerPolicy, mode: s.mode })),
   );
 
   return (
@@ -17,7 +17,7 @@ export function ContractFeedTable() {
           <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, padding: '2px 7px', borderRadius: 10, background: 'rgba(153,69,255,.15)', color: 'var(--primary)', border: '1px solid rgba(153,69,255,.25)' }}>
             {t('common.count', { count: contracts.length })}
           </span>
-          <Button variant="outline" size="sm" onClick={clearContracts}>{t('common.clear')}</Button>
+          {mode !== 'onchain' && <Button variant="outline" size="sm" onClick={clearContracts}>{t('common.clear')}</Button>}
         </div>
       </CardHeader>
       <div style={{ overflowX: 'auto' }}>

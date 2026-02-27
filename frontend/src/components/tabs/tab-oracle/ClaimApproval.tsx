@@ -102,7 +102,7 @@ export function ClaimApproval() {
             {t('claim.approveBtn')}
           </Button>
         )}
-        <Button variant="accent" fullWidth onClick={handleSettle} disabled={!canAct || (pendCnt === 0 && appCnt === 0) || loading}>
+        <Button variant="accent" fullWidth onClick={handleSettle} disabled={!canAct || (pendCnt === 0 && appCnt === 0) || loading} data-guide="settle-btn">
           {loading ? t('claim.settling') : t('claim.settleBtn')}
         </Button>
       </CardBody>

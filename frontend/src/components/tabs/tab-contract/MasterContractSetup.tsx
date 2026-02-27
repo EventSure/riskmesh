@@ -336,11 +336,11 @@ export function MasterContractSetup() {
             Wallet not connected — connect to use on-chain mode
           </div>
         )}
-        <Button variant="primary" fullWidth onClick={handleSetTerms} disabled={processStep >= 1 || loading}>
+        <Button variant="primary" fullWidth onClick={handleSetTerms} disabled={processStep >= 1 || loading} data-guide="set-terms-btn">
           {loading ? 'Sending TX...' : t('master.setTermsBtn')}
         </Button>
         {mode === 'onchain' && masterActive && (
-          <Button variant="warning" fullWidth onClick={handleFundPools} disabled={fundLoading} style={{ marginTop: 6 }}>
+          <Button variant="warning" fullWidth onClick={handleFundPools} disabled={fundLoading} style={{ marginTop: 6 }} data-guide="fund-pool-btn">
             {fundLoading ? 'Funding...' : 'Demo: Fund Pool (USDC)'}
           </Button>
         )}

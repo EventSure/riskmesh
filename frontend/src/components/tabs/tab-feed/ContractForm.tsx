@@ -105,12 +105,14 @@ export function ContractForm() {
           <FormInput value={`${premiumPerPolicy} USDC`} readOnly style={{ opacity: 0.6, fontFamily: "'DM Mono', monospace" }} />
         </FormGroup>
         <Divider />
-        <Button variant="primary" fullWidth onClick={handleAdd} disabled={!masterActive || loading} style={{ marginBottom: 6 }}>
+        <Button variant="primary" fullWidth onClick={handleAdd} disabled={!masterActive || loading} style={{ marginBottom: 6 }} data-guide="create-contract-btn">
           {loading ? 'Sending TX...' : t('feed.addBtn')}
         </Button>
-        <Button variant={autoRunning ? 'danger' : 'accent'} fullWidth onClick={handleAutoFeed} disabled={mode === 'onchain'}>
-          {autoRunning ? t('feed.autoStop') : t('feed.autoStart')}
-        </Button>
+        {mode !== 'onchain' && (
+          <Button variant={autoRunning ? 'danger' : 'accent'} fullWidth onClick={handleAutoFeed}>
+            {autoRunning ? t('feed.autoStop') : t('feed.autoStart')}
+          </Button>
+        )}
         <div style={{ fontSize: 9, color: 'var(--sub)', marginTop: 5, textAlign: 'center' }}>
           {mode === 'onchain' ? 'On-chain mode: manual add only' : autoRunning ? t('feed.autoRunning') : t('feed.afterActivation')}
         </div>

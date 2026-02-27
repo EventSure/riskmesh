@@ -88,10 +88,10 @@ export interface PremHistEntry {
 
 /* ── Constants ── */
 export const TIERS = [
-  { min: 120, max: 179, p: 40, label: '2h~2h59m', color: '#F59E0B' },
-  { min: 180, max: 239, p: 60, label: '3h~3h59m', color: '#f97316' },
-  { min: 240, max: 359, p: 80, label: '4h~5h59m', color: '#EF4444' },
-  { min: 360, max: 9999, p: 100, label: '6h+/결항', color: '#fca5a5' },
+  { min: 120, max: 179, key: 'delay2h' as const, label: '2h~2h59m', color: '#F59E0B' },
+  { min: 180, max: 239, key: 'delay3h' as const, label: '3h~3h59m', color: '#f97316' },
+  { min: 240, max: 359, key: 'delay4to5h' as const, label: '4h~5h59m', color: '#EF4444' },
+  { min: 360, max: 9999, key: 'delay6hOrCancelled' as const, label: '6h+/결항', color: '#fca5a5' },
 ] as const;
 
 export const FLIGHTS = ['KE081', 'OZ201', 'KE085', 'OZ211', 'KE073'] as const;
@@ -385,7 +385,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     const commRate = st.reinsCommissionBps / 10000;
     const reinsEff = ceded * (1 - commRate);
     const newClCnt = st.claimCount + 1;
-    const payout = tier.p;
+    const payout = st.payoutTiers[tier.key];
     const lS = st.shares.leader / 100, aS = st.shares.partA / 100, bS = st.shares.partB / 100;
     const insurerEff = 1 - reinsEff;
     const totRC = payout * reinsEff;
@@ -586,7 +586,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     const commRate = st.reinsCommissionBps / 10000;
     const reinsEff = ceded * (1 - commRate);
     const newClCnt = st.claimCount + 1;
-    const payout = tier.p;
+    const payout = st.payoutTiers[tier.key];
     const lS = st.shares.leader / 100, aS = st.shares.partA / 100, bS = st.shares.partB / 100;
     const insurerEff = 1 - reinsEff;
     const totRC = payout * reinsEff;

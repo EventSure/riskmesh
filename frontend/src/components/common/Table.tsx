@@ -70,4 +70,14 @@ export const SettlementTable = styled.table`
     background: rgba(56, 189, 248, 0.05);
     color: ${p => p.theme.colors.info};
   }
+
+  th:last-child {
+    background: rgba(153, 69, 255, 0.16);
+    color: ${p => p.theme.colors.primary};
+  }
+
+  td:last-child {
+    background: rgba(153, 69, 255, 0.06);
+    font-weight: 700;
+  }
 `;

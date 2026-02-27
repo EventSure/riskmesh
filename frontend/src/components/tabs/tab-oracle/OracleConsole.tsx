@@ -97,7 +97,7 @@ export function OracleConsole() {
       <CardBody>
         <FormGroup>
           <FormLabel>{t('oracle.targetContract')}</FormLabel>
-          <FormSelect value={contractId} onChange={e => setContractId(parseInt(e.target.value) || 0)} style={{ cursor: 'pointer' }}>
+          <FormSelect value={contractId} onChange={e => setContractId(parseInt(e.target.value) || 0)} style={{ cursor: 'pointer' }} data-guide="select-contract">
             <option value={0}>{t('oracle.selectContract')}</option>
             {contracts.filter(c => c.status === 'active').map(c => (
               <option key={c.id} value={c.id}>#{c.id} {c.name} — {c.flight} ({c.date})</option>
@@ -138,7 +138,7 @@ export function OracleConsole() {
             <MsgText variant="ok">{result.msg}</MsgText>
           </MsgBox>
         )}
-        <Button variant="primary" fullWidth onClick={handleRun} disabled={!masterActive || contractId === 0 || loading}>
+        <Button variant="primary" fullWidth onClick={handleRun} disabled={!masterActive || contractId === 0 || loading} data-guide="resolve-btn">
           {loading ? t('oracle.sendingTx') : mode === 'onchain' ? t('oracle.runBtnOnchain') : t('oracle.runBtn')}
         </Button>
       </CardBody>

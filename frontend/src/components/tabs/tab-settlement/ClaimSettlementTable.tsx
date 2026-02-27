@@ -40,10 +40,10 @@ export function ClaimSettlementTable() {
               <tr key={r.label}>
                 <td>{r.label}</td>
                 <td>{formatNum(r.s * retained * 100, 0)}%</td>
-                <td style={{ color: 'var(--danger)' }}>{formatNum(r.gross, 4)}</td>
-                <td style={{ color: 'var(--info)' }}>{formatNum(r.rc, 4)}</td>
-                <td style={{ color: 'var(--warning)' }}>{formatNum(r.comm, 4)}</td>
-                <td style={{ color: 'var(--danger)' }}>{formatNum(r.net, 4)}</td>
+                <td style={{ color: 'var(--danger)' }}>-{formatNum(r.gross, 4)}</td>
+                <td style={{ color: 'var(--info)' }}>+{formatNum(r.rc, 4)}</td>
+                <td style={{ color: 'var(--warning)' }}>-{formatNum(r.comm, 4)}</td>
+                <td style={{ color: 'var(--danger)' }}>-{formatNum(r.net, 4)}</td>
               </tr>
             ))}
             <tr className="trein">

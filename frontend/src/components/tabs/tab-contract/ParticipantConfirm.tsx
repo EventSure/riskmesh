@@ -222,14 +222,14 @@ export function ParticipantConfirm() {
               </PtHeader>
               <div style={{ fontSize: 9, color: 'var(--sub)', marginBottom: 5 }}>{shareInfo}</div>
               {!cf && canC && processStep >= (pt.key === 'partA' ? 1 : pt.key === 'partB' ? 2 : 3) && (
-                <Button variant="accent" fullWidth size="sm" onClick={() => handleConfirm(pt.key)} disabled={isLoading}>
+                <Button variant="accent" fullWidth size="sm" onClick={() => handleConfirm(pt.key)} disabled={isLoading} data-guide={`confirm-${pt.key}`}>
                   {isLoading ? 'Sending...' : t('confirm.btn')}
                 </Button>
               )}
             </ParticipantRow>
           );
         })}
-        <Button variant="accent" fullWidth onClick={handleActivate} disabled={!canActivate || isLoading} style={{ marginTop: 4 }}>
+        <Button variant="accent" fullWidth onClick={handleActivate} disabled={!canActivate || isLoading} style={{ marginTop: 4 }} data-guide="activate-btn">
           {activateLoading ? 'Sending TX...' : t('confirm.activateBtn')}
         </Button>
       </CardBody>

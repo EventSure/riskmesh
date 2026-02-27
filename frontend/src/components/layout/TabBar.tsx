@@ -53,6 +53,7 @@ export function TabBar({ activeTab, onTabChange }: TabBarProps) {
           tabIndex={activeTab === id ? 0 : -1}
           active={activeTab === id}
           onClick={() => onTabChange(id)}
+          data-guide={id}
         >
           {TAB_LABELS[id]}
         </Tab>
