@@ -16,6 +16,9 @@ pub mod resolve_flight_delay;
 pub mod settle_flight_claim;
 pub mod settle_flight_no_claim;
 
+#[cfg(test)]
+mod settle_flight_claim_test;
+
 pub use accept_share::*;
 pub use activate_master::*;
 pub use activate_policy::*;
