@@ -1,10 +1,12 @@
 import { Card, CardHeader, CardTitle, SettlementTable } from '@/components/common';
 import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
 import { useTranslation } from 'react-i18next';
+import { useSettlementData } from '@/hooks/useSettlementData';
 
 export function PremiumSettlementTable() {
   const { t } = useTranslation();
-  const { totalPremium, shares, cededRatioBps, reinsCommissionBps } = useProtocolStore();
+  const { shares, cededRatioBps, reinsCommissionBps } = useProtocolStore();
+  const { settledTotalPremium } = useSettlementData();
   const lS = shares.leader / 100, aS = shares.partA / 100, bS = shares.partB / 100;
   const ceded = cededRatioBps / 10000;
   const retained = 1 - ceded;
@@ -15,14 +17,14 @@ export function PremiumSettlementTable() {
     { label: t('settle.party.partA'), s: aS },
     { label: t('settle.party.partB'), s: bS },
   ].map(r => {
-    const raw = totalPremium * r.s;
+    const raw = settledTotalPremium * r.s;
     const toR = raw * ceded;
     const comm = toR * commRate;
     const net = raw - toR + comm;
     return { ...r, raw, toR, comm, net };
   });
 
-  const rIn = totalPremium * ceded;
+  const rIn = settledTotalPremium * ceded;
   const rOut = rIn * commRate;
 
   return (
@@ -55,10 +57,10 @@ export function PremiumSettlementTable() {
             <tr className="ttr">
               <td>{t('settle.party.total')}</td>
               <td>—</td>
-              <td>{formatNum(totalPremium, 4)}</td>
+              <td>{formatNum(settledTotalPremium, 4)}</td>
               <td>—</td>
               <td>—</td>
-              <td>{formatNum(totalPremium, 4)}</td>
+              <td>{formatNum(settledTotalPremium, 4)}</td>
             </tr>
           </tbody>
         </SettlementTable>

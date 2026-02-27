@@ -260,7 +260,7 @@ export function Header() {
     { label: t('header.kpi.totalPremium'), value: formatNum(totalPremium, 2) + ' USDC' },
     { label: t('header.kpi.totalClaim'), value: formatNum(totalClaim, 2) + ' USDC' },
     { label: t('header.kpi.poolBalance'), value: formatNum(poolBalance, 2) + ' USDC' },
-    { label: t('header.kpi.poolHealth'), value: formatNum(Math.min(100, (poolBalance / 10000) * 100), 1) + '%' },
+    { label: t('header.kpi.poolHealth'), value: formatNum(poolBalance + totalClaim > 0 ? Math.min(100, (poolBalance / (poolBalance + totalClaim)) * 100) : 100, 1) + '%' },
   ];
 
   return (

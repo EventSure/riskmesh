@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 Chart.register(...registerables);
 
 export function PoolStatus() {
-  const { mode, masterPolicyPDA, poolBalance, totalClaim, poolHist, poolRefreshKey } = useProtocolStore();
+  const { mode, masterPolicyPDA, poolBalance, totalClaim, poolHist, poolRefreshKey, setPoolBalance } = useProtocolStore();
   const { program, connection } = useProgram();
   const { t, i18n: { language } } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -43,19 +43,21 @@ export function PoolStatus() {
         }
       }
       setOnChainBalance(total);
+      setPoolBalance(total);
     } catch {
       setOnChainBalance(null);
     }
-  }, [mode, masterPolicyPDA, program, connection, poolRefreshKey]);
+  }, [mode, masterPolicyPDA, program, connection, poolRefreshKey, setPoolBalance]);
 
   useEffect(() => { fetchOnChainBalance(); }, [fetchOnChainBalance]);
 
   const isOnChain = mode === 'onchain' && onChainBalance !== null;
   const displayBalance = isOnChain ? onChainBalance : poolBalance;
-  const displayTotal = isOnChain ? onChainBalance : poolBalance + totalClaim;
-  const ratio = isOnChain
-    ? (displayTotal > 0 ? formatNum((displayBalance / displayTotal) * 100, 1) : '100.0')
-    : formatNum((poolBalance / 10000) * 100, 1);
+  const displayTotal = displayBalance;
+  const ratioBase = displayBalance + totalClaim;
+  const ratio = ratioBase > 0
+    ? formatNum((displayBalance / ratioBase) * 100, 1)
+    : '100.0';
 
   useEffect(() => {
     if (!canvasRef.current) return;

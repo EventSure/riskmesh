@@ -1,4 +1,5 @@
 import styled from '@emotion/styled';
+import { PendingClaimsTable } from './PendingClaimsTable';
 import { PremiumSettlementTable } from './PremiumSettlementTable';
 import { ClaimSettlementTable } from './ClaimSettlementTable';
 import { FinalSettlementTable } from './FinalSettlementTable';
@@ -18,6 +19,7 @@ export function TabSettlement() {
   return (
     <>
       <ColMain>
+        <PendingClaimsTable />
         <PremiumSettlementTable />
         <ClaimSettlementTable />
         <FinalSettlementTable />

@@ -243,6 +243,11 @@ const ko = {
   'settle.party.reinsurer': '재보험사',
   'settle.party.total': '합 계',
 
+  'settle.pendingTitle': '0. 대기 중 클레임 (오라클 확정)',
+  'settle.pendingEmpty': '대기 중인 클레임이 없습니다.',
+  'settle.pendingTotal': '대기 중 예상 보험금 합계',
+  'settle.settledEmpty': '정산완료된 건이 없습니다.',
+
   // === Comparison Panel ===
   'compare.title': 'Traditional vs On-Chain',
   'compare.traditional': '기존 방식',

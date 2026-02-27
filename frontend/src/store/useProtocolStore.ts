@@ -221,6 +221,7 @@ interface ProtocolState {
   onChainResolve: (contractId: number, delay: number, cancelled: boolean, txSignature: string) => void;
   onChainSettle: (contractId: number, txSignature: string) => void;
   refreshPool: () => void;
+  setPoolBalance: (balance: number) => void;
   resetAll: () => void;
   syncMasterFromChain: (data: MasterPolicyAccount) => void;
   syncFlightPoliciesFromChain: (policies: FlightPolicyWithKey[]) => void;
@@ -318,23 +319,23 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     const name = autoName || i18n.t('store.defaultName');
     const flight = autoFlight || 'KE081';
     const date = autoDate || '2026-01-15';
+    const pp = st.premiumPerPolicy;
     const lS = st.shares.leader / 100;
     const aS = st.shares.partA / 100;
     const bS = st.shares.partB / 100;
     const ceded = st.cededRatioBps / 10000;
     const comm = st.reinsCommissionBps / 10000;
     const reinsEff = ceded * (1 - comm);
-    const lRaw = lS, aRaw = aS, bRaw = bS;
-    const lNet = lRaw * (1 - reinsEff);
-    const aNet = aRaw * (1 - reinsEff);
-    const bNet = bRaw * (1 - reinsEff);
-    const rNet = reinsEff;
+    const lNet = lS * (1 - reinsEff) * pp;
+    const aNet = aS * (1 - reinsEff) * pp;
+    const bNet = bS * (1 - reinsEff) * pp;
+    const rNet = reinsEff * pp;
 
     const ct: Contract = { id: newCnt, name, flight, date, lNet, aNet, bNet, rNet, status: 'active', ts: nowDate() };
     set(prev => ({
       contractCount: newCnt,
       contracts: [...prev.contracts, ct],
-      totalPremium: prev.totalPremium + 1,
+      totalPremium: prev.totalPremium + pp,
       acc: {
         ...prev.acc,
         leaderPrem: prev.acc.leaderPrem + lNet,
@@ -342,7 +343,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
         partBPrem: prev.acc.partBPrem + bNet,
         reinPrem: prev.acc.reinPrem + rNet,
       },
-      premHist: [...prev.premHist, { t: nowTime(), v: prev.totalPremium + 1 }],
+      premHist: [...prev.premHist, { t: nowTime(), v: prev.totalPremium + pp }],
     }));
     get().addLog(
       i18n.t('store.newContract', { id: newCnt, name, flight, date }), ROLES.leader.color, 'new_contract',
@@ -529,23 +530,23 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
 
   onChainAddContract: (id, name, flight, date, txSignature) => {
     const st = get();
+    const pp = st.premiumPerPolicy;
     const lS = st.shares.leader / 100;
     const aS = st.shares.partA / 100;
     const bS = st.shares.partB / 100;
     const ceded = st.cededRatioBps / 10000;
     const comm = st.reinsCommissionBps / 10000;
     const reinsEff = ceded * (1 - comm);
-    const lRaw = lS, aRaw = aS, bRaw = bS;
-    const lNet = lRaw * (1 - reinsEff);
-    const aNet = aRaw * (1 - reinsEff);
-    const bNet = bRaw * (1 - reinsEff);
-    const rNet = reinsEff;
+    const lNet = lS * (1 - reinsEff) * pp;
+    const aNet = aS * (1 - reinsEff) * pp;
+    const bNet = bS * (1 - reinsEff) * pp;
+    const rNet = reinsEff * pp;
 
     const ct: Contract = { id, name, flight, date, lNet, aNet, bNet, rNet, status: 'active', ts: nowDate() };
     set(prev => ({
       contractCount: id,
       contracts: [...prev.contracts, ct],
-      totalPremium: prev.totalPremium + 1,
+      totalPremium: prev.totalPremium + pp,
       acc: {
         ...prev.acc,
         leaderPrem: prev.acc.leaderPrem + lNet,
@@ -553,7 +554,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
         partBPrem: prev.acc.partBPrem + bNet,
         reinPrem: prev.acc.reinPrem + rNet,
       },
-      premHist: [...prev.premHist, { t: nowTime(), v: prev.totalPremium + 1 }],
+      premHist: [...prev.premHist, { t: nowTime(), v: prev.totalPremium + pp }],
     }));
     get().addLog(
       i18n.t('store.newContract', { id, name, flight, date }), ROLES.leader.color, 'create_flight_policy',
@@ -640,6 +641,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
   },
 
   refreshPool: () => set(st => ({ poolRefreshKey: st.poolRefreshKey + 1 })),
+  setPoolBalance: (balance) => set({ poolBalance: balance }),
 
   resetAll: () => {
     set({
@@ -705,12 +707,13 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     const ceded = st.cededRatioBps / 10000;
     const comm = st.reinsCommissionBps / 10000;
 
-    // Per-contract premium net (1 premium unit each)
-    const lToR = lS * ceded, aToR = aS * ceded, bToR = bS * ceded;
-    const ctLNet = lS - lToR + comm * lS;
-    const ctANet = aS - aToR + comm * aS;
-    const ctBNet = bS - bToR + comm * bS;
-    const ctRNet = (lToR + aToR + bToR) - comm;
+    // Per-contract premium net (premiumPerPolicy unit each)
+    const pp = st.premiumPerPolicy;
+    const reinsEff = ceded * (1 - comm);
+    const ctLNet = lS * (1 - reinsEff) * pp;
+    const ctANet = aS * (1 - reinsEff) * pp;
+    const ctBNet = bS * (1 - reinsEff) * pp;
+    const ctRNet = reinsEff * pp;
 
     const formatTs = (unixSec: number) =>
       new Date(unixSec * 1000).toLocaleString('ko-KR', {
@@ -800,7 +803,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       acc.reinClaim += cl.rNet;
     }
 
-    const totalPremium = contracts.length;
+    const totalPremium = contracts.length * pp;
     const totalClaim = claims.reduce((s, c) => s + c.payout, 0);
 
     set({

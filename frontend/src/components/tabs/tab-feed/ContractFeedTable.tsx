@@ -1,10 +1,13 @@
 import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, Button, DataTable, Tag } from '@/components/common';
 import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
+import { useShallow } from 'zustand/react/shallow';
 
 export function ContractFeedTable() {
   const { t } = useTranslation();
-  const { contracts, clearContracts } = useProtocolStore();
+  const { contracts, clearContracts, premiumPerPolicy } = useProtocolStore(
+    useShallow(s => ({ contracts: s.contracts, clearContracts: s.clearContracts, premiumPerPolicy: s.premiumPerPolicy })),
+  );
 
   return (
     <Card>
@@ -32,7 +35,7 @@ export function ContractFeedTable() {
                 <td>{c.name}</td>
                 <td style={{ color: 'var(--accent)' }}>{c.flight}</td>
                 <td>{c.date}</td>
-                <td style={{ color: 'var(--warning)' }}>1.0000</td>
+                <td style={{ color: 'var(--warning)' }}>{formatNum(premiumPerPolicy, 4)}</td>
                 <td style={{ color: '#9945FF' }}>{formatNum(c.lNet, 4)}</td>
                 <td style={{ color: '#14F195' }}>{formatNum(c.aNet, 4)}</td>
                 <td style={{ color: '#F59E0B' }}>{formatNum(c.bNet, 4)}</td>

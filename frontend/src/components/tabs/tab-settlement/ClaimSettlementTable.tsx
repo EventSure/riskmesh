@@ -1,10 +1,12 @@
 import { Card, CardHeader, CardTitle, SettlementTable } from '@/components/common';
 import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
 import { useTranslation } from 'react-i18next';
+import { useSettlementData } from '@/hooks/useSettlementData';
 
 export function ClaimSettlementTable() {
   const { t } = useTranslation();
-  const { totalClaim, shares, cededRatioBps, reinsCommissionBps } = useProtocolStore();
+  const { shares, cededRatioBps, reinsCommissionBps } = useProtocolStore();
+  const { settledTotalClaim: totalClaim } = useSettlementData();
   const lS = shares.leader / 100, aS = shares.partA / 100, bS = shares.partB / 100;
   const ceded = cededRatioBps / 10000;
   const retained = 1 - ceded;

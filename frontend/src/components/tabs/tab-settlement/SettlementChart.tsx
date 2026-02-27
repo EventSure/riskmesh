@@ -1,28 +1,22 @@
 import { useEffect, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardBody } from '@/components/common';
-import { useProtocolStore } from '@/store/useProtocolStore';
 import { Chart, registerables } from 'chart.js';
 import { useTranslation } from 'react-i18next';
+import { useSettlementData } from '@/hooks/useSettlementData';
 
 Chart.register(...registerables);
 
 export function SettlementChart() {
   const { t, i18n: { language } } = useTranslation();
-  const { acc, totalPremium, totalClaim, cededRatioBps, reinsCommissionBps } = useProtocolStore();
+  const { settledAcc: acc } = useSettlementData();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
-  const ceded = cededRatioBps / 10000;
-  const commRate = reinsCommissionBps / 10000;
-  const reinsEff = ceded * (1 - commRate);
-
-  const rPNet = totalPremium * reinsEff;
-  const rCNet = -totalClaim * reinsEff;
 
   const rows = [
     { label: t('settle.party.leader'), net: acc.leaderPrem - acc.leaderClaim },
     { label: t('settle.party.partA'), net: acc.partAPrem - acc.partAClaim },
     { label: t('settle.party.partB'), net: acc.partBPrem - acc.partBClaim },
-    { label: t('settle.party.reinsurer'), net: rPNet + rCNet },
+    { label: t('settle.party.reinsurer'), net: acc.reinPrem - acc.reinClaim },
   ];
 
   useEffect(() => {
@@ -64,7 +58,7 @@ export function SettlementChart() {
     });
 
     return () => { chartRef.current?.destroy(); chartRef.current = null; };
-  }, [acc, totalPremium, totalClaim, cededRatioBps, reinsCommissionBps, language]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [acc, language]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <Card>

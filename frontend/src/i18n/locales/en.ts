@@ -243,6 +243,11 @@ const en = {
   'settle.party.reinsurer': 'Reinsurer',
   'settle.party.total': 'Total',
 
+  'settle.pendingTitle': '0. Pending Claims (Oracle Confirmed)',
+  'settle.pendingEmpty': 'No pending claims.',
+  'settle.pendingTotal': 'Total Estimated Pending Payout',
+  'settle.settledEmpty': 'No settled claims yet.',
+
   // === Comparison Panel ===
   'compare.title': 'Traditional vs On-Chain',
   'compare.traditional': 'Traditional',
