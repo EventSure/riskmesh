@@ -45,9 +45,9 @@ pub fn handler(ctx: Context<CheckOracle>, oracle_round: u64) -> Result<()> {
     );
 
     let oracle_quote = QuoteVerifier::new()
-        .queue(&ctx.accounts.queue.to_account_info())
-        .slothash_sysvar(&ctx.accounts.slot_hashes.to_account_info())
-        .ix_sysvar(&ctx.accounts.instructions.to_account_info())
+        .queue(ctx.accounts.queue.to_account_info())
+        .slothash_sysvar(ctx.accounts.slot_hashes.to_account_info())
+        .ix_sysvar(ctx.accounts.instructions.to_account_info())
         .clock_slot(Clock::get()?.slot)
         .max_age(ORACLE_MAX_STALENESS_SLOTS)
         .verify_instruction_at(0)
