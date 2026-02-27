@@ -7,6 +7,8 @@ import { useToast } from '@/components/common';
 import { useTranslation } from 'react-i18next';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useProgram } from '@/hooks/useProgram';
+import { useNavigate } from 'react-router-dom';
+import { MasterPolicyDropdown } from './MasterPolicyDropdown';
 
 const blink = keyframes`
   0%, 100% { opacity: 1 }
@@ -35,6 +37,12 @@ const Logo = styled.div`
   display: flex;
   align-items: center;
   gap: 10px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 0.75;
+  }
 `;
 
 const LogoMark = styled.div`
@@ -222,6 +230,7 @@ export function Header() {
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
   const { connected } = useProgram();
+  const navigate = useNavigate();
 
   const ROLE_OPTIONS: { value: Role; label: string }[] = [
     { value: 'leader', label: t('role.leader') },
@@ -257,7 +266,7 @@ export function Header() {
   return (
     <HeaderWrap>
       <HeaderTop>
-        <Logo>
+        <Logo onClick={() => navigate('/')}>
           <LogoMark>OP</LogoMark>
           <div>
             <LogoName>OpenParametric Protocol</LogoName>
@@ -283,6 +292,7 @@ export function Header() {
               DEVNET
             </ModeBtn>
           </ModeToggleWrap>
+          <MasterPolicyDropdown />
           <SelectBase value={role} onChange={handleRoleChange}>
             {ROLE_OPTIONS.map(o => (
               <option key={o.value} value={o.value}>{o.label}</option>

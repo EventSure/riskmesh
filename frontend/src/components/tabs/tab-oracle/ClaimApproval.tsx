@@ -27,7 +27,7 @@ export function ClaimApproval() {
     // In on-chain mode, resolve_flight_delay already sets the claim status
     // There's no separate approve step — claims go directly to settlement
     if (mode === 'onchain') {
-      toast('On-chain: claims are auto-approved via resolve_flight_delay', 'i');
+      toast(t('claim.autoApproveMsg'), 'i');
       return;
     }
     const n = approveClaims();
@@ -45,12 +45,12 @@ export function ClaimApproval() {
 
     // On-chain: settle each claimable flight policy
     if (!masterPolicyPDA || !wallet) {
-      toast('Wallet or master policy not available', 'd');
+      toast(t('toast.walletNotAvailable'), 'd');
       return;
     }
 
     const claimable = claims.filter(c => c.status === 'claimable' || c.status === 'approved');
-    if (claimable.length === 0) { toast('No claims to settle', 'w'); return; }
+    if (claimable.length === 0) { toast(t('toast.noClaimSettle'), 'w'); return; }
 
     // TODO.demo: settle_flight_claim은 PDA 소유 풀 지갑에 USDC 잔액이 필요함
     // 현재 데모에서는 accept_share(입금) 단계가 미구현이므로 풀 지갑에 잔액 없음
@@ -86,7 +86,7 @@ export function ClaimApproval() {
       }
     }
 
-    toast(`Settled ${settled}/${claimable.length} claims on-chain`, settled > 0 ? 's' : 'w');
+    toast(t('claim.settledOnchain', { settled, total: claimable.length }), settled > 0 ? 's' : 'w');
   };
 
   return (
@@ -106,11 +106,13 @@ export function ClaimApproval() {
           <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{t('common.count', { count: setlCnt })}</span>
         </SummaryRow>
         <Divider />
-        <Button variant="warning" fullWidth onClick={handleApprove} disabled={!canAct || pendCnt === 0} style={{ marginBottom: 6 }}>
-          {mode === 'onchain' ? 'Auto-approved (on-chain)' : t('claim.approveBtn')}
-        </Button>
+        {mode !== 'onchain' && (
+          <Button variant="warning" fullWidth onClick={handleApprove} disabled={!canAct || pendCnt === 0} style={{ marginBottom: 6 }}>
+            {t('claim.approveBtn')}
+          </Button>
+        )}
         <Button variant="accent" fullWidth onClick={handleSettle} disabled={!canAct || (pendCnt === 0 && appCnt === 0) || loading}>
-          {loading ? 'Settling...' : t('claim.settleBtn')}
+          {loading ? t('claim.settling') : t('claim.settleBtn')}
         </Button>
       </CardBody>
     </Card>

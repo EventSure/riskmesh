@@ -9,8 +9,36 @@ import { Layout } from '@/components/layout/Layout';
 import { Dashboard } from '@/pages/Dashboard';
 import { LandingPage } from '@/pages/LandingPage';
 import { useProtocolStore, type LogEntry } from '@/store/useProtocolStore';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PublicKey } from '@solana/web3.js';
+import { useMasterPolicyAccount } from '@/hooks/useMasterPolicyAccount';
+import { useFlightPolicies } from '@/hooks/useFlightPolicies';
+
+function ChainSyncer() {
+  const mode = useProtocolStore(s => s.mode);
+  const masterPolicyPDA = useProtocolStore(s => s.masterPolicyPDA);
+  const syncMasterFromChain = useProtocolStore(s => s.syncMasterFromChain);
+  const syncFlightPoliciesFromChain = useProtocolStore(s => s.syncFlightPoliciesFromChain);
+
+  const pdaKey = useMemo(
+    () => mode === 'onchain' && masterPolicyPDA ? new PublicKey(masterPolicyPDA) : null,
+    [mode, masterPolicyPDA],
+  );
+
+  const { account } = useMasterPolicyAccount(pdaKey);
+  const { policies } = useFlightPolicies(pdaKey);
+
+  useEffect(() => {
+    if (account) syncMasterFromChain(account);
+  }, [account]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (pdaKey) syncFlightPoliciesFromChain(policies);
+  }, [policies]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return null;
+}
 
 function InitLogger() {
   const { t, i18n } = useTranslation();
@@ -51,6 +79,7 @@ export function App() {
           <Global styles={globalStyles} />
           <ToastProvider>
             <InitLogger />
+            <ChainSyncer />
             <BrowserRouter basename="/riskmesh">
               <Routes>
                 <Route path="/" element={<LandingPage />} />

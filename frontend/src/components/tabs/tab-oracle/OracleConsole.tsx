@@ -48,7 +48,7 @@ export function OracleConsole() {
     setResult(null);
 
     if (mode === 'simulation') {
-      const res = runOracle(contractId, delay, fresh);
+      const res = runOracle(contractId, delay, fresh, cancelled);
       if (res.type === 'error') {
         setResult({ type: 'error', msg: res.msg, code: res.code });
         toast(res.code || 'Error', 'd');
@@ -62,7 +62,7 @@ export function OracleConsole() {
 
     // On-chain mode
     if (!masterPolicyPDA || !wallet) {
-      toast('Wallet or master policy not available', 'd');
+      toast(t('toast.walletNotAvailable'), 'd');
       return;
     }
 
@@ -77,22 +77,22 @@ export function OracleConsole() {
     });
 
     if (!txResult.success) {
-      setResult({ type: 'error', msg: txResult.error || 'TX failed', code: 'TX_FAILED' });
-      toast(`TX failed: ${txResult.error}`, 'd');
+      setResult({ type: 'error', msg: txResult.error || t('oracle.txFailed'), code: 'TX_FAILED' });
+      toast(t('oracle.txFailedMsg', { error: txResult.error }), 'd');
       return;
     }
 
-    onChainResolve(contractId, delay, txResult.signature);
+    onChainResolve(contractId, delay, cancelled, txResult.signature);
     setContractId(0);
-    setResult({ type: 'ok', msg: `Resolved on-chain. TX: ${txResult.signature.slice(0, 16)}...` });
-    toast('Flight delay resolved on-chain!', 's');
+    setResult({ type: 'ok', msg: t('oracle.resolvedOnChain', { tx: txResult.signature.slice(0, 16) }) });
+    toast(t('oracle.resolvedSuccess'), 's');
   };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>{t('oracle.title')}</CardTitle>
-        <Tag variant="subtle">{mode === 'onchain' ? 'On-chain' : 'Switchboard'}</Tag>
+        <Tag variant="subtle">{mode === 'onchain' ? t('oracle.modeOnchain') : t('oracle.modeSwitchboard')}</Tag>
       </CardHeader>
       <CardBody>
         <FormGroup>
@@ -108,15 +108,13 @@ export function OracleConsole() {
           <FormLabel>{t('oracle.delayLabel')}</FormLabel>
           <FormInput type="number" step={10} min={0} value={delay} onChange={e => setDelay(parseInt(e.target.value) || 0)} style={{ fontFamily: "'DM Mono', monospace" }} />
         </FormGroup>
-        {mode === 'onchain' && (
-          <FormGroup>
-            <FormLabel>Cancelled?</FormLabel>
-            <FormSelect value={cancelled ? 'true' : 'false'} onChange={e => setCancelled(e.target.value === 'true')} style={{ cursor: 'pointer' }}>
-              <option value="false">No</option>
-              <option value="true">Yes (Flight cancelled)</option>
-            </FormSelect>
-          </FormGroup>
-        )}
+        <FormGroup>
+          <FormLabel>{t('oracle.cancelledLabel')}</FormLabel>
+          <FormSelect value={cancelled ? 'true' : 'false'} onChange={e => setCancelled(e.target.value === 'true')} style={{ cursor: 'pointer' }}>
+            <option value="false">{t('oracle.cancelledNo')}</option>
+            <option value="true">{t('oracle.cancelledYes')}</option>
+          </FormSelect>
+        </FormGroup>
         {mode === 'simulation' && (
           <FormGroup>
             <FormLabel>{t('oracle.freshnessLabel')}</FormLabel>
@@ -141,7 +139,7 @@ export function OracleConsole() {
           </MsgBox>
         )}
         <Button variant="primary" fullWidth onClick={handleRun} disabled={!masterActive || contractId === 0 || loading}>
-          {loading ? 'Sending TX...' : mode === 'onchain' ? 'resolve_flight_delay' : '🔮 check_oracle_and_create_claim'}
+          {loading ? t('oracle.sendingTx') : mode === 'onchain' ? t('oracle.runBtnOnchain') : t('oracle.runBtn')}
         </Button>
       </CardBody>
     </Card>
