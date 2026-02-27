@@ -94,7 +94,7 @@ pub(crate) fn calc_claim_split(
     payout: u64,
     reinsurer_effective_bps: u16,
     insurer_share_bps: &[u16],
-) -> Result<(u64, Vec<u64>), OpenParamError> {
+) -> std::result::Result<(u64, Vec<u64>), OpenParamError> {
     let reinsurer_amount = payout
         .checked_mul(reinsurer_effective_bps as u64)
         .ok_or(OpenParamError::MathOverflow)?
