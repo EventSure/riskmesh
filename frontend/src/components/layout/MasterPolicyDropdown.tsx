@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import styled from '@emotion/styled';
+import { useTranslation } from 'react-i18next';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { useMasterPolicies } from '@/hooks/useMasterPolicies';
 import { useProgram } from '@/hooks/useProgram';
@@ -40,6 +41,7 @@ export function MasterPolicyDropdown() {
   const mode = useProtocolStore(s => s.mode);
   const masterPolicyPDA = useProtocolStore(s => s.masterPolicyPDA);
   const selectMasterPolicy = useProtocolStore(s => s.selectMasterPolicy);
+  const { t } = useTranslation();
   const { connected } = useProgram();
   const { policies, loading, refetch } = useMasterPolicies();
 
@@ -58,10 +60,10 @@ export function MasterPolicyDropdown() {
       value={masterPolicyPDA ?? ''}
       onChange={e => selectMasterPolicy(e.target.value || null)}
     >
-      <option value="">새 마스터계약 생성</option>
-      {loading && <option disabled>조회 중...</option>}
+      <option value="">{t('master.newCreate')}</option>
+      {loading && <option disabled>{t('master.loading')}</option>}
       {!loading && policies.length === 0 && (
-        <option disabled>이전 계약 없음</option>
+        <option disabled>{t('master.noPrevious')}</option>
       )}
       {policies.map(p => (
         <option key={p.pda} value={p.pda}>
