@@ -258,11 +258,14 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
   },
 
   confirmParty: (key) => {
-    const step = key === 'partA' ? 2 : key === 'partB' ? 3 : 4;
-    set(st => ({
-      confirms: { ...st.confirms, [key]: true },
-      processStep: Math.max(st.processStep, step),
-    }));
+    set(st => {
+      const c = { ...st.confirms, [key]: true };
+      let step = st.processStep;
+      if (c.partA && step < 2) step = 2;
+      if (c.partA && c.partB && step < 3) step = 3;
+      if (c.partA && c.partB && c.rein && step < 4) step = 4;
+      return { confirms: c, processStep: step };
+    });
     get().addLog(i18n.t('store.confirmDone', { role: getRoleLabel(key) }), ROLES[key].color, 'confirm_party');
   },
 
@@ -447,11 +450,14 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
   },
 
   onChainConfirm: (key, txSignature) => {
-    const step = key === 'partA' ? 2 : key === 'partB' ? 3 : 4;
-    set(st => ({
-      confirms: { ...st.confirms, [key]: true },
-      processStep: Math.max(st.processStep, step),
-    }));
+    set(st => {
+      const c = { ...st.confirms, [key]: true };
+      let step = st.processStep;
+      if (c.partA && step < 2) step = 2;
+      if (c.partA && c.partB && step < 3) step = 3;
+      if (c.partA && c.partB && c.rein && step < 4) step = 4;
+      return { confirms: c, processStep: step };
+    });
     get().addLog(
       i18n.t('store.confirmDone', { role: getRoleLabel(key) }), ROLES[key].color, 'confirm_master',
       '', txSignature,
@@ -503,10 +509,21 @@ export const useProtocolStore = create<ProtocolState>((set, get) => ({
 
   onChainResolve: (contractId, delay, txSignature) => {
     const st = get();
-    const tier = getTier(delay);
-    if (!tier) return;
     const contract = st.contracts.find(c => c.id === contractId);
     if (!contract) return;
+
+    const tier = getTier(delay);
+    // No trigger (delay < 120min): on-chain status → NoClaim, mark contract resolved
+    if (!tier) {
+      set(prev => ({
+        contracts: prev.contracts.map(c => c.id === contractId ? { ...c, status: 'claimed' as const } : c),
+      }));
+      get().addLog(
+        i18n.t('store.noTrigger', { id: contractId }), '#22c55e', 'resolve_flight_delay',
+        `delay=${delay}min (< 120min threshold)`, txSignature,
+      );
+      return;
+    }
 
     const ceded = st.cededRatioBps / 10000;
     const commRate = st.reinsCommissionBps / 10000;

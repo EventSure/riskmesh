@@ -83,6 +83,7 @@ export function OracleConsole() {
     }
 
     onChainResolve(contractId, delay, txResult.signature);
+    setContractId(0);
     setResult({ type: 'ok', msg: `Resolved on-chain. TX: ${txResult.signature.slice(0, 16)}...` });
     toast('Flight delay resolved on-chain!', 's');
   };

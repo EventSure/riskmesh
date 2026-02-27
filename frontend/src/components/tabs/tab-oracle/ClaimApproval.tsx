@@ -1,8 +1,11 @@
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
+import { getAssociatedTokenAddress } from '@solana/spl-token';
 import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardBody, Button, SummaryRow, Divider } from '@/components/common';
 import { useProtocolStore } from '@/store/useProtocolStore';
+import { CURRENCY_MINT } from '@/lib/constants';
+import { getDemoKeypair } from '@/lib/demo-keypairs';
 import { useToast } from '@/components/common';
 import { useSettleFlight } from '@/hooks/useSettleFlight';
 import { useProgram } from '@/hooks/useProgram';
@@ -49,7 +52,22 @@ export function ClaimApproval() {
     const claimable = claims.filter(c => c.status === 'claimable' || c.status === 'approved');
     if (claimable.length === 0) { toast('No claims to settle', 'w'); return; }
 
+    // TODO.demo: settle_flight_claim은 PDA 소유 풀 지갑에 USDC 잔액이 필요함
+    // 현재 데모에서는 accept_share(입금) 단계가 미구현이므로 풀 지갑에 잔액 없음
+    // → on-chain settle은 InsufficientFunds 에러 예상
+    // 실제 환경: create_master 시 PDA 소유 vault 생성 → accept_share로 입금 → settle로 출금
     const masterPK = new PublicKey(masterPolicyPDA);
+    const leaderATA = await getAssociatedTokenAddress(CURRENCY_MINT, wallet.publicKey);
+
+    // TODO.demo: 데모 키페어의 ATA를 participant pool wallet로 사용
+    const partAKp = getDemoKeypair('partA');
+    const partBKp = getDemoKeypair('partB');
+    const participantPoolWallets = [
+      leaderATA,
+      ...(partAKp ? [await getAssociatedTokenAddress(CURRENCY_MINT, partAKp.publicKey)] : []),
+      ...(partBKp ? [await getAssociatedTokenAddress(CURRENCY_MINT, partBKp.publicKey)] : []),
+    ];
+
     let settled = 0;
 
     for (const claim of claimable) {
@@ -57,9 +75,9 @@ export function ClaimApproval() {
       const result = await settleFlightClaim({
         masterPolicy: masterPK,
         flightPolicy: flightPolicyPDA,
-        leaderDepositToken: wallet.publicKey, // placeholder
-        reinsurerPoolToken: wallet.publicKey, // placeholder
-        participantPoolWallets: [], // placeholder — needs real wallets from master account
+        leaderDepositToken: leaderATA,
+        reinsurerPoolToken: leaderATA,
+        participantPoolWallets,
       });
 
       if (result.success) {
