@@ -8,6 +8,7 @@ export function PremiumSettlementTable() {
   const lS = shares.leader / 100, aS = shares.partA / 100, bS = shares.partB / 100;
   const ceded = cededRatioBps / 10000;
   const commRate = reinsCommissionBps / 10000;
+  const reinsEff = ceded * (1 - commRate);
 
   const rows = [
     { label: t('settle.party.leader'), s: lS },
@@ -16,13 +17,13 @@ export function PremiumSettlementTable() {
   ].map(r => {
     const raw = totalPremium * r.s;
     const toR = raw * ceded;
-    const comm = totalPremium * commRate * r.s;
+    const comm = toR * commRate;
     const net = raw - toR + comm;
     return { ...r, raw, toR, comm, net };
   });
 
   const rIn = totalPremium * ceded;
-  const rOut = totalPremium * commRate;
+  const rOut = rIn * commRate;
 
   return (
     <Card>
@@ -45,7 +46,7 @@ export function PremiumSettlementTable() {
             ))}
             <tr className="trein">
               <td>{t('settle.party.reinsurer')}</td>
-              <td>{formatNum(ceded * 100, 0)}%</td>
+              <td>{formatNum(reinsEff * 100, 0)}%</td>
               <td>—</td>
               <td style={{ color: 'var(--info)' }}>{formatNum(rIn, 4)}</td>
               <td style={{ color: 'var(--warning)' }}>-{formatNum(rOut, 4)}</td>

@@ -7,14 +7,11 @@ export function FinalSettlementTable() {
   const { acc, totalPremium, totalClaim, cededRatioBps, reinsCommissionBps } = useProtocolStore();
   const ceded = cededRatioBps / 10000;
   const commRate = reinsCommissionBps / 10000;
+  const reinsEff = ceded * (1 - commRate);
 
-  const rIn = totalPremium * ceded;
-  const rOut = totalPremium * commRate;
-  const rPNet = rIn - rOut;
+  const rPNet = totalPremium * reinsEff;
 
-  const rcIn = totalClaim * ceded;
-  const rcOut = totalClaim * commRate;
-  const rCNet = -rcIn + rcOut;
+  const rCNet = -totalClaim * reinsEff;
 
   const rows = [
     { label: t('settle.party.leader'), p: acc.leaderPrem, c: acc.leaderClaim, rein: false },

@@ -8,6 +8,7 @@ export function ClaimSettlementTable() {
   const lS = shares.leader / 100, aS = shares.partA / 100, bS = shares.partB / 100;
   const ceded = cededRatioBps / 10000;
   const commRate = reinsCommissionBps / 10000;
+  const reinsEff = ceded * (1 - commRate);
 
   const rows = [
     { label: t('settle.party.leader'), s: lS },
@@ -16,13 +17,13 @@ export function ClaimSettlementTable() {
   ].map(r => {
     const gross = totalClaim * r.s;
     const rc = gross * ceded;
-    const comm = totalClaim * commRate * r.s;
+    const comm = rc * commRate;
     const net = gross - rc + comm;
     return { ...r, gross, rc, comm, net };
   });
 
   const rcIn = totalClaim * ceded;
-  const rcOut = totalClaim * commRate;
+  const rcOut = rcIn * commRate;
 
   return (
     <Card>
@@ -45,7 +46,7 @@ export function ClaimSettlementTable() {
             ))}
             <tr className="trein">
               <td>{t('settle.party.reinsurer')}</td>
-              <td>{formatNum(ceded * 100, 0)}%</td>
+              <td>{formatNum(reinsEff * 100, 0)}%</td>
               <td style={{ color: 'var(--info)' }}>-{formatNum(rcIn, 4)}</td>
               <td>—</td>
               <td style={{ color: 'var(--accent)' }}>+{formatNum(rcOut, 4)}</td>

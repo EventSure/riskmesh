@@ -13,13 +13,10 @@ export function SettlementChart() {
   const chartRef = useRef<Chart | null>(null);
   const ceded = cededRatioBps / 10000;
   const commRate = reinsCommissionBps / 10000;
+  const reinsEff = ceded * (1 - commRate);
 
-  const rIn = totalPremium * ceded;
-  const rOut = totalPremium * commRate;
-  const rPNet = rIn - rOut;
-  const rcIn = totalClaim * ceded;
-  const rcOut = totalClaim * commRate;
-  const rCNet = -rcIn + rcOut;
+  const rPNet = totalPremium * reinsEff;
+  const rCNet = -totalClaim * reinsEff;
 
   const rows = [
     { label: t('settle.party.leader'), net: acc.leaderPrem - acc.leaderClaim },
