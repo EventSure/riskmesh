@@ -10,7 +10,10 @@ pub struct TierPayouts {
     pub delay_6h_or_cancelled: u64,
 }
 
-pub fn effective_reinsurer_bps(ceded_ratio_bps: u16, commission_bps: u16) -> Result<u16, OpenParamError> {
+pub fn effective_reinsurer_bps(
+    ceded_ratio_bps: u16,
+    commission_bps: u16,
+) -> Result<u16, OpenParamError> {
     if ceded_ratio_bps as u64 > BPS_DENOM || commission_bps as u64 > BPS_DENOM {
         return Err(OpenParamError::InvalidRatio);
     }
@@ -69,13 +72,10 @@ pub fn split_by_bps(total: u64, ratios_bps: &[u16]) -> Result<Vec<u64>, OpenPara
         let rem = total
             .checked_sub(allocated)
             .ok_or(OpenParamError::MathOverflow)?;
-        *first = first
-            .checked_add(rem)
-            .ok_or(OpenParamError::MathOverflow)?;
+        *first = first.checked_add(rem).ok_or(OpenParamError::MathOverflow)?;
     }
     Ok(out)
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -114,5 +114,4 @@ mod tests {
         let parts2 = split_by_bps(1, &[5_000, 3_000, 2_000]).unwrap();
         assert_eq!(parts2.iter().sum::<u64>(), 1);
     }
-
 }

@@ -17,11 +17,26 @@ pub fn handler(ctx: Context<RegisterPolicyholder>, entry: PolicyholderEntryInput
     let registry = &mut ctx.accounts.registry;
 
     // 리더 권한과 입력 길이/최대 인원 제한을 확인한 뒤 레지스트리에 추가한다.
-    require!(ctx.accounts.policy.leader == ctx.accounts.leader.key(), OpenParamError::Unauthorized);
-    require!(registry.policy == ctx.accounts.policy.key(), OpenParamError::InvalidInput);
-    require!(entry.external_ref.len() <= MAX_EXTERNAL_REF_LEN, OpenParamError::InputTooLong);
-    require!(entry.flight_no.len() <= MAX_FLIGHT_NO_LEN, OpenParamError::InputTooLong);
-    require!(registry.entries.len() < MAX_POLICYHOLDERS, OpenParamError::InvalidInput);
+    require!(
+        ctx.accounts.policy.leader == ctx.accounts.leader.key(),
+        OpenParamError::Unauthorized
+    );
+    require!(
+        registry.policy == ctx.accounts.policy.key(),
+        OpenParamError::InvalidInput
+    );
+    require!(
+        entry.external_ref.len() <= MAX_EXTERNAL_REF_LEN,
+        OpenParamError::InputTooLong
+    );
+    require!(
+        entry.flight_no.len() <= MAX_FLIGHT_NO_LEN,
+        OpenParamError::InputTooLong
+    );
+    require!(
+        registry.entries.len() < MAX_POLICYHOLDERS,
+        OpenParamError::InvalidInput
+    );
 
     registry.entries.push(PolicyholderEntry {
         external_ref: entry.external_ref,

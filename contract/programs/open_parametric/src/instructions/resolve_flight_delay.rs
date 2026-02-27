@@ -12,16 +12,28 @@ pub struct ResolveFlightDelay<'info> {
     pub flight_policy: Account<'info, FlightPolicy>,
 }
 
-pub fn handler(ctx: Context<ResolveFlightDelay>, delay_minutes: u16, cancelled: bool) -> Result<()> {
+pub fn handler(
+    ctx: Context<ResolveFlightDelay>,
+    delay_minutes: u16,
+    cancelled: bool,
+) -> Result<()> {
     let master = &ctx.accounts.master_policy;
     let flight = &mut ctx.accounts.flight_policy;
 
     // 지연 결과 확정은 권한자(leader/operator)만 수행할 수 있다.
-    require!(master.status == MasterPolicyStatus::Active as u8, OpenParamError::MasterNotActive);
-    require!(ctx.accounts.resolver.key() == master.leader || ctx.accounts.resolver.key() == master.operator, OpenParamError::Unauthorized);
+    require!(
+        master.status == MasterPolicyStatus::Active as u8,
+        OpenParamError::MasterNotActive
+    );
+    require!(
+        ctx.accounts.resolver.key() == master.leader
+            || ctx.accounts.resolver.key() == master.operator,
+        OpenParamError::Unauthorized
+    );
     require!(flight.master == master.key(), OpenParamError::InvalidInput);
     require!(
-        flight.status == FlightPolicyStatus::AwaitingOracle as u8 || flight.status == FlightPolicyStatus::Issued as u8,
+        flight.status == FlightPolicyStatus::AwaitingOracle as u8
+            || flight.status == FlightPolicyStatus::Issued as u8,
         OpenParamError::InvalidState
     );
 

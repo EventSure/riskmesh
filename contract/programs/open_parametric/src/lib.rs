@@ -100,11 +100,15 @@ pub mod open_parametric {
         instructions::resolve_flight_delay::handler(ctx, delay_minutes, cancelled)
     }
 
-    pub fn settle_flight_claim<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightClaim<'a>>) -> Result<()> {
+    pub fn settle_flight_claim<'a>(
+        ctx: Context<'_, '_, 'a, 'a, SettleFlightClaim<'a>>,
+    ) -> Result<()> {
         instructions::settle_flight_claim::handler(ctx)
     }
 
-    pub fn settle_flight_no_claim<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightNoClaim<'a>>) -> Result<()> {
+    pub fn settle_flight_no_claim<'a>(
+        ctx: Context<'_, '_, 'a, 'a, SettleFlightNoClaim<'a>>,
+    ) -> Result<()> {
         instructions::settle_flight_no_claim::handler(ctx)
     }
 }

@@ -77,9 +77,15 @@ pub fn handler(ctx: Context<CreatePolicy>, params: CreatePolicyParams) -> Result
     // 정책 생성 입력 검증(기간/금액/지연 임계치/문자열 길이/참여자 지분).
     require!(active_from < active_to, OpenParamError::InvalidTimeWindow);
     require!(payout_amount > 0, OpenParamError::InvalidAmount);
-    require!(delay_threshold_min == DELAY_THRESHOLD_MIN, OpenParamError::InvalidDelayThreshold);
+    require!(
+        delay_threshold_min == DELAY_THRESHOLD_MIN,
+        OpenParamError::InvalidDelayThreshold
+    );
     require!(route.len() <= MAX_ROUTE_LEN, OpenParamError::InputTooLong);
-    require!(flight_no.len() <= MAX_FLIGHT_NO_LEN, OpenParamError::InputTooLong);
+    require!(
+        flight_no.len() <= MAX_FLIGHT_NO_LEN,
+        OpenParamError::InputTooLong
+    );
     let total_ratio = validate_policy_participants(&participants)?;
 
     // Policy 본문 필드를 초기화한다.

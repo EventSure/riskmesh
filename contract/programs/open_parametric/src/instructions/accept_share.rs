@@ -26,12 +26,30 @@ pub fn handler(ctx: Context<AcceptShare>, index: u8, deposit_amount: u64) -> Res
     let uw = &mut ctx.accounts.underwriting;
 
     // 언더라이팅 참여 수락 전에 계정/상태 일관성을 먼저 검증한다.
-    require!(policy.state == PolicyState::Open as u8, OpenParamError::InvalidState);
-    require!(policy.underwriting == uw.key(), OpenParamError::InvalidInput);
-    require!(policy.pool == ctx.accounts.risk_pool.key(), OpenParamError::InvalidInput);
-    require!(ctx.accounts.vault.key() == ctx.accounts.risk_pool.vault, OpenParamError::InvalidInput);
-    require!(ctx.accounts.participant_token.mint == policy.currency_mint, OpenParamError::InvalidInput);
-    require!(ctx.accounts.vault.mint == policy.currency_mint, OpenParamError::InvalidInput);
+    require!(
+        policy.state == PolicyState::Open as u8,
+        OpenParamError::InvalidState
+    );
+    require!(
+        policy.underwriting == uw.key(),
+        OpenParamError::InvalidInput
+    );
+    require!(
+        policy.pool == ctx.accounts.risk_pool.key(),
+        OpenParamError::InvalidInput
+    );
+    require!(
+        ctx.accounts.vault.key() == ctx.accounts.risk_pool.vault,
+        OpenParamError::InvalidInput
+    );
+    require!(
+        ctx.accounts.participant_token.mint == policy.currency_mint,
+        OpenParamError::InvalidInput
+    );
+    require!(
+        ctx.accounts.vault.mint == policy.currency_mint,
+        OpenParamError::InvalidInput
+    );
     require!(
         ctx.accounts.participant_token.owner == ctx.accounts.participant.key(),
         OpenParamError::Unauthorized
@@ -40,14 +58,23 @@ pub fn handler(ctx: Context<AcceptShare>, index: u8, deposit_amount: u64) -> Res
     let i = index as usize;
     require!(i < uw.participants.len(), OpenParamError::NotFound);
     let share = &mut uw.participants[i];
-    require!(share.insurer == ctx.accounts.participant.key(), OpenParamError::Unauthorized);
-    require!(share.status == ParticipantStatus::Pending as u8, OpenParamError::InvalidState);
+    require!(
+        share.insurer == ctx.accounts.participant.key(),
+        OpenParamError::Unauthorized
+    );
+    require!(
+        share.status == ParticipantStatus::Pending as u8,
+        OpenParamError::InvalidState
+    );
     // Phase 1 수정: ratio_bps > 0 검증 추가
     require!(share.ratio_bps > 0, OpenParamError::InvalidRatio);
     require!(deposit_amount > 0, OpenParamError::InvalidAmount);
 
     let required = calc_required_deposit(policy.payout_amount, share.ratio_bps)?;
-    require!(deposit_amount >= required, OpenParamError::InsufficientEscrow);
+    require!(
+        deposit_amount >= required,
+        OpenParamError::InsufficientEscrow
+    );
 
     // 참여자 지갑에서 풀 금고(vault)로 담보금을 이체한다.
     let cpi_ctx = CpiContext::new(
