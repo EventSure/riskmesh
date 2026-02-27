@@ -1,8 +1,0 @@
-[package]
-name = "solana-program-ed25519-dalek-bump"
-version = "1.16.3"
-edition = "2021"
-description = "Stub: re-exports solana-program to avoid solana-frozen-abi version conflict"
-
-[dependencies]
-solana-program = "=1.18.26"
