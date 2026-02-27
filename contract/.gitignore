@@ -1,6 +1,2 @@
 target/
-<<<<<<< feature/oracle
-.env
-=======
 node_modules/
->>>>>>> main

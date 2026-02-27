@@ -1,5 +1,4 @@
 {
-<<<<<<< feature/oracle
   "license": "UNLICENSED",
   "scripts": {
     "test": "ts-mocha -p ./tsconfig.json -t 1000000 tests/*.ts",
@@ -28,23 +27,5 @@
     "ts-mocha": "^10",
     "ts-node": "^10",
     "typescript": "^5"
-=======
-  "name": "riskmesh-contract",
-  "private": true,
-  "scripts": {
-    "test": "ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
-  },
-  "devDependencies": {
-    "@solana/spl-token": "^0.4.9",
-    "@solana/web3.js": "^1.98.4",
-    "@coral-xyz/anchor": "^0.31.1",
-    "@types/chai": "^4.3.20",
-    "@types/mocha": "^10.0.10",
-    "@types/node": "^22.13.10",
-    "chai": "^4.5.0",
-    "mocha": "^11.1.0",
-    "ts-mocha": "^10.1.0",
-    "typescript": "^5.7.3"
->>>>>>> main
   }
 }
