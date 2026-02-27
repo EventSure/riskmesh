@@ -24,14 +24,14 @@ const en = {
   'header.kpi.poolHealth': 'Pool Health',
 
   // === Roles (dropdown) ===
-  'role.leader': '👑 Leader (Samsung Fire)',
+  'role.leader': '👑 Leader (Samsung F&M)',
   'role.partA': '🔵 Participant A (Hyundai M&F)',
   'role.partB': '🟡 Participant B (DB Ins.)',
   'role.rein': '🌐 Reinsurer',
   'role.operator': '🛡️ Operator',
 
   // === Roles (short labels used in store/tables) ===
-  'role.leaderShort': 'Leader(Samsung Fire)',
+  'role.leaderShort': 'Leader(Samsung F&M)',
   'role.partAShort': 'Participant A(Hyundai M&F)',
   'role.partBShort': 'Participant B(DB Ins.)',
   'role.reinShort': 'Reinsurer',
@@ -53,6 +53,9 @@ const en = {
   'master.premiumPerContract': 'Premium per Contract (USDC)',
   'master.payoutByTier': 'Payout by Delay Tier',
   'master.setTermsBtn': '📄 Set Terms & Rate',
+  'master.newCreate': 'Create New Master Contract',
+  'master.loading': 'Loading...',
+  'master.noPrevious': 'No previous contracts',
   'master.tier.6h': '6h+ / Cancellation',
 
   // === Tab1: Share Structure ===
@@ -237,7 +240,7 @@ const en = {
   'settle.finalTh.pl': 'P&L',
   'settle.chartTitle': 'P&L Trend',
 
-  'settle.party.leader': 'Leader (Samsung Fire)',
+  'settle.party.leader': 'Leader (Samsung F&M)',
   'settle.party.partA': 'Participant A (Hyundai M&F)',
   'settle.party.partB': 'Participant B (DB Ins.)',
   'settle.party.reinsurer': 'Reinsurer',

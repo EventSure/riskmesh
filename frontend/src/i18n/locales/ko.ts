@@ -53,6 +53,9 @@ const ko = {
   'master.premiumPerContract': '건당 보험료 (USDC)',
   'master.payoutByTier': '지연 구간별 보험금',
   'master.setTermsBtn': '📄 약관 세팅 & 요율 산정',
+  'master.newCreate': '새 마스터계약 생성',
+  'master.loading': '조회 중...',
+  'master.noPrevious': '이전 계약 없음',
   'master.tier.6h': '6h+ / 결항',
 
   // === Tab1: Share Structure ===
