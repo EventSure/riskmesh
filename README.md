@@ -49,6 +49,7 @@ Switch modes via the **DEVNET / SIM** toggle in the top-right header. SIM mode i
 | File | Description |
 |------|-------------|
 | [`CONTRACT_GUIDE.md`](docs/CONTRACT_GUIDE.md) | Smart contract detailed spec — accounts, instructions, error codes, sequences (Korean) |
+| [`CONTRACT_GUIDE_EN.md`](docs/CONTRACT_GUIDE_EN.md) | Smart contract detailed spec — accounts, instructions, error codes, sequences (English) |
 | [`CONTRACT_TESTING_GUIDE_KO.md`](docs/CONTRACT_TESTING_GUIDE_KO.md) | Contract testing guide — unit, integration, and settlement tests (Korean) |
 | [`FRONTEND_TESTING_GUIDE_KO.md`](docs/FRONTEND_TESTING_GUIDE_KO.md) | Frontend unit testing guide — business logic tests (Korean) |
 | [`FILE_STATE_LOGIC_FULL_KO.md`](docs/FILE_STATE_LOGIC_FULL_KO.md) | Full file-by-file state/logic reference for the entire repo (Korean) |
@@ -86,6 +87,20 @@ This modular design allows flexible adoption:
 - **Decentralized production** — Track B with Switchboard oracle network for trustless verification
 
 For full details, see [`contract/docs/oracle.md`](contract/docs/oracle.md).
+
+## Why Solana
+
+A flight is delayed by 2 hours. In the same transaction where the oracle posts the data, a claim is automatically created and settlement is atomically executed across three insurers' ratios. No human intervention, no paperwork, no system downtime.
+
+Building this workflow on legacy infrastructure — oracle verification, multi-party escrow, atomic settlement — would require at least three separate systems and days of reconciliation. On Solana, it's a single 400ms transaction.
+
+Specifically, Solana enables five architectural properties that this protocol requires:
+
+- **Atomic oracle verification** — `check_oracle_and_create_claim` performs Ed25519 signature verification, Switchboard oracle update, and claim creation in a single transaction. Solana's Instructions sysvar allows a program to inspect other instructions within the same TX — structurally impossible on EVM.
+- **Trustless custody via PDAs** — The risk pool vault is owned by a program-derived address. No multisig, no admin key, no external custodian. The program itself is the custodian — there is no admin key to compromise because none exists.
+- **Account-level parallelism** — Each Policy, Underwriting, RiskPool, and Claim is a separate on-chain account. The Solana runtime processes transactions touching different accounts in parallel. KE081 ICN→JFK claim processing never blocks OZ201 ICN→LAX underwriting. In EVM's single-contract model, all policies compete for the same storage.
+- **Multi-party atomic settlement** — `settle_claim` transfers from the vault to the beneficiary in one transaction with PDA-signed authority. Up to 16 participants' basis-point ratios are calculated and settled atomically — all or nothing, no partial settlement.
+- **On-chain state machine as policy terms** — The 8-step state transition (Draft → Open → Funded → Active → Claimable → Approved → Settled / Expired) is enforced on-chain. "Cannot activate before fully funded" is not a contractual clause subject to interpretation — it's a transaction that the program rejects.
 
 ## Quick Start
 
