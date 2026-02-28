@@ -170,6 +170,25 @@ npm run test:watch
 npm run test:coverage
 ```
 
+### Coverage Summary
+
+| Area | Framework | Tests | Pass Rate | Line Coverage |
+|------|-----------|-------|-----------|--------------------|
+| Frontend | Vitest (v8) | 90 | 100% | 59% |
+| Contract (Rust) | cargo-llvm-cov | 15 | 100% | 26% |
+| Contract (Settlement) | node --test | 4 | 100% | — |
+
+Frontend coverage breakdown:
+
+| Module | Stmts | Branch | Funcs | Lines |
+|--------|-------|--------|-------|-------|
+| hooks/ | 100% | 100% | 100% | 100% |
+| lib/ | 100% | 100% | 100% | 100% |
+| store/ | 48% | 45% | 51% | 46% |
+| **All files** | **60%** | **52%** | **65%** | **59%** |
+
+
+
 For detailed guides, see:
 - [`docs/CONTRACT_TESTING_GUIDE_KO.md`](docs/CONTRACT_TESTING_GUIDE_KO.md) — Contract testing guide (Korean)
 - [`docs/FRONTEND_TESTING_GUIDE_KO.md`](docs/FRONTEND_TESTING_GUIDE_KO.md) — Frontend testing guide (Korean)

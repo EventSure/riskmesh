@@ -134,6 +134,25 @@ npm run test:watch
 npm run test:coverage
 ```
 
+### 커버리지 요약
+
+| 영역 | 프레임워크 | 테스트 수 | 통과율 | 라인 커버리지 |
+|------|-----------|----------|--------|--------------|
+| 프런트엔드 | Vitest (v8) | 90 | 100% | 59% |
+| 컨트랙트 (Rust) | cargo-llvm-cov | 15 | 100% | 26% |
+| 컨트랙트 (정산 로직) | node --test | 4 | 100% | — |
+
+프런트엔드 모듈별 커버리지:
+
+| 모듈 | Stmts | Branch | Funcs | Lines |
+|------|-------|--------|-------|-------|
+| hooks/ | 100% | 100% | 100% | 100% |
+| lib/ | 100% | 100% | 100% | 100% |
+| store/ | 48% | 45% | 51% | 46% |
+| **전체** | **60%** | **52%** | **65%** | **59%** |
+
+
+
 상세 가이드:
 - [`docs/CONTRACT_TESTING_GUIDE_KO.md`](docs/CONTRACT_TESTING_GUIDE_KO.md) — 컨트랙트 테스트 가이드
 - [`docs/FRONTEND_TESTING_GUIDE_KO.md`](docs/FRONTEND_TESTING_GUIDE_KO.md) — 프런트엔드 테스트 가이드
