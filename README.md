@@ -77,7 +77,7 @@ The oracle integration uses a **modular, dual-track design** — the same contra
 | Track | Strategy | Trust Model | Target Account |
 |-------|----------|-------------|----------------|
 | **Track A** — Trusted Resolver | Leader/Operator fetches API data and calls `resolve_flight_delay` on-chain | Centralized (signer trust) | `FlightPolicy` |
-| **Track B** — Switchboard On-Demand | Switchboard oracle nodes fetch API data, sign and write to an on-chain feed; `check_oracle_and_create_claim` verifies cryptographically | Decentralized (cryptographic verification) | `Policy` (Legacy) |
+| **Track B** — Switchboard On-Demand | Switchboard oracle nodes fetch API data, sign and write to an on-chain feed; `check_oracle_and_create_claim` verifies cryptographically | Decentralized (cryptographic verification) | `Policy`  |
 
 **In demo/simulation mode**, oracle resolution is triggered manually via the dashboard UI — no external API or oracle network is required.
 
