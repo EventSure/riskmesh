@@ -1,0 +1,1426 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for i18n/locales/en.ts</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../../prettify.css" />
+    <link rel="stylesheet" href="../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../../index.html">All files</a> / <a href="index.html">i18n/locales</a> en.ts</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>1/1</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>0/0</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>0/0</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>1/1</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line high'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a>
+<a name='L96'></a><a href='#L96'>96</a>
+<a name='L97'></a><a href='#L97'>97</a>
+<a name='L98'></a><a href='#L98'>98</a>
+<a name='L99'></a><a href='#L99'>99</a>
+<a name='L100'></a><a href='#L100'>100</a>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a>
+<a name='L107'></a><a href='#L107'>107</a>
+<a name='L108'></a><a href='#L108'>108</a>
+<a name='L109'></a><a href='#L109'>109</a>
+<a name='L110'></a><a href='#L110'>110</a>
+<a name='L111'></a><a href='#L111'>111</a>
+<a name='L112'></a><a href='#L112'>112</a>
+<a name='L113'></a><a href='#L113'>113</a>
+<a name='L114'></a><a href='#L114'>114</a>
+<a name='L115'></a><a href='#L115'>115</a>
+<a name='L116'></a><a href='#L116'>116</a>
+<a name='L117'></a><a href='#L117'>117</a>
+<a name='L118'></a><a href='#L118'>118</a>
+<a name='L119'></a><a href='#L119'>119</a>
+<a name='L120'></a><a href='#L120'>120</a>
+<a name='L121'></a><a href='#L121'>121</a>
+<a name='L122'></a><a href='#L122'>122</a>
+<a name='L123'></a><a href='#L123'>123</a>
+<a name='L124'></a><a href='#L124'>124</a>
+<a name='L125'></a><a href='#L125'>125</a>
+<a name='L126'></a><a href='#L126'>126</a>
+<a name='L127'></a><a href='#L127'>127</a>
+<a name='L128'></a><a href='#L128'>128</a>
+<a name='L129'></a><a href='#L129'>129</a>
+<a name='L130'></a><a href='#L130'>130</a>
+<a name='L131'></a><a href='#L131'>131</a>
+<a name='L132'></a><a href='#L132'>132</a>
+<a name='L133'></a><a href='#L133'>133</a>
+<a name='L134'></a><a href='#L134'>134</a>
+<a name='L135'></a><a href='#L135'>135</a>
+<a name='L136'></a><a href='#L136'>136</a>
+<a name='L137'></a><a href='#L137'>137</a>
+<a name='L138'></a><a href='#L138'>138</a>
+<a name='L139'></a><a href='#L139'>139</a>
+<a name='L140'></a><a href='#L140'>140</a>
+<a name='L141'></a><a href='#L141'>141</a>
+<a name='L142'></a><a href='#L142'>142</a>
+<a name='L143'></a><a href='#L143'>143</a>
+<a name='L144'></a><a href='#L144'>144</a>
+<a name='L145'></a><a href='#L145'>145</a>
+<a name='L146'></a><a href='#L146'>146</a>
+<a name='L147'></a><a href='#L147'>147</a>
+<a name='L148'></a><a href='#L148'>148</a>
+<a name='L149'></a><a href='#L149'>149</a>
+<a name='L150'></a><a href='#L150'>150</a>
+<a name='L151'></a><a href='#L151'>151</a>
+<a name='L152'></a><a href='#L152'>152</a>
+<a name='L153'></a><a href='#L153'>153</a>
+<a name='L154'></a><a href='#L154'>154</a>
+<a name='L155'></a><a href='#L155'>155</a>
+<a name='L156'></a><a href='#L156'>156</a>
+<a name='L157'></a><a href='#L157'>157</a>
+<a name='L158'></a><a href='#L158'>158</a>
+<a name='L159'></a><a href='#L159'>159</a>
+<a name='L160'></a><a href='#L160'>160</a>
+<a name='L161'></a><a href='#L161'>161</a>
+<a name='L162'></a><a href='#L162'>162</a>
+<a name='L163'></a><a href='#L163'>163</a>
+<a name='L164'></a><a href='#L164'>164</a>
+<a name='L165'></a><a href='#L165'>165</a>
+<a name='L166'></a><a href='#L166'>166</a>
+<a name='L167'></a><a href='#L167'>167</a>
+<a name='L168'></a><a href='#L168'>168</a>
+<a name='L169'></a><a href='#L169'>169</a>
+<a name='L170'></a><a href='#L170'>170</a>
+<a name='L171'></a><a href='#L171'>171</a>
+<a name='L172'></a><a href='#L172'>172</a>
+<a name='L173'></a><a href='#L173'>173</a>
+<a name='L174'></a><a href='#L174'>174</a>
+<a name='L175'></a><a href='#L175'>175</a>
+<a name='L176'></a><a href='#L176'>176</a>
+<a name='L177'></a><a href='#L177'>177</a>
+<a name='L178'></a><a href='#L178'>178</a>
+<a name='L179'></a><a href='#L179'>179</a>
+<a name='L180'></a><a href='#L180'>180</a>
+<a name='L181'></a><a href='#L181'>181</a>
+<a name='L182'></a><a href='#L182'>182</a>
+<a name='L183'></a><a href='#L183'>183</a>
+<a name='L184'></a><a href='#L184'>184</a>
+<a name='L185'></a><a href='#L185'>185</a>
+<a name='L186'></a><a href='#L186'>186</a>
+<a name='L187'></a><a href='#L187'>187</a>
+<a name='L188'></a><a href='#L188'>188</a>
+<a name='L189'></a><a href='#L189'>189</a>
+<a name='L190'></a><a href='#L190'>190</a>
+<a name='L191'></a><a href='#L191'>191</a>
+<a name='L192'></a><a href='#L192'>192</a>
+<a name='L193'></a><a href='#L193'>193</a>
+<a name='L194'></a><a href='#L194'>194</a>
+<a name='L195'></a><a href='#L195'>195</a>
+<a name='L196'></a><a href='#L196'>196</a>
+<a name='L197'></a><a href='#L197'>197</a>
+<a name='L198'></a><a href='#L198'>198</a>
+<a name='L199'></a><a href='#L199'>199</a>
+<a name='L200'></a><a href='#L200'>200</a>
+<a name='L201'></a><a href='#L201'>201</a>
+<a name='L202'></a><a href='#L202'>202</a>
+<a name='L203'></a><a href='#L203'>203</a>
+<a name='L204'></a><a href='#L204'>204</a>
+<a name='L205'></a><a href='#L205'>205</a>
+<a name='L206'></a><a href='#L206'>206</a>
+<a name='L207'></a><a href='#L207'>207</a>
+<a name='L208'></a><a href='#L208'>208</a>
+<a name='L209'></a><a href='#L209'>209</a>
+<a name='L210'></a><a href='#L210'>210</a>
+<a name='L211'></a><a href='#L211'>211</a>
+<a name='L212'></a><a href='#L212'>212</a>
+<a name='L213'></a><a href='#L213'>213</a>
+<a name='L214'></a><a href='#L214'>214</a>
+<a name='L215'></a><a href='#L215'>215</a>
+<a name='L216'></a><a href='#L216'>216</a>
+<a name='L217'></a><a href='#L217'>217</a>
+<a name='L218'></a><a href='#L218'>218</a>
+<a name='L219'></a><a href='#L219'>219</a>
+<a name='L220'></a><a href='#L220'>220</a>
+<a name='L221'></a><a href='#L221'>221</a>
+<a name='L222'></a><a href='#L222'>222</a>
+<a name='L223'></a><a href='#L223'>223</a>
+<a name='L224'></a><a href='#L224'>224</a>
+<a name='L225'></a><a href='#L225'>225</a>
+<a name='L226'></a><a href='#L226'>226</a>
+<a name='L227'></a><a href='#L227'>227</a>
+<a name='L228'></a><a href='#L228'>228</a>
+<a name='L229'></a><a href='#L229'>229</a>
+<a name='L230'></a><a href='#L230'>230</a>
+<a name='L231'></a><a href='#L231'>231</a>
+<a name='L232'></a><a href='#L232'>232</a>
+<a name='L233'></a><a href='#L233'>233</a>
+<a name='L234'></a><a href='#L234'>234</a>
+<a name='L235'></a><a href='#L235'>235</a>
+<a name='L236'></a><a href='#L236'>236</a>
+<a name='L237'></a><a href='#L237'>237</a>
+<a name='L238'></a><a href='#L238'>238</a>
+<a name='L239'></a><a href='#L239'>239</a>
+<a name='L240'></a><a href='#L240'>240</a>
+<a name='L241'></a><a href='#L241'>241</a>
+<a name='L242'></a><a href='#L242'>242</a>
+<a name='L243'></a><a href='#L243'>243</a>
+<a name='L244'></a><a href='#L244'>244</a>
+<a name='L245'></a><a href='#L245'>245</a>
+<a name='L246'></a><a href='#L246'>246</a>
+<a name='L247'></a><a href='#L247'>247</a>
+<a name='L248'></a><a href='#L248'>248</a>
+<a name='L249'></a><a href='#L249'>249</a>
+<a name='L250'></a><a href='#L250'>250</a>
+<a name='L251'></a><a href='#L251'>251</a>
+<a name='L252'></a><a href='#L252'>252</a>
+<a name='L253'></a><a href='#L253'>253</a>
+<a name='L254'></a><a href='#L254'>254</a>
+<a name='L255'></a><a href='#L255'>255</a>
+<a name='L256'></a><a href='#L256'>256</a>
+<a name='L257'></a><a href='#L257'>257</a>
+<a name='L258'></a><a href='#L258'>258</a>
+<a name='L259'></a><a href='#L259'>259</a>
+<a name='L260'></a><a href='#L260'>260</a>
+<a name='L261'></a><a href='#L261'>261</a>
+<a name='L262'></a><a href='#L262'>262</a>
+<a name='L263'></a><a href='#L263'>263</a>
+<a name='L264'></a><a href='#L264'>264</a>
+<a name='L265'></a><a href='#L265'>265</a>
+<a name='L266'></a><a href='#L266'>266</a>
+<a name='L267'></a><a href='#L267'>267</a>
+<a name='L268'></a><a href='#L268'>268</a>
+<a name='L269'></a><a href='#L269'>269</a>
+<a name='L270'></a><a href='#L270'>270</a>
+<a name='L271'></a><a href='#L271'>271</a>
+<a name='L272'></a><a href='#L272'>272</a>
+<a name='L273'></a><a href='#L273'>273</a>
+<a name='L274'></a><a href='#L274'>274</a>
+<a name='L275'></a><a href='#L275'>275</a>
+<a name='L276'></a><a href='#L276'>276</a>
+<a name='L277'></a><a href='#L277'>277</a>
+<a name='L278'></a><a href='#L278'>278</a>
+<a name='L279'></a><a href='#L279'>279</a>
+<a name='L280'></a><a href='#L280'>280</a>
+<a name='L281'></a><a href='#L281'>281</a>
+<a name='L282'></a><a href='#L282'>282</a>
+<a name='L283'></a><a href='#L283'>283</a>
+<a name='L284'></a><a href='#L284'>284</a>
+<a name='L285'></a><a href='#L285'>285</a>
+<a name='L286'></a><a href='#L286'>286</a>
+<a name='L287'></a><a href='#L287'>287</a>
+<a name='L288'></a><a href='#L288'>288</a>
+<a name='L289'></a><a href='#L289'>289</a>
+<a name='L290'></a><a href='#L290'>290</a>
+<a name='L291'></a><a href='#L291'>291</a>
+<a name='L292'></a><a href='#L292'>292</a>
+<a name='L293'></a><a href='#L293'>293</a>
+<a name='L294'></a><a href='#L294'>294</a>
+<a name='L295'></a><a href='#L295'>295</a>
+<a name='L296'></a><a href='#L296'>296</a>
+<a name='L297'></a><a href='#L297'>297</a>
+<a name='L298'></a><a href='#L298'>298</a>
+<a name='L299'></a><a href='#L299'>299</a>
+<a name='L300'></a><a href='#L300'>300</a>
+<a name='L301'></a><a href='#L301'>301</a>
+<a name='L302'></a><a href='#L302'>302</a>
+<a name='L303'></a><a href='#L303'>303</a>
+<a name='L304'></a><a href='#L304'>304</a>
+<a name='L305'></a><a href='#L305'>305</a>
+<a name='L306'></a><a href='#L306'>306</a>
+<a name='L307'></a><a href='#L307'>307</a>
+<a name='L308'></a><a href='#L308'>308</a>
+<a name='L309'></a><a href='#L309'>309</a>
+<a name='L310'></a><a href='#L310'>310</a>
+<a name='L311'></a><a href='#L311'>311</a>
+<a name='L312'></a><a href='#L312'>312</a>
+<a name='L313'></a><a href='#L313'>313</a>
+<a name='L314'></a><a href='#L314'>314</a>
+<a name='L315'></a><a href='#L315'>315</a>
+<a name='L316'></a><a href='#L316'>316</a>
+<a name='L317'></a><a href='#L317'>317</a>
+<a name='L318'></a><a href='#L318'>318</a>
+<a name='L319'></a><a href='#L319'>319</a>
+<a name='L320'></a><a href='#L320'>320</a>
+<a name='L321'></a><a href='#L321'>321</a>
+<a name='L322'></a><a href='#L322'>322</a>
+<a name='L323'></a><a href='#L323'>323</a>
+<a name='L324'></a><a href='#L324'>324</a>
+<a name='L325'></a><a href='#L325'>325</a>
+<a name='L326'></a><a href='#L326'>326</a>
+<a name='L327'></a><a href='#L327'>327</a>
+<a name='L328'></a><a href='#L328'>328</a>
+<a name='L329'></a><a href='#L329'>329</a>
+<a name='L330'></a><a href='#L330'>330</a>
+<a name='L331'></a><a href='#L331'>331</a>
+<a name='L332'></a><a href='#L332'>332</a>
+<a name='L333'></a><a href='#L333'>333</a>
+<a name='L334'></a><a href='#L334'>334</a>
+<a name='L335'></a><a href='#L335'>335</a>
+<a name='L336'></a><a href='#L336'>336</a>
+<a name='L337'></a><a href='#L337'>337</a>
+<a name='L338'></a><a href='#L338'>338</a>
+<a name='L339'></a><a href='#L339'>339</a>
+<a name='L340'></a><a href='#L340'>340</a>
+<a name='L341'></a><a href='#L341'>341</a>
+<a name='L342'></a><a href='#L342'>342</a>
+<a name='L343'></a><a href='#L343'>343</a>
+<a name='L344'></a><a href='#L344'>344</a>
+<a name='L345'></a><a href='#L345'>345</a>
+<a name='L346'></a><a href='#L346'>346</a>
+<a name='L347'></a><a href='#L347'>347</a>
+<a name='L348'></a><a href='#L348'>348</a>
+<a name='L349'></a><a href='#L349'>349</a>
+<a name='L350'></a><a href='#L350'>350</a>
+<a name='L351'></a><a href='#L351'>351</a>
+<a name='L352'></a><a href='#L352'>352</a>
+<a name='L353'></a><a href='#L353'>353</a>
+<a name='L354'></a><a href='#L354'>354</a>
+<a name='L355'></a><a href='#L355'>355</a>
+<a name='L356'></a><a href='#L356'>356</a>
+<a name='L357'></a><a href='#L357'>357</a>
+<a name='L358'></a><a href='#L358'>358</a>
+<a name='L359'></a><a href='#L359'>359</a>
+<a name='L360'></a><a href='#L360'>360</a>
+<a name='L361'></a><a href='#L361'>361</a>
+<a name='L362'></a><a href='#L362'>362</a>
+<a name='L363'></a><a href='#L363'>363</a>
+<a name='L364'></a><a href='#L364'>364</a>
+<a name='L365'></a><a href='#L365'>365</a>
+<a name='L366'></a><a href='#L366'>366</a>
+<a name='L367'></a><a href='#L367'>367</a>
+<a name='L368'></a><a href='#L368'>368</a>
+<a name='L369'></a><a href='#L369'>369</a>
+<a name='L370'></a><a href='#L370'>370</a>
+<a name='L371'></a><a href='#L371'>371</a>
+<a name='L372'></a><a href='#L372'>372</a>
+<a name='L373'></a><a href='#L373'>373</a>
+<a name='L374'></a><a href='#L374'>374</a>
+<a name='L375'></a><a href='#L375'>375</a>
+<a name='L376'></a><a href='#L376'>376</a>
+<a name='L377'></a><a href='#L377'>377</a>
+<a name='L378'></a><a href='#L378'>378</a>
+<a name='L379'></a><a href='#L379'>379</a>
+<a name='L380'></a><a href='#L380'>380</a>
+<a name='L381'></a><a href='#L381'>381</a>
+<a name='L382'></a><a href='#L382'>382</a>
+<a name='L383'></a><a href='#L383'>383</a>
+<a name='L384'></a><a href='#L384'>384</a>
+<a name='L385'></a><a href='#L385'>385</a>
+<a name='L386'></a><a href='#L386'>386</a>
+<a name='L387'></a><a href='#L387'>387</a>
+<a name='L388'></a><a href='#L388'>388</a>
+<a name='L389'></a><a href='#L389'>389</a>
+<a name='L390'></a><a href='#L390'>390</a>
+<a name='L391'></a><a href='#L391'>391</a>
+<a name='L392'></a><a href='#L392'>392</a>
+<a name='L393'></a><a href='#L393'>393</a>
+<a name='L394'></a><a href='#L394'>394</a>
+<a name='L395'></a><a href='#L395'>395</a>
+<a name='L396'></a><a href='#L396'>396</a>
+<a name='L397'></a><a href='#L397'>397</a>
+<a name='L398'></a><a href='#L398'>398</a>
+<a name='L399'></a><a href='#L399'>399</a>
+<a name='L400'></a><a href='#L400'>400</a>
+<a name='L401'></a><a href='#L401'>401</a>
+<a name='L402'></a><a href='#L402'>402</a>
+<a name='L403'></a><a href='#L403'>403</a>
+<a name='L404'></a><a href='#L404'>404</a>
+<a name='L405'></a><a href='#L405'>405</a>
+<a name='L406'></a><a href='#L406'>406</a>
+<a name='L407'></a><a href='#L407'>407</a>
+<a name='L408'></a><a href='#L408'>408</a>
+<a name='L409'></a><a href='#L409'>409</a>
+<a name='L410'></a><a href='#L410'>410</a>
+<a name='L411'></a><a href='#L411'>411</a>
+<a name='L412'></a><a href='#L412'>412</a>
+<a name='L413'></a><a href='#L413'>413</a>
+<a name='L414'></a><a href='#L414'>414</a>
+<a name='L415'></a><a href='#L415'>415</a>
+<a name='L416'></a><a href='#L416'>416</a>
+<a name='L417'></a><a href='#L417'>417</a>
+<a name='L418'></a><a href='#L418'>418</a>
+<a name='L419'></a><a href='#L419'>419</a>
+<a name='L420'></a><a href='#L420'>420</a>
+<a name='L421'></a><a href='#L421'>421</a>
+<a name='L422'></a><a href='#L422'>422</a>
+<a name='L423'></a><a href='#L423'>423</a>
+<a name='L424'></a><a href='#L424'>424</a>
+<a name='L425'></a><a href='#L425'>425</a>
+<a name='L426'></a><a href='#L426'>426</a>
+<a name='L427'></a><a href='#L427'>427</a>
+<a name='L428'></a><a href='#L428'>428</a>
+<a name='L429'></a><a href='#L429'>429</a>
+<a name='L430'></a><a href='#L430'>430</a>
+<a name='L431'></a><a href='#L431'>431</a>
+<a name='L432'></a><a href='#L432'>432</a>
+<a name='L433'></a><a href='#L433'>433</a>
+<a name='L434'></a><a href='#L434'>434</a>
+<a name='L435'></a><a href='#L435'>435</a>
+<a name='L436'></a><a href='#L436'>436</a>
+<a name='L437'></a><a href='#L437'>437</a>
+<a name='L438'></a><a href='#L438'>438</a>
+<a name='L439'></a><a href='#L439'>439</a>
+<a name='L440'></a><a href='#L440'>440</a>
+<a name='L441'></a><a href='#L441'>441</a>
+<a name='L442'></a><a href='#L442'>442</a>
+<a name='L443'></a><a href='#L443'>443</a>
+<a name='L444'></a><a href='#L444'>444</a>
+<a name='L445'></a><a href='#L445'>445</a>
+<a name='L446'></a><a href='#L446'>446</a>
+<a name='L447'></a><a href='#L447'>447</a>
+<a name='L448'></a><a href='#L448'>448</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">const en = {
+  // === Common ===
+  'common.active': 'Active',
+  'common.inactive': 'Inactive',
+  'common.pending': 'Pending',
+  'common.confirmed': 'Confirmed',
+  'common.inProgress': 'In Progress',
+  'common.allConfirmed': 'All Confirmed',
+  'common.reset': '↺ Reset',
+  'common.clear': 'Clear',
+  'common.total': 'Total',
+  'common.count': '{{count}}',
+  'common.live': 'Live',
+  'common.min': 'min',
+&nbsp;
+  // === Header ===
+  'header.logoName': 'OpenParametric Protocol',
+  'header.logoSub': 'On-chain Parametric Insurance · Solana Devnet',
+  'header.kpi.masterContract': 'Master Contract',
+  'header.kpi.activeContracts': 'Active Contracts',
+  'header.kpi.totalPremium': 'Total Premium',
+  'header.kpi.totalClaim': 'Total Claims',
+  'header.kpi.poolBalance': 'Pool Balance',
+  'header.kpi.poolHealth': 'Pool Health',
+&nbsp;
+  // === Roles (dropdown) ===
+  'role.leader': '👑 Leader (Samsung F&amp;M)',
+  'role.partA': '🔵 Participant A (Hyundai M&amp;F)',
+  'role.partB': '🟡 Participant B (DB Ins.)',
+  'role.rein': '🌐 Reinsurer',
+  'role.operator': '🛡️ Operator',
+&nbsp;
+  // === Roles (short labels used in store/tables) ===
+  'role.leaderShort': 'Leader(Samsung F&amp;M)',
+  'role.partAShort': 'Participant A(Hyundai M&amp;F)',
+  'role.partBShort': 'Participant B(DB Ins.)',
+  'role.reinShort': 'Reinsurer',
+  'role.operatorShort': 'Operator',
+&nbsp;
+  // === Tabs ===
+  'tab.contract': '📋 Contract Setup',
+  'tab.feed': '⚡ Live Contract Feed',
+  'tab.oracle': '🔮 Oracle &amp; Claims',
+  'tab.settlement': '💰 Settlement',
+  'tab.inspector': '🔍 On-chain Inspector',
+&nbsp;
+  // === Tab1: Master Contract Setup ===
+  'master.title': 'Master Contract',
+  'master.coverageStart': 'Coverage Start',
+  'master.coverageEnd': 'Coverage End',
+  'master.coverageType': 'Coverage Type',
+  'master.coverageTypeValue': 'Flight Departure Delay Insurance',
+  'master.premiumPerContract': 'Premium per Contract (USDC)',
+  'master.payoutByTier': 'Payout by Delay Tier',
+  'master.setTermsBtn': '📄 Set Terms &amp; Rate',
+  'master.newCreate': 'Create New Master Contract',
+  'master.loading': 'Loading...',
+  'master.noPrevious': 'No previous contracts',
+  'master.tier.6h': '6h+ / Cancellation',
+&nbsp;
+  // === Tab1: Share Structure ===
+  'share.title': 'Liability Structure (Share Setup)',
+  'share.structure': 'Primary 50% : Reinsurer 50% | Commission 10%',
+  'share.leaderShare': 'Leader Share (within Primary %)',
+  'share.partAShare': 'Participant A Share (within Primary %)',
+  'share.partBShare': 'Participant B Share (within Primary %)',
+  'share.reinCommRate': 'Reinsurer Commission Rate',
+  'share.cessionRate': 'Primary→Reinsurer Cession Rate',
+  'share.cessionValue': '50% of each share',
+&nbsp;
+  // === Tab1: Contract Process ===
+  'process.title': 'Contract Execution Process',
+  'process.step1.name': 'Terms Setup &amp; Rate',
+  'process.step1.role': 'Leader',
+  'process.step1.desc': 'Leader sets coverage conditions, premium, and share structure.',
+  'process.step2.name': 'Participant A Confirm',
+  'process.step2.role': 'Part.A',
+  'process.step2.desc': 'Participant A reviews terms and rates, then confirms.',
+  'process.step3.name': 'Participant B Confirm',
+  'process.step3.role': 'Part.B',
+  'process.step3.desc': 'Participant B reviews terms and rates, then confirms.',
+  'process.step4.name': 'Reinsurer Confirm',
+  'process.step4.role': 'Reinsurer',
+  'process.step4.desc': 'Reinsurer reviews terms and rates, then confirms.',
+  'process.step5.name': 'Master Contract Activation',
+  'process.step5.role': 'Leader',
+  'process.step5.desc': 'All confirmations complete. Master Contract recorded on-chain.',
+&nbsp;
+  // === Tab1: Participant Confirm ===
+  'confirm.title': 'Participant / Reinsurer Confirmation',
+  'confirm.partAName': 'Participant A (Hyundai M&amp;F)',
+  'confirm.partBName': 'Participant B (DB Ins.)',
+  'confirm.reinName': 'Reinsurer',
+  'confirm.shareInfo': 'Share: {{share}}% (Primary Ins.)',
+  'confirm.reinInfo': 'Primary Ins. Premium 50% reinsurance acceptance',
+  'confirm.btn': '✓ Confirm',
+  'confirm.activateBtn': '⚡ Master Contract Activation',
+&nbsp;
+  // === Tab1: Settlement Flow ===
+  'flow.title': 'Per-Contract Real-time Settlement',
+  'flow.premiumTitle': '💰 Premium Flow (Instant on Contract)',
+  'flow.policyholder': 'Policyholder',
+  'flow.primaryIns': 'Primary Ins.',
+  'flow.reinsurer': 'Reinsurer',
+  'flow.shareBasedSplit': 'Share-based split',
+  'flow.eachShare50': '50% of each share',
+  'flow.premiumNote': '※ Reinsurer→Primary 10% commission rebate',
+  'flow.claimTitle': '💸 Claim Flow (Instant on Oracle Trigger)',
+  'flow.rein50Share': '50% Share',
+  'flow.primaryPool': 'Primary Ins.Pool',
+  'flow.tierPayout': 'Tier-based payout',
+  'flow.claimNote': '※ Primary→Reinsurer 10% commission on claims',
+&nbsp;
+  // === Tab1: State Machine ===
+  'state.machine': 'Policy State Machine',
+&nbsp;
+  // === Tab1: Pool Status ===
+  'pool.title': 'Pool Status',
+  'pool.total': 'Pool Total',
+  'pool.available': 'Available Balance',
+  'pool.solvency': 'Solvency Ratio',
+  'pool.chartLabel': 'Pool Balance',
+&nbsp;
+  // === Tab1: Event Log ===
+  'log.title': 'Protocol Event Log',
+&nbsp;
+  // === Tab2: Contract Feed ===
+  'feed.formTitle': 'New Contract',
+  'feed.name': 'Policyholder Name',
+  'feed.flight': 'Flight',
+  'feed.date': 'Departure Date',
+  'feed.premium': 'Premium',
+  'feed.addBtn': '+ New Contract (1 USDC)',
+  'feed.autoStart': '▶ Start Auto Feed',
+  'feed.autoStop': '⏹ Stop Auto Feed',
+  'feed.autoRunning': 'Accumulating contracts in real-time...',
+  'feed.afterActivation': 'Available after Master Contract activation',
+  'feed.tableTitle': 'Live Contract Feed',
+  'feed.th.policyholder': 'Policyholder',
+  'feed.th.flight': 'Flight',
+  'feed.th.date': 'Departure Date',
+  'feed.th.premium': 'Premium',
+  'feed.th.leader': 'Leader',
+  'feed.th.partA': 'Part.A',
+  'feed.th.partB': 'Part.B',
+  'feed.th.reinsurer': 'Reinsurer(Net)',
+  'feed.th.settledAt': 'Settled At',
+  'feed.th.status': 'Status',
+  'feed.chartTitle': 'Premium Real-time',
+  'feed.summaryTitle': 'Cumulative Summary',
+  'feed.totalContracts': 'Total Contracts',
+  'feed.totalPremium': 'Total Premium',
+  'feed.premSettlement': 'Premium Settlement (Per-contract Real-time)',
+  'feed.leaderNet': 'Leader Net',
+  'feed.partANet': 'Participant A Net',
+  'feed.partBNet': 'Participant B Net',
+  'feed.reinNet': 'Reinsurer Net',
+  'feed.pieTitle': 'Premium Distribution',
+&nbsp;
+  // === Tab3: Oracle &amp; Claims ===
+  'oracle.title': 'Oracle Console',
+  'oracle.targetContract': 'Target Contract',
+  'oracle.selectContract': '-- Select Contract --',
+  'oracle.delayLabel': 'Actual Delay (min) — ≥0, multiple of 10',
+  'oracle.freshnessLabel': 'Data Age (minutes ago)',
+  'oracle.tier120': '120~179 min',
+  'oracle.tier180': '180~239 min',
+  'oracle.tier240': '240~359 min',
+  'oracle.tier360': '360+ min / Cancellation',
+  'oracle.runBtn': '🔮 Check Oracle &amp; Create Claim',
+  'oracle.runBtnOnchain': 'Resolve Flight Delay',
+  'oracle.cancelledLabel': 'Cancelled?',
+  'oracle.cancelledNo': 'No',
+  'oracle.cancelledYes': 'Yes (Flight cancelled)',
+  'oracle.modeOnchain': 'On-chain',
+  'oracle.modeSwitchboard': 'Switchboard',
+  'oracle.txFailed': 'TX failed',
+  'oracle.txFailedMsg': 'TX failed: {{error}}',
+  'oracle.resolvedOnChain': 'Resolved on-chain. TX: {{tx}}...',
+  'oracle.resolvedSuccess': 'Flight delay resolved on-chain!',
+  'oracle.sendingTx': 'Sending TX...',
+&nbsp;
+  'claim.approvalTitle': 'Claim Approval &amp; Settlement',
+  'claim.pending': 'Claims Pending',
+  'claim.approved': 'Approved',
+  'claim.settled': 'Settled',
+  'claim.approveBtn': '✅ Approve Claims (All)',
+  'claim.settleBtn': '💸 Settle Claims (All)',
+  'claim.tableTitle': 'Claim Status',
+  'claim.th.policyholder': 'Policyholder',
+  'claim.th.flight': 'Flight',
+  'claim.th.delay': 'Delay(min)',
+  'claim.th.tier': 'Tier',
+  'claim.th.payout': 'Payout',
+  'claim.th.leader': 'Leader',
+  'claim.th.partA': 'Part.A',
+  'claim.th.partB': 'Part.B',
+  'claim.th.reinBurden': 'Reinsurer Burden',
+  'claim.th.status': 'Status',
+  'claim.th.time': 'Time',
+  'claim.status.settled': 'Settled',
+  'claim.status.approved': 'Approved',
+  'claim.status.pending': 'Pending',
+&nbsp;
+  'claim.summaryTitle': 'Claim Settlement Summary',
+  'claim.totalPaid': 'Total Claims Paid',
+  'claim.primaryBurden': 'Primary Ins. Burden',
+  'claim.reinBurden': 'Reinsurer Burden',
+  'claim.chartPrimary': 'Primary Ins. Burden',
+  'claim.chartReinsurer': 'Reinsurer Burden',
+  'claim.chartLeader': 'Leader Burden',
+  'claim.chartPartA': 'Part.A Burden',
+  'claim.chartPartB': 'Part.B Burden',
+  'claim.autoApproveMsg': 'On-chain: claims are auto-approved via resolve_flight_delay',
+  'claim.settledOnchain': 'Settled {{settled}}/{{total}} claims on-chain',
+  'claim.approveAutoBtn': 'Auto-approved (on-chain)',
+  'claim.settling': 'Settling...',
+&nbsp;
+  // === Tab4: Settlement ===
+  'settle.premTitle': '1. Premium Settlement (Per-contract Real-time)',
+  'settle.premTh.party': 'Party',
+  'settle.premTh.share': 'Share',
+  'settle.premTh.primary': 'Primary Premium',
+  'settle.premTh.ceded': 'Ceded to Reinsurer',
+  'settle.premTh.commission': 'Commission Received(10%)',
+  'settle.premTh.net': 'Settlement Premium',
+&nbsp;
+  'settle.claimTitle': '2. Claim Settlement (Per-Contract, Real-time)',
+  'settle.claimTh.party': 'Party',
+  'settle.claimTh.share': 'Share',
+  'settle.claimTh.gross': 'Gross Claims',
+  'settle.claimTh.reinShare': 'Reinsurer Share',
+  'settle.claimTh.commission': 'Commission Paid(10%)',
+  'settle.claimTh.net': 'Net Claims',
+&nbsp;
+  'settle.finalTitle': '3. Final Settlement (P&amp;L)',
+  'settle.finalTh.party': 'Party',
+  'settle.finalTh.premium': 'Settlement Premium',
+  'settle.finalTh.claim': 'Settlement Claims',
+  'settle.finalTh.pl': 'P&amp;L',
+  'settle.chartTitle': 'P&amp;L Trend',
+&nbsp;
+  'settle.party.leader': 'Leader (Samsung F&amp;M)',
+  'settle.party.partA': 'Participant A (Hyundai M&amp;F)',
+  'settle.party.partB': 'Participant B (DB Ins.)',
+  'settle.party.reinsurer': 'Reinsurer',
+  'settle.party.total': 'Total',
+&nbsp;
+  'settle.pendingTitle': '0. Pending Claims (Oracle Confirmed)',
+  'settle.pendingEmpty': 'No pending claims.',
+  'settle.pendingTotal': 'Total Estimated Pending Payout',
+  'settle.settledEmpty': 'No settled claims yet.',
+&nbsp;
+  // === Comparison Panel ===
+  'compare.title': 'Traditional vs On-Chain',
+  'compare.traditional': 'Traditional',
+  'compare.trad1': '⏳ Monthly batch settlement',
+  'compare.trad2': '📋 Manual review &amp; approval',
+  'compare.trad3': '⚠️ Risk of settlement errors',
+  'compare.trad4': '🕐 T+14~30 days',
+  'compare.op1': '⚡ Per-contract real-time settlement',
+  'compare.op2': '🔮 Auto oracle verification',
+  'compare.op3': '📝 Immutable on-chain record',
+  'compare.op4': '⚡ T+0 instant settlement',
+  'compare.timeSaved': 'Time Saved',
+  'compare.timeSavedValue': '14~30 days',
+  'compare.errorRate': 'Settlement Error Rate',
+  'compare.auditTrail': 'Audit Trail',
+  'compare.auditValue': 'Real-time On-chain',
+&nbsp;
+  // === Tab5: Inspector ===
+  'inspector.title': 'On-chain Inspector (PDA)',
+  'inspector.placeholder': 'Displayed after Master Contract activation.',
+  'inspector.auditTitle': 'Full Audit Trail',
+&nbsp;
+  // === Store messages ===
+  'store.roleSwitch': 'Role switch → {{role}}',
+  'store.leaderOnly': 'Only the Leader can perform this action',
+  'store.shareSumError': 'Share total must equal 100',
+  'store.termsSet': 'Terms set. Confirmation requests sent to participants &amp; reinsurer',
+  'store.termsDetail': 'Coverage:2026-01-01~12-31|Premium:1USDC|Shares L{{leader}}/A{{partA}}/B{{partB}}',
+  'store.confirmDone': '{{role}} confirmed',
+  'store.allConfirmNeeded': 'All participants and reinsurer must confirm',
+  'store.masterActivated': 'Master Contract on-chain recorded. Real-time acceptance started',
+  'store.masterDetail': 'PDA:{{pda}}...|Pool:10,000USDC',
+  'store.newContract': 'Contract #{{id}}: {{name}}|{{flight}}|{{date}}',
+  'store.newContractDetail': 'Premium 1USDC → L:{{lNet}} A:{{aNet}} B:{{bNet}} R:{{rNet}}',
+  'store.defaultName': 'Policyholder',
+  'store.oracleStale': 'Data is {{fresh}} min old. Must be within 0~30 min.',
+  'store.oracleFormat': 'delay_min must be ≥0 and multiple of 10. Input: {{delay}}',
+  'store.oracleNoTrigger': 'Oracle: Delay {{delay}} min — no trigger',
+  'store.oracleNoTriggerMsg': 'Delay {{delay}} min — no trigger (under 120 min). Contract maintained.',
+  'store.contractNotFound': 'Contract #{{id}} not found',
+  'store.alreadyClaimed': 'Contract #{{id}} already claimed',
+  'store.claimLog': 'Claim #{{id}} — {{tier}} → {{payout}} USDC',
+  'store.claimDetail': 'L:{{lNet}} A:{{aNet}} B:{{bNet}} Rein:{{totRC}}',
+  'store.claimCreated': 'Triggered! Delay {{delay}} min ({{tier}}) → {{payout}} USDC claim created',
+  'store.claimsApproved': '{{count}} claims approved by {{role}}',
+  'store.claimsSettled': '{{count}} claims settled. Pool→Policyholder transfer',
+  'store.settledDetail': 'Total paid:{{totalClaim}}USDC|Pool balance:{{poolBalance}}USDC',
+  'store.resetMsg': 'Protocol reset. Start from Master Contract setup.',
+  'store.settledOnchain': 'Claim for contract #{{id}} settled on-chain',
+&nbsp;
+  // === Toast messages ===
+  'toast.roleChange': 'Role: {{role}}',
+  'toast.termsSet': 'Terms set successfully',
+  'toast.confirmDone': '{{role}} confirmed',
+  'toast.masterActivated': 'Master Contract activated!',
+  'toast.resetDone': 'Full reset completed',
+  'toast.selectContract': 'Please select a contract',
+  'toast.walletNotAvailable': 'Wallet or master policy not available',
+  'toast.claimCreated': 'Claim created!',
+  'toast.noTrigger': 'No trigger',
+  'toast.noClaimApprove': 'No claims to approve',
+  'toast.approvedN': '{{count}} approved',
+  'toast.noClaimSettle': 'No claims to settle',
+  'toast.settledN': '{{count}} settled!',
+  'toast.afterActivation': 'Available after Master Contract activation',
+&nbsp;
+  // === Tier labels ===
+  'tier.6hCancellation': '6h+/Cancellation',
+&nbsp;
+  // === App init ===
+  'app.initMsg': 'OpenParametric Protocol initialized. Solana Devnet.',
+  'app.initDetail': 'Step 1: Master Contract setup → Click Set Terms.',
+&nbsp;
+  // === Language ===
+  'lang.ko': '한국어',
+  'lang.en': 'English',
+&nbsp;
+  // === Landing Page ===
+  'landing.cta': 'Launch Demo',
+  'landing.badge': 'Built on Solana',
+&nbsp;
+  'landing.heroTitle1': 'Rebuilding',
+  'landing.heroTitle2': 'Insurance Settlement on Solana',
+  'landing.heroSub1': 'Making insurance settlement programmable',
+  'landing.heroSub2': 'Real-time, Multi-party, On-chain',
+&nbsp;
+  'landing.problemTag': 'Problem',
+  'landing.problemTitle': 'Insurance Is Digital. Settlement Is Not.',
+  'landing.problemSub': 'Joint underwriting lacks a shared real-time financial state. Monthly/quarterly manual reconciliation is still the standard.',
+  'landing.problem1Title': 'No Real-Time Visibility',
+  'landing.problem1Desc': 'No shared real-time visibility across co-insurers. Each party manages their own Excel version.',
+  'landing.problem2Title': 'Capital Locked',
+  'landing.problem2Desc': 'Capital remains locked until monthly/quarterly reconciliation, reducing liquidity and efficiency.',
+  'landing.problem3Title': 'Risk Untrackable',
+  'landing.problem3Desc': 'Risk exposure cannot be tracked instantly, and complexity grows as scale increases.',
+&nbsp;
+  'landing.solutionTag': 'Solution',
+  'landing.solutionTitle': 'Event-Driven Settlement Infrastructure',
+  'landing.solutionSub': 'Instead of reconciling monthly, the event updates the financial state itself. No manual reconciliation. No reconciliation lag.',
+  'landing.solution1Title': 'Real-Time Capital State',
+  'landing.solution1Desc': 'Shared ledger lets all participants view the same financial state in real-time.',
+  'landing.solution2Title': 'Immutable Audit Trail',
+  'landing.solution2Desc': 'Multi-party immutable audit trail. No disputes over "different Excel versions."',
+  'landing.solution3Title': 'Oracle-Verified Triggers',
+  'landing.solution3Desc': 'Data-driven claims with oracle-verified objective triggers for automatic validation.',
+  'landing.solution4Title': 'Single Source of Truth',
+  'landing.solution4Desc': 'A single source of truth across all insurers. Every state change recorded on-chain.',
+&nbsp;
+  'landing.howTag': 'How It Works',
+  'landing.howTitle': 'Policy to Settlement in Real Time',
+  'landing.howSub': 'It runs as an executable settlement workflow.',
+  'landing.step1Title': 'Create Policy',
+  'landing.step1Desc': 'Leader sets terms, oracle feed, and payout structure.',
+  'landing.step2Title': 'Accept Shares &amp; Commit',
+  'landing.step2Desc': 'Participants accept their shares and commit capital.',
+  'landing.step3Title': 'Risk Pool On-Chain',
+  'landing.step3Desc': 'Risk Pool updates on-chain in real-time.',
+  'landing.step4Title': 'Oracle Validates',
+  'landing.step4Desc': 'Oracle validates trigger condition (delay ≥ threshold).',
+  'landing.step5Title': 'Claim &amp; Settlement',
+  'landing.step5Desc': 'Claim becomes Claimable → Approved → Settled.',
+  'landing.step6Title': 'Fully Auditable',
+  'landing.step6Desc': 'All states are auditable on-chain at any time.',
+&nbsp;
+  'landing.solanaTag': 'Why Solana',
+  'landing.solanaTitle': 'Built for Multi-Party Financial State Machines',
+  'landing.solanaSub': 'Multi-party settlement needs speed + cheap events + finality. That\'s why Solana.',
+  'landing.solana1Label': 'High Throughput',
+  'landing.solana1Detail': 'Built for event-driven state updates at scale',
+  'landing.solana2Label': 'Near-Zero Cost',
+  'landing.solana2Detail': 'Minimal cost per settlement event',
+  'landing.solana3Label': 'Instant Finality',
+  'landing.solana3Detail': 'Time-sensitive payout workflows',
+  'landing.solana4Label': 'Production Ready',
+  'landing.solana4Detail': 'Battle-tested ecosystem for on-chain infra',
+&nbsp;
+  'landing.marketTag': 'Market',
+  'landing.marketTitle': 'A $40B Market, Ready for Infrastructure',
+  'landing.marketSub': 'The parametric insurance market is exploding. The infrastructure is what\'s missing.',
+  'landing.market1Label': 'Parametric Insurance',
+  'landing.market1Sub': '$15.8B (2023) → $40.6B (2032)',
+  'landing.market2Label': 'Flight Delay Insurance',
+  'landing.market2Sub': '$4.2B → $10.8B',
+  'landing.market3Label': 'Global ILS Market',
+  'landing.market3Sub': 'Insurance-Linked Securities market',
+&nbsp;
+  'landing.visionTag': 'Vision',
+  'landing.visionTitle': 'Turning Insurance Risk into Programmable Infrastructure',
+  'landing.visionSub': 'Standardized settlement logic. Modular risk pool architecture. Capital markets compatibility.',
+  'landing.visionCta': 'Explore the Demo',
+&nbsp;
+  // === Guide Tour ===
+  'guide.startBtn': 'Guide',
+  'guide.skip': 'Skip',
+  'guide.next': 'Next &gt;',
+  'guide.complete': 'Tour complete!\nFeel free to explore on your own.',
+  'guide.closeBtn': 'OK',
+  'guide.step1.title': 'Step 1: Set Terms',
+  'guide.step1.desc': 'Set the master contract terms. Click this button.',
+  'guide.step2.title': 'Step 2: Switch to Participant A',
+  'guide.step2.desc': 'Change your role to "Participant A" in the header.',
+  'guide.step3.title': 'Step 3: Participant A Confirm',
+  'guide.step3.desc': 'Click the confirm button for Participant A.',
+  'guide.step4.title': 'Step 4: Switch to Participant B',
+  'guide.step4.desc': 'Change your role to "Participant B".',
+  'guide.step5.title': 'Step 5: Participant B Confirm',
+  'guide.step5.desc': 'Click the confirm button for Participant B.',
+  'guide.step6.title': 'Step 6: Switch to Reinsurer',
+  'guide.step6.desc': 'Change your role to "Reinsurer".',
+  'guide.step7.title': 'Step 7: Reinsurer Confirm',
+  'guide.step7.desc': 'Click the confirm button for Reinsurer.',
+  'guide.step8.title': 'Step 8: Switch to Leader',
+  'guide.step8.desc': 'Change your role back to "Leader".',
+  'guide.step9.title': 'Step 9: Activate Master Contract',
+  'guide.step9.desc': 'Click the master contract activation button.',
+  'guide.step10.title': 'Step 10: Fund Pool',
+  'guide.step10.desc': 'Fund the demo pool. Click "Next" when done.',
+  'guide.step11.title': 'Step 11: Live Contract Feed',
+  'guide.step11.desc': 'Click the "Live Contract Feed" tab.',
+  'guide.step12.title': 'Step 12: Create Contract',
+  'guide.step12.desc': 'Create an insurance contract by clicking this button.',
+  'guide.step13.title': 'Step 13: Oracle &amp; Claims',
+  'guide.step13.desc': 'Navigate to the "Oracle &amp; Claims" tab.',
+  'guide.step14.title': 'Step 14: Select Contract',
+  'guide.step14.desc': 'Select a target contract from the dropdown.',
+  'guide.step15.title': 'Step 15: Process Flight Delay',
+  'guide.step15.desc': 'Click the flight delay processing button.',
+  'guide.step16.title': 'Step 16: Settle Claims',
+  'guide.step16.desc': 'Click the claim settlement button.',
+  'guide.step17.title': 'Step 17: Settlement Status',
+  'guide.step17.desc': 'View the results in the "Settlement" tab.',
+} as const;
+&nbsp;
+export default en;
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-02-28T04:06:43.644Z
+            </div>
+        <script src="../../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../../sorter.js"></script>
+        <script src="../../block-navigation.js"></script>
+    </body>
+</html>
+    
