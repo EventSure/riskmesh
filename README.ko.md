@@ -41,7 +41,7 @@ MVP는 **항공편 지연 보험** (주요 공항 30% 지연율의 $10B+ 시장)
 | 트랙 | 방식 | 신뢰 모델 | 대상 계정 |
 |------|------|-----------|-----------|
 | **Track A** — Trusted Resolver | 리더/오퍼레이터가 API 데이터를 가져와 `resolve_flight_delay` 온체인 호출 | 중앙화 (서명자 신뢰) | `FlightPolicy` |
-| **Track B** — Switchboard On-Demand | Switchboard 오라클 노드가 API 데이터를 가져와 온체인 feed에 서명·기록; `check_oracle_and_create_claim`이 암호학적으로 검증 | 탈중앙화 (암호학적 검증) | `Policy` (Legacy) |
+| **Track B** — Switchboard On-Demand | Switchboard 오라클 노드가 API 데이터를 가져와 온체인 feed에 서명·기록; `check_oracle_and_create_claim`이 암호학적으로 검증 | 탈중앙화 (암호학적 검증) | `Policy` |
 
 **데모/시뮬레이션 모드**에서는 대시보드 UI에서 오라클 해소를 수동으로 트리거합니다 — 외부 API나 오라클 네트워크가 필요하지 않습니다.
 
