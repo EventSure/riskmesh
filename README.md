@@ -1,139 +1,181 @@
 # Riskmesh (Open Parametric)
 
-English version below. / 영문 버전은 아래에 있습니다.
+[한국어](README.ko.md)
 
-Solana 기반 파라메트릭 보험 프로토콜의 온체인 프로그램과 운영용 프런트엔드를 함께 담은 레포지토리입니다. MVP는 항공편 지연 보험을 기준으로 설계되어 있으며, 공동 인수, 리스크 풀, 오라클 검증 기반 청구/정산 흐름을 제공합니다.
+**Programmable settlement infrastructure for parametric insurance on Solana.**
 
-## 구성
-- `contract/`: Anchor 기반 온체인 프로그램 (Rust)
-- `frontend/`: 운영용 대시보드 (React + Vite + Emotion)
-- `docs/`: 컨트랙트 상세 가이드 및 문서
-- `OpenParametric.md`: MVP/설계 초안
+Parametric insurance pays the moment an event happens — not after measuring exact damage. The market is scaling toward $40B, yet the settlement infrastructure behind it remains manual and analog. Policies are issued digitally, but insurers still reconcile balances by hand after events.
 
-## 주요 기능(요약)
-- 보험상품 생성 및 공동 인수(리더/참여사 비율 관리)
-- 예치 자금 리스크 풀 관리 및 정산 흐름
-- 오라클 기반 지연 판정 및 청구 생성
-- 운영자 승인 후 지급(현재 MVP 설계)
-- 대시보드 탭 기반 운영 UI (Contract/Feed/Oracle/Settlement/Inspector)
+**Open Parametric** makes settlement programmable. Instead of reconciling after the event, the event updates the shared financial state itself — one on-chain truth, no disputes, no lag. The architecture is a three-tier system: an operator frontend for insurers, an off-chain oracle worker that verifies real-world events, and a Solana on-chain program that manages capital and state transitions deterministically.
 
-## 빠른 시작
-
-### 1) 프런트엔드 실행
-```
-cd frontend
-npm install
-npm run dev
-```
-- 빌드: `npm run build`
-- 배포 프리뷰: `npm run preview`
-- 이 앱은 `BrowserRouter`의 `basename`이 `/riskmesh`로 설정되어 있습니다. 정적 호스팅 시 서브경로 배포에 맞춰 설정하세요.
-
-### 2) 컨트랙트 빌드/테스트
-```
-cd contract
-anchor build
-anchor test
-```
-- 실제 프로그램 ID는 아직 placeholder입니다. 아래 경로를 업데이트해야 합니다.
-- `contract/programs/open_parametric/src/lib.rs`
-- `contract/Anchor.toml`
-
-## 문서
-- 컨트랙트 상세 가이드: `docs/CONTRACT_GUIDE.md`
-- 설계 초안: `OpenParametric.md`
-- 컨트랙트 셋업 노트: `contract/README.md`
-
-## 아키텍처
-온체인 프로그램은 보험상품(Policy)과 공동 인수(Underwriting), 리스크 풀(RiskPool), 청구(Claim), 계약자 등록부(PolicyholderRegistry)를 PDA로 관리합니다. 리스크 풀은 SPL 토큰 Vault(ATA)를 소유하며, 오라클 검증으로 지연 조건이 충족되면 청구가 생성됩니다.
-
-```
-Policy
-  ├─ Underwriting (participants, ratios, escrow)
-  ├─ RiskPool (vault, balances)
-  ├─ Claim (oracle_round별)
-  └─ PolicyholderRegistry (옵션)
-```
-
-각 요소 의미:
-- `Policy`: 보험상품 자체. 노선/항공편/출발시각, 지연 임계값, 지급액, 오라클 피드, 상태 등을 보관합니다.
-- `Underwriting`: 공동 인수 구조. 리더/참여사 비율, 수락/거절 상태, 예치(escrow) 정보를 추적합니다.
-- `RiskPool`: 예치 자금을 보관하는 풀. SPL 토큰 Vault와 가용 잔액/총 예치액을 관리합니다.
-- `Claim`: 오라클 라운드별 청구 기록. 지연값, 검증 시각, 승인 상태, 지급액을 담습니다.
-- `PolicyholderRegistry`: (옵션) 계약자 최소 정보 등록부. PII 없이 외부 참조와 보장 정보만 저장합니다.
-
-## 상태 머신(요약)
-Policy 상태 전이 흐름:
-
-```
-Draft → Open → Funded → Active → Claimable → Approved → Settled
-                                   └───────────────→ Expired
-```
-
-Underwriting 상태:
-
-```
-Proposed → Open → Finalized (또는 Failed)
-```
-
-Claim 상태:
-
-```
-None → PendingOracle → Claimable → Approved → Settled (또는 Rejected)
-```
-
-## 개발 메모
-- Anchor 0.30 기준 설계
-- 오라클: Switchboard On-Demand 연동 가정
-- SPL 토큰을 예치/지급에 사용
-
----
-
-# Riskmesh (Open Parametric) — English
-
-This repository contains the on-chain program and the operator dashboard for a Solana-based parametric insurance protocol. The MVP targets flight delay insurance with co-underwriting, risk pools, oracle verification, and claim/settlement flows.
+The MVP targets **flight delay insurance** (a $10B+ market with 30% of flights delayed at major airports), with a modular architecture that extends to weather, supply chains, and natural disasters.
 
 ## Structure
-- `contract/`: Anchor-based on-chain program (Rust)
-- `frontend/`: Operator dashboard (React + Vite + Emotion)
-- `docs/`: Contract guide and documentation
-- `OpenParametric.md`: MVP/design draft (Korean)
 
-## Key Features (Summary)
-- Policy creation and co-underwriting (leader/participant ratios)
-- Escrowed risk pool and settlement flow
-- Oracle-based delay verification and claim creation
-- Manual approval before payout (MVP)
-- Tab-based operator UI (Contract/Feed/Oracle/Settlement/Inspector)
+- `contract/` — Anchor-based on-chain program (Rust)
+- `frontend/` — Operator dashboard (React + Vite + Emotion)
+- `docs/` — Contract guide, testing guides, and design documents
+- `OpenParametric.md` — MVP / design draft (Korean)
+
+## Key Features
+
+- **Event-driven settlement** — claims settle on-chain as the event happens, no reconciliation step
+- Policy creation and co-underwriting (leader/participant ratio management)
+- Escrowed risk pool with on-chain capital management
+- Modular oracle integration — centralized (flight API) or decentralized (Switchboard)
+- Tab-based operator UI (Contract / Feed / Oracle / Settlement / Inspector)
+
+## Demo Modes
+
+The frontend dashboard supports two operating modes, toggled from the header:
+
+| Mode | Description | Wallet Required |
+|------|-------------|-----------------|
+| **DEVNET** (default) | On-chain mode — interacts with Solana devnet via connected wallet | Yes |
+| **SIM** | Simulation mode — all data is local, no on-chain transactions | No |
+
+Switch modes via the **DEVNET / SIM** toggle in the top-right header. SIM mode is available for offline testing without a wallet connection.
+
+## Docs
+
+### Root
+
+| File | Description |
+|------|-------------|
+| [`OpenParametric.md`](OpenParametric.md) | MVP design draft — account schemas, state machines, oracle spec (Korean) |
+
+### `docs/`
+
+| File | Description |
+|------|-------------|
+| [`CONTRACT_GUIDE.md`](docs/CONTRACT_GUIDE.md) | Smart contract detailed spec — accounts, instructions, error codes, sequences (Korean) |
+| [`CONTRACT_GUIDE_EN.md`](docs/CONTRACT_GUIDE_EN.md) | Smart contract detailed spec — accounts, instructions, error codes, sequences (English) |
+| [`CONTRACT_TESTING_GUIDE_KO.md`](docs/CONTRACT_TESTING_GUIDE_KO.md) | Contract testing guide — unit, integration, and settlement tests (Korean) |
+| [`FRONTEND_TESTING_GUIDE_KO.md`](docs/FRONTEND_TESTING_GUIDE_KO.md) | Frontend unit testing guide — business logic tests (Korean) |
+| [`FILE_STATE_LOGIC_FULL_KO.md`](docs/FILE_STATE_LOGIC_FULL_KO.md) | Full file-by-file state/logic reference for the entire repo (Korean) |
+| [`MASTER_POLICY_REDESIGN_PLAN_KO.md`](docs/MASTER_POLICY_REDESIGN_PLAN_KO.md) | Master policy + child flight policy restructuring plan (Korean) |
+| [`feature/settle_flight_settlement.md`](docs/feature/settle_flight_settlement.md) | Flight settlement logic — claim and no-claim flows (Korean) |
+| [`emotion-migration-handoff.md`](docs/emotion-migration-handoff.md) | Emotion CSS-in-JS migration handoff notes |
+
+### `contract/docs/`
+
+| File | Description |
+|------|-------------|
+| [`oracle.md`](contract/docs/oracle.md) | Oracle integration guide — Track A (centralized) & Track B (decentralized) (Korean) |
+| [`setup-and-test.md`](contract/docs/setup-and-test.md) | Development environment setup — Rust, Solana CLI, Anchor installation (Korean) |
+
+### `contract/`
+
+| File | Description |
+|------|-------------|
+| [`README.md`](contract/README.md) | Contract setup notes — program ID, build/test, CI trigger |
+
+## Oracle Architecture
+
+The oracle integration uses a **modular, dual-track design** — the same contract supports both centralized and decentralized oracle strategies, selectable per deployment scenario. Both tracks use [AviationStack API](https://aviationstack.com) as the flight delay data source.
+
+| Track | Strategy | Trust Model | Target Account |
+|-------|----------|-------------|----------------|
+| **Track A** — Trusted Resolver | Leader/Operator fetches API data and calls `resolve_flight_delay` on-chain | Centralized (signer trust) | `FlightPolicy` |
+| **Track B** — Switchboard On-Demand | Switchboard oracle nodes fetch API data, sign and write to an on-chain feed; `check_oracle_and_create_claim` verifies cryptographically | Decentralized (cryptographic verification) | `Policy` (Legacy) |
+
+**In demo/simulation mode**, oracle resolution is triggered manually via the dashboard UI — no external API or oracle network is required.
+
+This modular design allows flexible adoption:
+- **Demo/local testing** — manual trigger, no external dependencies
+- **Centralized production** — Track A with a trusted operator and real-time flight API
+- **Decentralized production** — Track B with Switchboard oracle network for trustless verification
+
+For full details, see [`contract/docs/oracle.md`](contract/docs/oracle.md).
+
+## Why Solana
+
+A flight is delayed by 2 hours. In the same transaction where the oracle posts the data, a claim is automatically created and settlement is atomically executed across three insurers' ratios. No human intervention, no paperwork, no system downtime.
+
+Building this workflow on legacy infrastructure — oracle verification, multi-party escrow, atomic settlement — would require at least three separate systems and days of reconciliation. On Solana, it's a single 400ms transaction.
+
+Specifically, Solana enables five architectural properties that this protocol requires:
+
+- **Atomic oracle verification** — `check_oracle_and_create_claim` performs Ed25519 signature verification, Switchboard oracle update, and claim creation in a single transaction. Solana's Instructions sysvar allows a program to inspect other instructions within the same TX — structurally impossible on EVM.
+- **Trustless custody via PDAs** — The risk pool vault is owned by a program-derived address. No multisig, no admin key, no external custodian. The program itself is the custodian — there is no admin key to compromise because none exists.
+- **Account-level parallelism** — Each Policy, Underwriting, RiskPool, and Claim is a separate on-chain account. The Solana runtime processes transactions touching different accounts in parallel. KE081 ICN→JFK claim processing never blocks OZ201 ICN→LAX underwriting. In EVM's single-contract model, all policies compete for the same storage.
+- **Multi-party atomic settlement** — `settle_claim` transfers from the vault to the beneficiary in one transaction with PDA-signed authority. Up to 16 participants' basis-point ratios are calculated and settled atomically — all or nothing, no partial settlement.
+- **On-chain state machine as policy terms** — The 8-step state transition (Draft → Open → Funded → Active → Claimable → Approved → Settled / Expired) is enforced on-chain. "Cannot activate before fully funded" is not a contractual clause subject to interpretation — it's a transaction that the program rejects.
 
 ## Quick Start
 
 ### 1) Run Frontend
-```
+
+```bash
 cd frontend
 npm install
 npm run dev
 ```
+
 - Build: `npm run build`
 - Preview: `npm run preview`
 - The app uses `BrowserRouter` with `basename` set to `/riskmesh`. Configure subpath hosting accordingly.
 
-### 2) Build/Test Contract
-```
+### 2) Build / Test Contract
+
+```bash
 cd contract
 anchor build
 anchor test
 ```
-- Program ID is currently a placeholder. Update both:
-- `contract/programs/open_parametric/src/lib.rs`
-- `contract/Anchor.toml`
 
-## Docs
-- Contract guide: `docs/CONTRACT_GUIDE.md`
-- Design draft: `OpenParametric.md`
-- Contract setup notes: `contract/README.md`
+- Program ID is currently a placeholder. Update both:
+  - `contract/programs/open_parametric/src/lib.rs`
+  - `contract/Anchor.toml`
+
+## CI / CD
+
+Three GitHub Actions workflows automate quality checks and deployment:
+
+| Workflow | File | Trigger | What it does |
+|----------|------|---------|--------------|
+| **Contract CI** | `.github/workflows/contract-ci.yml` | Push to `main` or PR — `contract/**` changes | `cargo fmt --check`, `cargo clippy`, `cargo test` |
+| **Frontend Tests** | `.github/workflows/test-frontend.yml` | Push to `main`/`feature/**` or PR — `frontend/**` changes | `npm ci && npm test` |
+| **Deploy Frontend** | `.github/workflows/deploy-frontend.yml` | Push to `main` — `frontend/**` changes | Build and deploy to GitHub Pages |
+
+## Testing
+
+### Contract
+
+```bash
+cd contract
+
+# Rust unit tests (pure logic, no validator needed)
+cargo test -p open_parametric --lib
+
+# Anchor integration tests (requires local validator)
+anchor test
+
+# Settlement logic tests (Node.js)
+node --test tests/master_settlement_logic.test.mjs
+```
+
+### Frontend
+
+```bash
+cd frontend
+
+# Run all tests once
+npm test
+
+# Watch mode (re-run on file save)
+npm run test:watch
+
+# Coverage report
+npm run test:coverage
+```
+
+For detailed guides, see:
+- [`docs/CONTRACT_TESTING_GUIDE_KO.md`](docs/CONTRACT_TESTING_GUIDE_KO.md) — Contract testing guide (Korean)
+- [`docs/FRONTEND_TESTING_GUIDE_KO.md`](docs/FRONTEND_TESTING_GUIDE_KO.md) — Frontend testing guide (Korean)
 
 ## Architecture
+
 The on-chain program manages Policy, Underwriting, RiskPool, Claim, and PolicyholderRegistry accounts as PDAs. The risk pool owns an SPL Token vault (ATA). Oracle verification creates claims once delay conditions are met.
 
 ```
@@ -151,7 +193,8 @@ What each element means:
 - `Claim`: Per-oracle-round claim record. Stores delay value, verification time, approval status, and payout amount.
 - `PolicyholderRegistry`: (Optional) Minimal policyholder registry. Stores external references and coverage data without PII.
 
-## State Machines (Summary)
+## State Machines
+
 Policy state flow:
 
 ```
@@ -172,6 +215,8 @@ None → PendingOracle → Claimable → Approved → Settled (or Rejected)
 ```
 
 ## Dev Notes
-- Designed for Anchor 0.30
-- Oracle: Switchboard On-Demand (assumed)
+
+- Anchor 0.31.1
+- Oracle: modular — Switchboard On-Demand (decentralized) or Trusted Resolver (centralized)
 - SPL tokens used for escrow/payout
+- Network: localnet (dev), devnet (demo), mainnet (production)

@@ -306,20 +306,20 @@ export function Header() {
           <GuideBtn onClick={startTour} title="Guide Tour">Guide</GuideBtn>
           <ModeToggleWrap>
             <ModeBtn
-              variant="sim"
-              active={mode === 'simulation'}
-              onClick={() => handleModeSwitch('simulation')}
-            >
-              <ModeDot variant="sim" active={mode === 'simulation'} />
-              SIM
-            </ModeBtn>
-            <ModeBtn
               variant="chain"
               active={mode === 'onchain'}
               onClick={() => handleModeSwitch('onchain')}
             >
               <ModeDot variant="chain" active={mode === 'onchain'} />
               DEVNET
+            </ModeBtn>
+            <ModeBtn
+              variant="sim"
+              active={mode === 'simulation'}
+              onClick={() => handleModeSwitch('simulation')}
+            >
+              <ModeDot variant="sim" active={mode === 'simulation'} />
+              SIM
             </ModeBtn>
           </ModeToggleWrap>
           <MasterPolicyDropdown />
