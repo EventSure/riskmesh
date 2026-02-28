@@ -36,6 +36,39 @@ The frontend dashboard supports two operating modes, toggled from the header:
 
 Switch modes via the **DEVNET / SIM** toggle in the top-right header. SIM mode is available for offline testing without a wallet connection.
 
+## Docs
+
+### Root
+
+| File | Description |
+|------|-------------|
+| [`OpenParametric.md`](OpenParametric.md) | MVP design draft — account schemas, state machines, oracle spec (Korean) |
+
+### `docs/`
+
+| File | Description |
+|------|-------------|
+| [`CONTRACT_GUIDE.md`](docs/CONTRACT_GUIDE.md) | Smart contract detailed spec — accounts, instructions, error codes, sequences (Korean) |
+| [`CONTRACT_TESTING_GUIDE_KO.md`](docs/CONTRACT_TESTING_GUIDE_KO.md) | Contract testing guide — unit, integration, and settlement tests (Korean) |
+| [`FRONTEND_TESTING_GUIDE_KO.md`](docs/FRONTEND_TESTING_GUIDE_KO.md) | Frontend unit testing guide — business logic tests (Korean) |
+| [`FILE_STATE_LOGIC_FULL_KO.md`](docs/FILE_STATE_LOGIC_FULL_KO.md) | Full file-by-file state/logic reference for the entire repo (Korean) |
+| [`MASTER_POLICY_REDESIGN_PLAN_KO.md`](docs/MASTER_POLICY_REDESIGN_PLAN_KO.md) | Master policy + child flight policy restructuring plan (Korean) |
+| [`feature/settle_flight_settlement.md`](docs/feature/settle_flight_settlement.md) | Flight settlement logic — claim and no-claim flows (Korean) |
+| [`emotion-migration-handoff.md`](docs/emotion-migration-handoff.md) | Emotion CSS-in-JS migration handoff notes |
+
+### `contract/docs/`
+
+| File | Description |
+|------|-------------|
+| [`oracle.md`](contract/docs/oracle.md) | Oracle integration guide — Track A (centralized) & Track B (decentralized) (Korean) |
+| [`setup-and-test.md`](contract/docs/setup-and-test.md) | Development environment setup — Rust, Solana CLI, Anchor installation (Korean) |
+
+### `contract/`
+
+| File | Description |
+|------|-------------|
+| [`README.md`](contract/README.md) | Contract setup notes — program ID, build/test, CI trigger |
+
 ## Oracle Architecture
 
 The oracle integration uses a **modular, dual-track design** — the same contract supports both centralized and decentralized oracle strategies, selectable per deployment scenario. Both tracks use [AviationStack API](https://aviationstack.com) as the flight delay data source.
@@ -125,39 +158,6 @@ npm run test:coverage
 For detailed guides, see:
 - [`docs/CONTRACT_TESTING_GUIDE_KO.md`](docs/CONTRACT_TESTING_GUIDE_KO.md) — Contract testing guide (Korean)
 - [`docs/FRONTEND_TESTING_GUIDE_KO.md`](docs/FRONTEND_TESTING_GUIDE_KO.md) — Frontend testing guide (Korean)
-
-## Docs
-
-### Root
-
-| File | Description |
-|------|-------------|
-| [`OpenParametric.md`](OpenParametric.md) | MVP design draft — account schemas, state machines, oracle spec (Korean) |
-
-### `docs/`
-
-| File | Description |
-|------|-------------|
-| [`CONTRACT_GUIDE.md`](docs/CONTRACT_GUIDE.md) | Smart contract detailed spec — accounts, instructions, error codes, sequences (Korean) |
-| [`CONTRACT_TESTING_GUIDE_KO.md`](docs/CONTRACT_TESTING_GUIDE_KO.md) | Contract testing guide — unit, integration, and settlement tests (Korean) |
-| [`FRONTEND_TESTING_GUIDE_KO.md`](docs/FRONTEND_TESTING_GUIDE_KO.md) | Frontend unit testing guide — business logic tests (Korean) |
-| [`FILE_STATE_LOGIC_FULL_KO.md`](docs/FILE_STATE_LOGIC_FULL_KO.md) | Full file-by-file state/logic reference for the entire repo (Korean) |
-| [`MASTER_POLICY_REDESIGN_PLAN_KO.md`](docs/MASTER_POLICY_REDESIGN_PLAN_KO.md) | Master policy + child flight policy restructuring plan (Korean) |
-| [`feature/settle_flight_settlement.md`](docs/feature/settle_flight_settlement.md) | Flight settlement logic — claim and no-claim flows (Korean) |
-| [`emotion-migration-handoff.md`](docs/emotion-migration-handoff.md) | Emotion CSS-in-JS migration handoff notes |
-
-### `contract/docs/`
-
-| File | Description |
-|------|-------------|
-| [`oracle.md`](contract/docs/oracle.md) | Oracle integration guide — Track A (centralized) & Track B (decentralized) (Korean) |
-| [`setup-and-test.md`](contract/docs/setup-and-test.md) | Development environment setup — Rust, Solana CLI, Anchor installation (Korean) |
-
-### `contract/`
-
-| File | Description |
-|------|-------------|
-| [`README.md`](contract/README.md) | Contract setup notes — program ID, build/test, CI trigger |
 
 ## Architecture
 
