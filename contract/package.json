@@ -10,8 +10,11 @@
     "demo:expire": "ts-node -P tsconfig.json scripts/6-expire.ts",
     "demo:refund": "ts-node -P tsconfig.json scripts/7-refund.ts",
     "demo:oracle-feed-create": "ts-node -P tsconfig.json scripts/oracle-feed-create.ts",
-    "demo:oracle-resolve": "ts-node -P tsconfig.json scripts/oracle-resolve.ts",
-    "demo:oracle-claim": "ts-node -P tsconfig.json scripts/oracle-claim.ts"
+    "demo:oracle-resolve": "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/oracle-resolve.ts",
+    "demo:oracle-claim": "ts-node -P tsconfig.json scripts/oracle-claim.ts",
+    "demo:master-setup": "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/oracle-master-setup.ts",
+    "demo:flight-create": "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/oracle-flight-create.ts",
+    "demo:settle": "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/oracle-settle.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.32.1",

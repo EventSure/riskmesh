@@ -5,9 +5,9 @@ pub mod pda;
 /// 런타임에 계산하지 않고 상수로 미리 정의한다.
 pub mod discriminators {
     /// sha256("account:Policy")[..8]
-    pub const POLICY: [u8; 8] = [218, 7, 92, 178, 255, 94, 195, 133];
+    pub const POLICY: [u8; 8] = [222, 135, 7, 163, 235, 177, 33, 68];
     /// sha256("account:FlightPolicy")[..8]
-    pub const FLIGHT_POLICY: [u8; 8] = [172, 185, 233, 71, 42, 78, 32, 110];
+    pub const FLIGHT_POLICY: [u8; 8] = [53, 42, 54, 221, 74, 119, 109, 25];
 }
 
 /// Track B Policy.state 오프셋 (8 discriminator + Policy 필드 순서로 계산)
