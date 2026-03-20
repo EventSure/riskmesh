@@ -9,25 +9,51 @@ import { Layout } from '@/components/layout/Layout';
 import { Dashboard } from '@/pages/Dashboard';
 import { LandingPage } from '@/pages/LandingPage';
 import { useProtocolStore, type LogEntry } from '@/store/useProtocolStore';
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PublicKey } from '@solana/web3.js';
+import { useWallet } from '@solana/wallet-adapter-react';
 import { useMasterPolicyAccount } from '@/hooks/useMasterPolicyAccount';
-import { useFlightPolicies } from '@/hooks/useFlightPolicies';
+import { useFlightPolicies, type FlightPolicyWithKey } from '@/hooks/useFlightPolicies';
+import { useToast } from '@/components/common';
+
+const STATUS_NAMES: Record<number, string> = {
+  0: 'Issued', 1: 'AwaitingOracle', 2: 'Claimable', 3: 'Paid', 4: 'NoClaim', 5: 'Expired',
+};
 
 function ChainSyncer() {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const { publicKey } = useWallet();
+  useEffect(() => {
+    console.log('[Wallet] publicKey:', publicKey?.toBase58() ?? 'not connected');
+  }, [publicKey]);
   const mode = useProtocolStore(s => s.mode);
   const masterPolicyPDA = useProtocolStore(s => s.masterPolicyPDA);
   const syncMasterFromChain = useProtocolStore(s => s.syncMasterFromChain);
   const syncFlightPoliciesFromChain = useProtocolStore(s => s.syncFlightPoliciesFromChain);
+  const addLog = useProtocolStore(s => s.addLog);
 
   const pdaKey = useMemo(
     () => mode === 'onchain' && masterPolicyPDA ? new PublicKey(masterPolicyPDA) : null,
     [mode, masterPolicyPDA],
   );
 
+  const handleStatusChange = useCallback((fp: FlightPolicyWithKey, prev: number, next: number) => {
+    const name = `#${fp.account.childPolicyId.toNumber()} ${fp.account.flightNo}`;
+    const fromLabel = STATUS_NAMES[prev] ?? String(prev);
+    const toLabel = STATUS_NAMES[next] ?? String(next);
+
+    toast(t('oracle.statusChanged', { flight: name, from: fromLabel, to: toLabel }), next === 2 ? 'w' : 's');
+    addLog(
+      `${name}: ${fromLabel} → ${toLabel}`,
+      next === 2 ? '#F59E0B' : '#22C55E',
+      'daemon_resolve',
+    );
+  }, [t, toast, addLog]);
+
   const { account } = useMasterPolicyAccount(pdaKey);
-  const { policies } = useFlightPolicies(pdaKey);
+  const { policies } = useFlightPolicies(pdaKey, { onStatusChange: handleStatusChange });
 
   useEffect(() => {
     if (account) syncMasterFromChain(account);

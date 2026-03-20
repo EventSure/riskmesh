@@ -22,7 +22,7 @@ export interface Contract {
   aNet: number;
   bNet: number;
   rNet: number;
-  status: 'active' | 'claimed';
+  status: 'active' | 'claimed' | 'noClaim' | 'expired';
   ts: string;
 }
 
@@ -197,6 +197,7 @@ interface ProtocolState {
   masterPolicyPDA: string | null;
   lastTxSignature: string | null;
   masterPolicies: MasterPolicySummary[];
+  lastDaemonActivityTs: number | null;
 
   // Actions
   setMode: (m: ProtocolMode) => void;
@@ -263,6 +264,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
   masterPolicyPDA: null,
   lastTxSignature: null,
   masterPolicies: [],
+  lastDaemonActivityTs: null,
 
   setMode: (m) => {
     set({ mode: m });
@@ -380,7 +382,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
 
     const contract = st.contracts.find(c => c.id === contractId);
     if (!contract) return { ok: false, msg: i18n.t('store.contractNotFound', { id: contractId }), type: 'error' as const, code: 'E_CONTRACT_NOT_FOUND' };
-    if (contract.status === 'claimed') return { ok: false, msg: i18n.t('store.alreadyClaimed', { id: contractId }), type: 'error' as const, code: 'E_ALREADY_CLAIMED' };
+    if (contract.status !== 'active') return { ok: false, msg: i18n.t('store.alreadyClaimed', { id: contractId }), type: 'error' as const, code: 'E_ALREADY_CLAIMED' };
     const ceded = st.cededRatioBps / 10000;
     const commRate = st.reinsCommissionBps / 10000;
     const reinsEff = ceded * (1 - commRate);
@@ -733,6 +735,17 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
         a.status === FlightPolicyStatus.AwaitingOracle;
       const date = new Date(a.departureTs.toNumber() * 1000).toISOString().slice(0, 10);
 
+      let contractStatus: Contract['status'];
+      if (isStillActive) {
+        contractStatus = 'active';
+      } else if (a.status === FlightPolicyStatus.NoClaim) {
+        contractStatus = 'noClaim';
+      } else if (a.status === FlightPolicyStatus.Expired) {
+        contractStatus = 'expired';
+      } else {
+        contractStatus = 'claimed';
+      }
+
       const ct: Contract = {
         id,
         name: a.subscriberRef,
@@ -742,7 +755,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
         aNet: ctANet,
         bNet: ctBNet,
         rNet: ctRNet,
-        status: isStillActive ? 'active' : 'claimed',
+        status: contractStatus,
         ts: formatTs(a.createdAt.toNumber()),
       };
       contracts.push(ct);
@@ -806,6 +819,15 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     const totalPremium = contracts.length * pp;
     const totalClaim = claims.reduce((s, c) => s + c.payout, 0);
 
+    // Daemon activity heuristic: latest updatedAt among resolved FlightPolicies
+    const resolvedPolicies = policies.filter(fp =>
+      fp.account.status !== FlightPolicyStatus.Issued &&
+      fp.account.status !== FlightPolicyStatus.AwaitingOracle
+    );
+    const lastDaemonActivityTs = resolvedPolicies.length > 0
+      ? Math.max(...resolvedPolicies.map(fp => fp.account.updatedAt.toNumber()))
+      : null;
+
     set({
       contracts,
       claims,
@@ -814,6 +836,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       acc,
       totalPremium,
       totalClaim,
+      lastDaemonActivityTs,
     });
   },
 }), {
