@@ -34,7 +34,7 @@ export const DataTable = styled.table`
   }
 
   tr:hover td {
-    background: rgba(153, 69, 255, 0.03);
+    background: ${p => p.theme.colors.surface2};
   }
 `;
 

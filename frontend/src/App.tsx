@@ -8,6 +8,7 @@ import { ToastProvider } from '@/components/common';
 import { Layout } from '@/components/layout/Layout';
 import { Dashboard } from '@/pages/Dashboard';
 import { LandingPage } from '@/pages/LandingPage';
+import { PortalPage } from '@/pages/PortalPage';
 import { useProtocolStore, type LogEntry } from '@/store/useProtocolStore';
 import { useEffect, useRef, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -112,6 +113,7 @@ export function App() {
                 <Route element={<Layout />}>
                   <Route path="/demo" element={<Dashboard />} />
                 </Route>
+                <Route path="/portal" element={<PortalPage />} />
                 <Route path="/dashboard" element={<Navigate to="/demo" replace />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

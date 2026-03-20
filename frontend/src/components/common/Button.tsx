@@ -23,9 +23,9 @@ export const Button = styled.button<ButtonProps>`
   ${({ variant, theme }) => variant === 'primary' && `
     background: ${theme.colors.primary};
     color: #fff;
-    box-shadow: 0 0 14px ${theme.glow.primary};
+    box-shadow: 0 0 10px ${theme.glowSubtle.primary};
     &:hover {
-      box-shadow: 0 0 24px rgba(153,69,255,.5);
+      box-shadow: 0 0 18px rgba(153,69,255,.20);
       transform: translateY(-1px);
     }
   `}

@@ -19,6 +19,8 @@ export function ClaimApproval() {
   const appCnt = claims.filter(c => c.status === 'approved').length;
   const setlCnt = claims.filter(c => c.status === 'settled').length;
   const canAct = role === 'leader' || role === 'operator';
+  // On-chain: settle handles both claimable + approved. Simulation: only approved.
+  const canSettle = mode === 'onchain' ? (pendCnt > 0 || appCnt > 0) : appCnt > 0;
 
   const handleApprove = () => {
     // In on-chain mode, resolve_flight_delay already sets the claim status
@@ -102,7 +104,7 @@ export function ClaimApproval() {
             {t('claim.approveBtn')}
           </Button>
         )}
-        <Button variant="accent" fullWidth onClick={handleSettle} disabled={!canAct || (pendCnt === 0 && appCnt === 0) || loading} data-guide="settle-btn">
+        <Button variant="accent" fullWidth onClick={handleSettle} disabled={!canAct || !canSettle || loading} data-guide="settle-btn">
           {loading ? t('claim.settling') : t('claim.settleBtn')}
         </Button>
       </CardBody>

@@ -1,7 +1,7 @@
 import styled from '@emotion/styled';
 
 export const Card = styled.div`
-  background: ${p => p.theme.colors.card};
+  background: ${p => p.theme.colors.surface1};
   border: 1px solid ${p => p.theme.colors.border};
   border-radius: 16px;
   margin-bottom: 12px;
