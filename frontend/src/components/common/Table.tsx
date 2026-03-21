@@ -21,6 +21,10 @@ export const DataTable = styled.table`
     font-weight: 700;
     border-bottom: 1px solid ${p => p.theme.colors.border};
     white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: ${p => p.theme.colors.surface1};
   }
 
   td {

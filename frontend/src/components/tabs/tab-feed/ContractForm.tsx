@@ -4,7 +4,7 @@ import { getAssociatedTokenAddress } from '@solana/spl-token';
 import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardBody, Button, FormGroup, FormLabel, FormInput, FormSelect, Divider } from '@/components/common';
 import { useProtocolStore, FLIGHTS, FLIGHT_ROUTES, NAMES, DATES } from '@/store/useProtocolStore';
-import { CURRENCY_MINT } from '@/lib/constants';
+
 import { useToast } from '@/components/common';
 import { useCreateFlightPolicy } from '@/hooks/useCreateFlightPolicy';
 import { useProgram } from '@/hooks/useProgram';
@@ -14,7 +14,7 @@ export function ContractForm() {
   const { mode, masterActive, masterPolicyPDA, contractCount, premiumPerPolicy, addContract, onChainAddContract } = useProtocolStore();
   const { toast } = useToast();
   const { createFlightPolicy, loading } = useCreateFlightPolicy();
-  const { wallet } = useProgram();
+  const { wallet, program } = useProgram();
   const [name, setName] = useState('홍길동');
   const [flight, setFlight] = useState<string>('KE081');
   const [date, setDate] = useState('2026-01-15');
@@ -30,7 +30,7 @@ export function ContractForm() {
     }
 
     // On-chain mode
-    if (!masterPolicyPDA || !wallet) {
+    if (!masterPolicyPDA || !wallet || !program) {
       toast('Wallet or master policy not available', 'd');
       return;
     }
@@ -38,17 +38,24 @@ export function ContractForm() {
     const childId = contractCount + 1;
     const route = FLIGHT_ROUTES[flight] || 'ICN→JFK';
     const departureTs = Math.floor(new Date(date).getTime() / 1000);
-    const walletATA = await getAssociatedTokenAddress(CURRENCY_MINT, wallet.publicKey);
+    const masterPK = new PublicKey(masterPolicyPDA);
+
+    // MasterPolicy에서 leader_deposit_wallet, currency_mint를 읽어서 사용
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const masterData = await (program as any).account.masterPolicy.fetch(masterPK);
+    const leaderDepositToken: PublicKey = masterData.leaderDepositWallet;
+    const currencyMint: PublicKey = masterData.currencyMint;
+    const walletATA = await getAssociatedTokenAddress(currencyMint, wallet.publicKey);
 
     const result = await createFlightPolicy({
-      masterPolicy: new PublicKey(masterPolicyPDA),
+      masterPolicy: masterPK,
       childPolicyId: childId,
       subscriberRef: name,
       flightNo: flight,
       route,
       departureTs,
       payerToken: walletATA,
-      leaderDepositToken: walletATA,
+      leaderDepositToken,
     });
 
     if (!result.success) {
@@ -58,7 +65,7 @@ export function ContractForm() {
 
     onChainAddContract(childId, name, flight, date, result.signature);
     toast(`Flight policy created! TX: ${result.signature.slice(0, 8)}...`, 's');
-  }, [mode, masterActive, name, flight, date, masterPolicyPDA, wallet, contractCount, addContract, onChainAddContract, createFlightPolicy, toast, t]);
+  }, [mode, masterActive, name, flight, date, masterPolicyPDA, wallet, program, contractCount, addContract, onChainAddContract, createFlightPolicy, toast, t]);
 
   const handleAutoFeed = useCallback(() => {
     if (timerRef.current) {

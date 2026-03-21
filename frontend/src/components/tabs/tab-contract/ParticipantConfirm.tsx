@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useActivateMaster } from '@/hooks/useActivateMaster';
 import { useProgram } from '@/hooks/useProgram';
 import { ConfirmRole } from '@/lib/idl/open_parametric';
-import { CURRENCY_MINT } from '@/lib/constants';
+
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { getDemoKeypair, getPoolWallet } from '@/lib/demo-keypairs';
 
@@ -121,8 +121,12 @@ export function ParticipantConfirm() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const prog = program as any;
 
+      // MasterPolicy에서 currency_mint를 읽어서 사용
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const masterData = await (prog as any).account.masterPolicy.fetch(masterPubkey);
+      const currencyMint: PublicKey = masterData.currencyMint;
       // deposit wallet = 참여사의 ATA, pool wallet = PDA-owned (handleSetTerms에서 생성됨)
-      const depositAta = await getAssociatedTokenAddress(CURRENCY_MINT, demoKp.publicKey);
+      const depositAta = await getAssociatedTokenAddress(currencyMint, demoKp.publicKey);
       const poolWallet = getPoolWallet(key);
       if (!poolWallet) {
         toast('Pool wallet not found — create master policy first', 'd');

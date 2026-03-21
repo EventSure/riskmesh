@@ -221,7 +221,8 @@ export function MasterContractSetup() {
       const reinsurerAmount = Math.floor(totalPayout * reinsurerEffBps / 10_000);
       const insurerTotal = totalPayout - reinsurerAmount;
 
-      const leaderATA = await getAssociatedTokenAddress(CURRENCY_MINT, wallet.publicKey);
+      const currencyMint: PublicKey = masterData.currencyMint;
+      const leaderATA = await getAssociatedTokenAddress(currencyMint, wallet.publicKey);
       const ixs = [];
 
       // reinsurer pool 충전 (USDC)

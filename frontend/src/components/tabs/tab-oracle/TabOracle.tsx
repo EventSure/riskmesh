@@ -3,6 +3,7 @@ import { OracleConsole } from './OracleConsole';
 import { ClaimApproval } from './ClaimApproval';
 import { ClaimTable } from './ClaimTable';
 import { ClaimSettlementSummary } from './ClaimSettlementSummary';
+import { PolicyMonitorTable } from './PolicyMonitorTable';
 
 const Col = styled.div`
   overflow-y: auto;
@@ -21,6 +22,7 @@ export function TabOracle() {
         <ClaimApproval />
       </ColSm>
       <ColLg>
+        <PolicyMonitorTable />
         <ClaimTable />
         <ClaimSettlementSummary />
       </ColLg>
