@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useProgram } from './useProgram';
-import type { MasterPolicyAccount } from '@/lib/idl/open_parametric';
+import type { MasterPolicyAccount, PolicyAccount } from '@/lib/idl/open_parametric';
 
 export interface MyPolicyRole {
   role: 'leader' | 'partA' | 'partB' | 'rein';
@@ -13,6 +13,11 @@ export interface MyPolicySummary {
   masterId: string;
   status: number;
   roles: MyPolicyRole[];
+  track: 'A' | 'B';
+  /** Track B only fields */
+  flightNo?: string;
+  route?: string;
+  payoutAmount?: number;
 }
 
 /**
@@ -65,8 +70,31 @@ export function useMyPolicies() {
         }
 
         if (matchedRoles.length > 0) {
-          grouped.set(pda, { pda, masterId, status: acc.status, roles: matchedRoles });
+          grouped.set(pda, { pda, masterId, status: acc.status, roles: matchedRoles, track: 'A' });
         }
+      }
+
+      // Track B: fetch Policy accounts where wallet is leader (offset 16)
+      try {
+        const trackBAccounts = await prog.account.policy.all([
+          { memcmp: { offset: 16, bytes: walletKey.toBase58() } },
+        ]);
+        for (const a of trackBAccounts) {
+          const acc: PolicyAccount = a.account;
+          const pda = a.publicKey.toBase58();
+          grouped.set(pda, {
+            pda,
+            masterId: acc.policyId.toString(),
+            status: acc.state,
+            roles: [{ role: 'leader', shareBps: 10000, confirmed: true }],
+            track: 'B',
+            flightNo: acc.flightNo,
+            route: acc.route,
+            payoutAmount: acc.payoutAmount.toNumber() / 1e6,
+          });
+        }
+      } catch {
+        // Track B account type may not exist on-chain yet — ignore
       }
 
       const results = Array.from(grouped.values());

@@ -1,7 +1,13 @@
+import { useState } from 'react';
 import styled from '@emotion/styled';
+import { PublicKey } from '@solana/web3.js';
+import BN from 'bn.js';
 import { useTranslation } from 'react-i18next';
-import { Card, CardHeader, CardTitle } from '@/components/common';
+import { Card, CardHeader, CardTitle, useToast } from '@/components/common';
 import { useProtocolStore } from '@/store/useProtocolStore';
+import { useSettleFlight } from '@/hooks/useSettleFlight';
+import { useMasterPolicyAccount } from '@/hooks/useMasterPolicyAccount';
+import { getFlightPolicyPDA } from '@/lib/pda';
 
 /* ── Styles ── */
 
@@ -56,6 +62,23 @@ const Mono = styled.span`
   font-size: 10px;
 `;
 
+const SettleBtn = styled.button`
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 5px;
+  border: 1px solid ${p => p.theme.colors.primary};
+  background: rgba(153,69,255,0.08);
+  color: ${p => p.theme.colors.primary};
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.15s;
+
+  &:hover { background: rgba(153,69,255,0.18); }
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
+`;
+
 const STATUS_COLOR: Record<string, string> = {
   active: '#14F195',
   claimed: '#9945FF',
@@ -74,7 +97,34 @@ const STATUS_ICON: Record<string, string> = {
 
 export function PolicyMonitorTable() {
   const { t } = useTranslation();
-  const { contracts, claims } = useProtocolStore();
+  const { toast } = useToast();
+  const { contracts, claims, masterPolicyPDA, onChainSettle } = useProtocolStore();
+  const masterPK = masterPolicyPDA ? new PublicKey(masterPolicyPDA) : null;
+  const { account: masterAccount } = useMasterPolicyAccount(masterPK);
+  const { settleFlightClaim, settleFlightNoClaim, buildSettleAccounts, loading: settleLoading } = useSettleFlight();
+  const [settleLoadingId, setSettleLoadingId] = useState<number | null>(null);
+
+  const handleSettleClaim = async (cid: number) => {
+    if (!masterPK || !masterAccount) { toast(t('toast.walletNotAvailable'), 'd'); return; }
+    setSettleLoadingId(cid);
+    const [flightPDA] = getFlightPolicyPDA(masterPK, new BN(cid));
+    const accs = buildSettleAccounts(masterAccount);
+    const res = await settleFlightClaim({ masterPolicy: masterPK, flightPolicy: flightPDA, leaderDepositToken: accs.leaderDepositWallet, reinsurerPoolToken: accs.reinsurerPoolWallet, participantPoolWallets: accs.participantPoolWallets });
+    setSettleLoadingId(null);
+    if (!res.success) { toast(t('oracle.txFailedMsg', { error: res.error }), 'd'); }
+    else { onChainSettle(cid, res.signature); toast(t('oracle.settleClaimBtn'), 's'); }
+  };
+
+  const handleSettleNoClaim = async (cid: number) => {
+    if (!masterPK || !masterAccount) { toast(t('toast.walletNotAvailable'), 'd'); return; }
+    setSettleLoadingId(cid);
+    const [flightPDA] = getFlightPolicyPDA(masterPK, new BN(cid));
+    const accs = buildSettleAccounts(masterAccount);
+    const res = await settleFlightNoClaim({ masterPolicy: masterPK, flightPolicy: flightPDA, leaderDepositToken: accs.leaderDepositWallet, reinsurerDepositToken: accs.reinsurerDepositWallet, participantDepositWallets: accs.participantDepositWallets });
+    setSettleLoadingId(null);
+    if (!res.success) { toast(t('oracle.txFailedMsg', { error: res.error }), 'd'); }
+    else { onChainSettle(cid, res.signature); toast(t('oracle.settleNoClaimBtn'), 's'); }
+  };
 
   if (contracts.length === 0) return null;
 
@@ -100,6 +150,7 @@ export function PolicyMonitorTable() {
               <th>{t('oracle.th.date')}</th>
               <th>{t('oracle.th.status')}</th>
               <th>{t('oracle.th.delay')}</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -107,6 +158,7 @@ export function PolicyMonitorTable() {
               const claim = claims.find(cl => cl.contractId === c.id);
               const clr = STATUS_COLOR[c.status] || '#94A3B8';
               const icon = STATUS_ICON[c.status] || '';
+              const isLoading = settleLoadingId === c.id && settleLoading;
               return (
                 <tr key={c.id}>
                   <td>
@@ -128,6 +180,18 @@ export function PolicyMonitorTable() {
                     <Mono style={{ color: claim?.delay ? 'var(--warning)' : 'var(--sub)' }}>
                       {claim?.delay ? `${claim.delay}${t('common.min')}` : '—'}
                     </Mono>
+                  </td>
+                  <td>
+                    {c.status === 'claimed' && (
+                      <SettleBtn onClick={() => handleSettleClaim(c.id)} disabled={isLoading}>
+                        {isLoading ? '…' : t('oracle.settleClaimBtn')}
+                      </SettleBtn>
+                    )}
+                    {c.status === 'noClaim' && (
+                      <SettleBtn onClick={() => handleSettleNoClaim(c.id)} disabled={isLoading}>
+                        {isLoading ? '…' : t('oracle.settleNoClaimBtn')}
+                      </SettleBtn>
+                    )}
                   </td>
                 </tr>
               );

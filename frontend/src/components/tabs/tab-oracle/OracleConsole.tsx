@@ -8,7 +8,10 @@ import { useProtocolStore } from '@/store/useProtocolStore';
 import { useToast } from '@/components/common';
 import { useResolveFlightDelay } from '@/hooks/useResolveFlightDelay';
 import { useProgram } from '@/hooks/useProgram';
+import { useSettleFlight } from '@/hooks/useSettleFlight';
+import { useMasterPolicyAccount } from '@/hooks/useMasterPolicyAccount';
 import { getFlightPolicyPDA } from '@/lib/pda';
+import { TrackBPanel } from './TrackBPanel';
 
 /* ── Types ── */
 
@@ -111,52 +114,67 @@ const SectionLabel = styled.div`
   margin-top: 4px;
 `;
 
-const StatusRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid ${p => p.theme.colors.border};
-  &:last-child { border-bottom: none; }
-  min-width: 0;
-  overflow: hidden;
+const MiniTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+
+  th {
+    padding: 4px 8px;
+    text-align: left;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: ${p => p.theme.colors.sub};
+    border-bottom: 1px solid ${p => p.theme.colors.border};
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: ${p => p.theme.colors.surface1};
+  }
+
+  td {
+    padding: 5px 8px;
+    border-bottom: 1px solid ${p => p.theme.colors.border};
+    font-size: 11px;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: ${p => p.theme.colors.surface2}; }
 `;
 
-const StatusInfo = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-  flex: 1;
-`;
-
-const StatusId = styled.span`
+const MiniMono = styled.span`
   font-family: 'DM Mono', monospace;
-  font-weight: 700;
-  color: ${p => p.theme.colors.accent};
-  font-size: 11px;
-  flex-shrink: 0;
-`;
-
-const StatusName = styled.span`
-  color: ${p => p.theme.colors.sub};
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   font-size: 10px;
 `;
 
+const MiniStatusBadge = styled.span<{ clr: string }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-family: 'DM Mono', monospace;
+  background: ${p => p.clr}1a;
+  color: ${p => p.clr};
+  border: 1px solid ${p => p.clr}44;
+`;
+
 const SettleBtn = styled.button`
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  padding: 5px 12px;
-  border-radius: 6px;
+  padding: 3px 9px;
+  border-radius: 5px;
   border: 1px solid ${p => p.theme.colors.primary};
   background: rgba(153,69,255,0.08);
   color: ${p => p.theme.colors.primary};
   cursor: pointer;
   white-space: nowrap;
-  min-height: 30px;
   flex-shrink: 0;
   transition: all 0.15s;
 
@@ -206,50 +224,45 @@ const ComingSoonSub = styled.div`
   line-height: 1.5;
 `;
 
-/* ── PolicyStatusRow (exported for reuse) ── */
-
-export interface PolicyStatusRowProps {
-  id: number;
-  name: string;
-  status: string;
-  delay?: number;
-  payout?: number;
-  onSettle?: () => void;
-  settleLabel?: string;
-  settleLoading?: boolean;
-}
-
-export function PolicyStatusRow({ id, name, status, delay, onSettle, settleLabel, settleLoading }: PolicyStatusRowProps) {
-  return (
-    <StatusRow>
-      <StatusId>#{id}</StatusId>
-      <StatusInfo>
-        <StatusName>{name}</StatusName>
-        <Tag variant="subtle" style={{ fontSize: 10, color: STATUS_COLORS[status] || 'var(--sub)', alignSelf: 'flex-start' }}>
-          {STATUS_ICONS[status] || ''} {status.toUpperCase()}
-          {delay != null && delay > 0 ? ` (${delay}min)` : ''}
-        </Tag>
-      </StatusInfo>
-      {onSettle && (
-        <SettleBtn onClick={onSettle} disabled={settleLoading}>
-          {settleLabel || 'Settle'}
-        </SettleBtn>
-      )}
-    </StatusRow>
-  );
-}
 
 /* ── OracleConsole ── */
 
 export function OracleConsole() {
   const { t } = useTranslation();
   const {
-    mode, contracts, masterActive, masterPolicyPDA, payoutTiers,
-    runOracle, onChainResolve, lastDaemonActivityTs,
+    mode, contracts, claims, masterActive, masterPolicyPDA, payoutTiers,
+    runOracle, onChainResolve, onChainSettle, lastDaemonActivityTs,
   } = useProtocolStore();
   const { toast } = useToast();
   const { resolveFlightDelay, loading } = useResolveFlightDelay();
   const { wallet } = useProgram();
+
+  const masterPK = masterPolicyPDA ? new PublicKey(masterPolicyPDA) : null;
+  const { account: masterAccount } = useMasterPolicyAccount(masterPK);
+  const { settleFlightClaim, settleFlightNoClaim, buildSettleAccounts, loading: settleLoading } = useSettleFlight();
+  const [settleLoadingId, setSettleLoadingId] = useState<number | null>(null);
+
+  const handleSettleClaim = async (cid: number) => {
+    if (!masterPK || !masterAccount) { toast(t('toast.walletNotAvailable'), 'd'); return; }
+    setSettleLoadingId(cid);
+    const [flightPDA] = getFlightPolicyPDA(masterPK, new BN(cid));
+    const accs = buildSettleAccounts(masterAccount);
+    const res = await settleFlightClaim({ masterPolicy: masterPK, flightPolicy: flightPDA, leaderDepositToken: accs.leaderDepositWallet, reinsurerPoolToken: accs.reinsurerPoolWallet, participantPoolWallets: accs.participantPoolWallets });
+    setSettleLoadingId(null);
+    if (!res.success) { toast(t('oracle.txFailedMsg', { error: res.error }), 'd'); }
+    else { onChainSettle(cid, res.signature); toast(t('oracle.settleClaimBtn'), 's'); }
+  };
+
+  const handleSettleNoClaim = async (cid: number) => {
+    if (!masterPK || !masterAccount) { toast(t('toast.walletNotAvailable'), 'd'); return; }
+    setSettleLoadingId(cid);
+    const [flightPDA] = getFlightPolicyPDA(masterPK, new BN(cid));
+    const accs = buildSettleAccounts(masterAccount);
+    const res = await settleFlightNoClaim({ masterPolicy: masterPK, flightPolicy: flightPDA, leaderDepositToken: accs.leaderDepositWallet, reinsurerDepositToken: accs.reinsurerDepositWallet, participantDepositWallets: accs.participantDepositWallets });
+    setSettleLoadingId(null);
+    if (!res.success) { toast(t('oracle.txFailedMsg', { error: res.error }), 'd'); }
+    else { onChainSettle(cid, res.signature); toast(t('oracle.settleNoClaimBtn'), 's'); }
+  };
 
   const [oracleMode, setOracleMode] = useState<OracleControlMode>('manual');
   const [contractId, setContractId] = useState<number>(0);
@@ -331,9 +344,7 @@ export function OracleConsole() {
             role="tab"
             aria-selected={oracleMode === 'trackB'}
             active={oracleMode === 'trackB'}
-            disabled
             onClick={() => setOracleMode('trackB')}
-            title="Coming soon"
           >
             {t('oracle.tabTrackB')}
           </Segment>
@@ -471,10 +482,56 @@ export function OracleConsole() {
                     {daemonStatus.label}
                   </span>
                 </DaemonBadge>
-                <ComingSoonWrap style={{ padding: '20px 0 8px' }}>
-                  <ComingSoonIcon style={{ fontSize: 22 }}>📡</ComingSoonIcon>
-                  <ComingSoonSub>{t('oracle.trackAMonitorHintPlain')}</ComingSoonSub>
-                </ComingSoonWrap>
+                <SectionLabel>{t('oracle.policyMonitor')}</SectionLabel>
+                {contracts.length === 0 ? (
+                  <ComingSoonSub style={{ textAlign: 'center', padding: '8px 0' }}>{t('oracle.noContracts')}</ComingSoonSub>
+                ) : (
+                  <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 220 }}>
+                    <MiniTable>
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>{t('oracle.th.flight')}</th>
+                          <th>{t('oracle.th.status')}</th>
+                          <th>{t('oracle.th.delay')}</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {contracts.map(c => {
+                          const clr = STATUS_COLORS[c.status] || '#94A3B8';
+                          const icon = STATUS_ICONS[c.status] || '';
+                          const claim = claims.find(cl => cl.contractId === c.id);
+                          const isLoading = settleLoadingId === c.id && settleLoading;
+                          return (
+                            <tr key={c.id}>
+                              <td><MiniMono style={{ color: 'var(--accent)', fontWeight: 700 }}>#{c.id}</MiniMono></td>
+                              <td><MiniMono style={{ color: 'var(--accent)', fontWeight: 600 }}>{c.flight}</MiniMono></td>
+                              <td><MiniStatusBadge clr={clr}>{icon} {c.status.toUpperCase()}</MiniStatusBadge></td>
+                              <td>
+                                <MiniMono style={{ color: claim?.delay ? 'var(--warning)' : 'var(--sub)' }}>
+                                  {claim?.delay ? `${claim.delay}${t('common.min')}` : '—'}
+                                </MiniMono>
+                              </td>
+                              <td>
+                                {c.status === 'claimed' && (
+                                  <SettleBtn onClick={() => handleSettleClaim(c.id)} disabled={isLoading}>
+                                    {isLoading ? '…' : t('oracle.settleClaimBtn')}
+                                  </SettleBtn>
+                                )}
+                                {c.status === 'noClaim' && (
+                                  <SettleBtn onClick={() => handleSettleNoClaim(c.id)} disabled={isLoading}>
+                                    {isLoading ? '…' : t('oracle.settleNoClaimBtn')}
+                                  </SettleBtn>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </MiniTable>
+                  </div>
+                )}
               </>
             ) : (
               <ComingSoonWrap>
@@ -486,14 +543,8 @@ export function OracleConsole() {
           </>
         )}
 
-        {/* ── Track B (coming soon) ── */}
-        {oracleMode === 'trackB' && (
-          <ComingSoonWrap>
-            <ComingSoonIcon>🚧</ComingSoonIcon>
-            <ComingSoonTitle>{t('oracle.trackBTitle')}</ComingSoonTitle>
-            <ComingSoonSub>{t('oracle.trackBDesc')}</ComingSoonSub>
-          </ComingSoonWrap>
-        )}
+        {/* ── Track B ── */}
+        {oracleMode === 'trackB' && <TrackBPanel />}
       </CardBody>
     </Card>
   );

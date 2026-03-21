@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { PageShell } from '@/components/layout/PageShell';
 import { PortalHeader } from '@/components/layout/PortalHeader';
 import { TabBar, type TabDef } from '@/components/layout/TabBar';
-import { Tag, Mono } from '@/components/common';
+import { Tag, Mono, Card } from '@/components/common';
 import { useParticipantRole } from '@/hooks/useParticipantRole';
 import { useMyPolicies, type MyPolicySummary } from '@/hooks/useMyPolicies';
 import { PortalOverview } from '@/components/tabs/tab-portal/PortalOverview';
@@ -16,7 +16,7 @@ import { PortalConfirm } from '@/components/tabs/tab-portal/PortalConfirm';
 import { PortalRiskDashboard } from '@/components/tabs/tab-portal/PortalRiskDashboard';
 import { PortalSettlement } from '@/components/tabs/tab-portal/PortalSettlement';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { MasterPolicyStatus } from '@/lib/idl/open_parametric';
+import { MasterPolicyStatus, POLICY_STATE_LABELS, PolicyState } from '@/lib/idl/open_parametric';
 
 const CenterBox = styled.div`
   display: flex;
@@ -125,6 +125,17 @@ const STATUS_COLORS: Record<number, string> = {
   [MasterPolicyStatus.Cancelled]: '#EF4444',
 };
 
+const TRACK_B_STATUS_COLORS: Record<number, string> = {
+  [PolicyState.Draft]: '#94A3B8',
+  [PolicyState.Open]: '#38BDF8',
+  [PolicyState.Funded]: '#F59E0B',
+  [PolicyState.Active]: '#22C55E',
+  [PolicyState.Claimable]: '#EF4444',
+  [PolicyState.Approved]: '#9945FF',
+  [PolicyState.Settled]: '#64748B',
+  [PolicyState.Expired]: '#475569',
+};
+
 const RoleTagsWrap = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -134,10 +145,21 @@ const RoleTagsWrap = styled.div`
 function PolicyListItem({ policy, onClick }: { policy: MyPolicySummary; onClick: () => void }) {
   const { t } = useTranslation();
 
+  const isTrackB = policy.track === 'B';
+  const statusColor = isTrackB
+    ? (TRACK_B_STATUS_COLORS[policy.status] || '#94A3B8')
+    : (STATUS_COLORS[policy.status] || '#94A3B8');
+  const statusLabel = isTrackB
+    ? (POLICY_STATE_LABELS[policy.status] || 'Unknown')
+    : (STATUS_LABELS[policy.status] || 'Unknown');
+
   return (
     <PolicyCard onClick={onClick}>
       <PolicyInfo>
         <RoleTagsWrap>
+          <Tag variant="subtle" style={{ color: isTrackB ? '#9945FF' : '#22C55E', fontSize: 8, minWidth: 40, textAlign: 'center' }}>
+            {isTrackB ? 'Track B' : 'Track A'}
+          </Tag>
           {policy.roles.map(r => (
             <Tag key={r.role} variant="subtle" style={{ color: ROLE_COLORS[r.role] || '#94A3B8', fontSize: 9, minWidth: 48, textAlign: 'center' }}>
               {t(`portal.role.${r.role}`, r.role)}
@@ -145,13 +167,18 @@ function PolicyListItem({ policy, onClick }: { policy: MyPolicySummary; onClick:
           ))}
         </RoleTagsWrap>
         <PolicyMeta>
-          <PolicyId>Master #{policy.masterId}</PolicyId>
-          <PolicyPda>{policy.pda.slice(0, 12)}...{policy.pda.slice(-8)}</PolicyPda>
+          <PolicyId>{isTrackB ? `Policy #${policy.masterId}` : `Master #${policy.masterId}`}</PolicyId>
+          {isTrackB && policy.flightNo && (
+            <PolicyPda>{policy.flightNo} · {policy.route}</PolicyPda>
+          )}
+          {!isTrackB && (
+            <PolicyPda>{policy.pda.slice(0, 12)}...{policy.pda.slice(-8)}</PolicyPda>
+          )}
         </PolicyMeta>
       </PolicyInfo>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Tag variant="subtle" style={{ color: STATUS_COLORS[policy.status] || '#94A3B8', fontSize: 8 }}>
-          {STATUS_LABELS[policy.status] || 'Unknown'}
+        <Tag variant="subtle" style={{ color: statusColor, fontSize: 8 }}>
+          {statusLabel}
         </Tag>
       </div>
     </PolicyCard>
@@ -166,11 +193,17 @@ export function PortalPage() {
   const { policies, loading: policiesLoading } = useMyPolicies();
 
   const masterParam = searchParams.get('master');
+  const trackBParam = searchParams.get('trackb');
   const masterPDA = useMemo(() => {
     if (!masterParam) return null;
     try { return new PublicKey(masterParam); }
     catch { return null; }
   }, [masterParam]);
+  const trackBPDA = useMemo(() => {
+    if (!trackBParam) return null;
+    try { return new PublicKey(trackBParam); }
+    catch { return null; }
+  }, [trackBParam]);
 
   const { info: participantInfo, roles, loading, error } = useParticipantRole(masterPDA);
 
@@ -207,6 +240,50 @@ export function PortalPage() {
     );
   }
 
+  // Track B policy detail view
+  if (trackBPDA && !masterPDA) {
+    const matchedPolicy = policies.find(p => p.pda === trackBParam && p.track === 'B');
+    return (
+      <PageShell header={<PortalHeader role="leader" masterPDA={trackBParam} />}>
+        <PolicyListWrap>
+          <PolicyListTitle>{t('portal.trackBPolicy')}</PolicyListTitle>
+          {matchedPolicy ? (
+            <Card style={{ padding: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <PolicyId>Policy #{matchedPolicy.masterId}</PolicyId>
+                  <Tag variant="subtle" style={{ color: TRACK_B_STATUS_COLORS[matchedPolicy.status] || '#94A3B8', fontSize: 9 }}>
+                    {POLICY_STATE_LABELS[matchedPolicy.status] || 'Unknown'}
+                  </Tag>
+                </div>
+                {matchedPolicy.flightNo && (
+                  <div style={{ fontSize: 12, color: 'var(--sub)' }}>
+                    {matchedPolicy.flightNo} · {matchedPolicy.route}
+                  </div>
+                )}
+                {matchedPolicy.payoutAmount != null && (
+                  <div style={{ fontSize: 12, color: 'var(--text)' }}>
+                    {t('portal.payout')}: <Mono>{matchedPolicy.payoutAmount.toFixed(2)} USDC</Mono>
+                  </div>
+                )}
+                <PolicyPda>{matchedPolicy.pda}</PolicyPda>
+              </div>
+            </Card>
+          ) : (
+            <CenterBox style={{ minHeight: '20vh' }}>
+              <div>{t('portal.loadingPolicies')}</div>
+            </CenterBox>
+          )}
+          <div style={{ marginTop: 16, textAlign: 'center' }}>
+            <Tag variant="subtle" style={{ cursor: 'pointer', fontSize: 11 }} onClick={() => navigate('/portal')}>
+              {t('portal.myPolicies')}
+            </Tag>
+          </div>
+        </PolicyListWrap>
+      </PageShell>
+    );
+  }
+
   // No master PDA specified — show my policies list
   if (!masterPDA) {
     return (
@@ -230,7 +307,11 @@ export function PortalPage() {
               <PolicyListItem
                 key={p.pda}
                 policy={p}
-                onClick={() => navigate(`/portal?master=${p.pda}`)}
+                onClick={() => navigate(
+                  p.track === 'B'
+                    ? `/portal?trackb=${p.pda}`
+                    : `/portal?master=${p.pda}`,
+                )}
               />
             ))
           )}

@@ -40,6 +40,28 @@ export enum PolicyState {
   Expired = 7,
 }
 
+export enum ClaimStatus {
+  None = 0,
+  PendingOracle = 1,
+  Claimable = 2,
+  Approved = 3,
+  Settled = 4,
+  Rejected = 5,
+}
+
+export enum UnderwritingStatus {
+  Proposed = 0,
+  Open = 1,
+  Finalized = 2,
+  Failed = 3,
+}
+
+export enum ParticipantStatus {
+  Pending = 0,
+  Accepted = 1,
+  Rejected = 2,
+}
+
 /* ── On-chain Account Types ── */
 
 export interface MasterParticipant {
@@ -95,6 +117,83 @@ export interface FlightPolicyAccount {
   bump: number;
 }
 
+/* ── Track B On-chain Account Types ── */
+
+export interface PolicyAccount {
+  policyId: BN;
+  leader: PublicKey;
+  route: string;
+  flightNo: string;
+  departureDate: BN;
+  delayThresholdMin: number;
+  payoutAmount: BN;
+  currencyMint: PublicKey;
+  oracleFeed: PublicKey;
+  state: number;
+  underwriting: PublicKey;
+  pool: PublicKey;
+  createdAt: BN;
+  activeFrom: BN;
+  activeTo: BN;
+  bump: number;
+}
+
+export interface RiskPoolAccount {
+  policy: PublicKey;
+  currencyMint: PublicKey;
+  vault: PublicKey;
+  totalEscrowed: BN;
+  availableBalance: BN;
+  status: number;
+  bump: number;
+}
+
+export interface ClaimAccount {
+  policy: PublicKey;
+  oracleRound: BN;
+  oracleValue: BN;
+  verifiedAt: BN;
+  approvedBy: PublicKey;
+  status: number;
+  payoutAmount: BN;
+  bump: number;
+}
+
+export interface ParticipantShare {
+  insurer: PublicKey;
+  ratioBps: number;
+  status: number;
+  escrow: PublicKey;
+  escrowedAmount: BN;
+}
+
+export interface UnderwritingAccount {
+  policy: PublicKey;
+  leader: PublicKey;
+  participants: ParticipantShare[];
+  totalRatio: number;
+  status: number;
+  createdAt: BN;
+  bump: number;
+}
+
+export interface PolicyholderEntry {
+  externalRef: string;
+  policyId: BN;
+  flightNo: string;
+  departureDate: BN;
+  passengerCount: number;
+  premiumPaid: BN;
+  coverageAmount: BN;
+  timestamp: BN;
+}
+
+export interface PolicyholderRegistryAccount {
+  policy: PublicKey;
+  entries: PolicyholderEntry[];
+  bump: number;
+}
+
 /* ── Instruction Param Types ── */
 
 export interface MasterParticipantInit {
@@ -124,6 +223,34 @@ export interface CreateFlightPolicyParams {
   departureTs: BN;
 }
 
+export interface ParticipantInit {
+  insurer: PublicKey;
+  ratioBps: number;
+}
+
+export interface CreatePolicyParams {
+  policyId: BN;
+  route: string;
+  flightNo: string;
+  departureDate: BN;
+  delayThresholdMin: number;
+  payoutAmount: BN;
+  oracleFeed: PublicKey;
+  activeFrom: BN;
+  activeTo: BN;
+  participants: ParticipantInit[];
+}
+
+export interface PolicyholderEntryInput {
+  externalRef: string;
+  policyId: BN;
+  flightNo: string;
+  departureDate: BN;
+  passengerCount: number;
+  premiumPaid: BN;
+  coverageAmount: BN;
+}
+
 /* ── Status label helpers ── */
 
 export const MASTER_STATUS_LABELS: Record<number, string> = {
@@ -141,4 +268,37 @@ export const FLIGHT_STATUS_LABELS: Record<number, string> = {
   [FlightPolicyStatus.Paid]: 'Paid',
   [FlightPolicyStatus.NoClaim]: 'NoClaim',
   [FlightPolicyStatus.Expired]: 'Expired',
+};
+
+export const POLICY_STATE_LABELS: Record<number, string> = {
+  [PolicyState.Draft]: 'Draft',
+  [PolicyState.Open]: 'Open',
+  [PolicyState.Funded]: 'Funded',
+  [PolicyState.Active]: 'Active',
+  [PolicyState.Claimable]: 'Claimable',
+  [PolicyState.Approved]: 'Approved',
+  [PolicyState.Settled]: 'Settled',
+  [PolicyState.Expired]: 'Expired',
+};
+
+export const CLAIM_STATUS_LABELS: Record<number, string> = {
+  [ClaimStatus.None]: 'None',
+  [ClaimStatus.PendingOracle]: 'PendingOracle',
+  [ClaimStatus.Claimable]: 'Claimable',
+  [ClaimStatus.Approved]: 'Approved',
+  [ClaimStatus.Settled]: 'Settled',
+  [ClaimStatus.Rejected]: 'Rejected',
+};
+
+export const UNDERWRITING_STATUS_LABELS: Record<number, string> = {
+  [UnderwritingStatus.Proposed]: 'Proposed',
+  [UnderwritingStatus.Open]: 'Open',
+  [UnderwritingStatus.Finalized]: 'Finalized',
+  [UnderwritingStatus.Failed]: 'Failed',
+};
+
+export const PARTICIPANT_STATUS_LABELS: Record<number, string> = {
+  [ParticipantStatus.Pending]: 'Pending',
+  [ParticipantStatus.Accepted]: 'Accepted',
+  [ParticipantStatus.Rejected]: 'Rejected',
 };
