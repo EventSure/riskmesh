@@ -8,6 +8,9 @@ name = "oracle-daemon"
 path = "src/main.rs"
 
 [dependencies]
+# Web server
+axum = "0.7"
+
 # Solana
 solana-client = "1.18"
 solana-sdk    = "1.18"

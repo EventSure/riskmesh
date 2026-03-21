@@ -11,6 +11,7 @@ pub struct Config {
     pub aviationstack_api_key: String,
     pub switchboard_queue: Pubkey,
     pub oracle_check_cron: String,
+    pub web_bind_addr: String,
 }
 
 impl Config {
@@ -32,6 +33,7 @@ impl Config {
             switchboard_queue: pubkey_env("SWITCHBOARD_QUEUE")
                 .context("SWITCHBOARD_QUEUE 환경변수 필요")?,
             oracle_check_cron: env("ORACLE_CHECK_CRON", "0 */15 * * * *"),
+            web_bind_addr: env("WEB_BIND_ADDR", "0.0.0.0:3000"),
         })
     }
 }
