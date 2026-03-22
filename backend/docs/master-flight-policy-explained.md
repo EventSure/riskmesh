@@ -263,6 +263,106 @@ MasterPolicy B
 
 즉 `MasterPolicy`는 공통 조건을 들고 있고, `FlightPolicy`는 실제 가입 건과 처리 결과를 들고 있습니다.
 
+
+
+### 관계를 더 정확히 보면
+
+`MasterPolicy`와 `FlightPolicy`는 단순히 "부모/자식"이라고만 보면 중요한 차이를 놓치기 쉽습니다.
+
+둘의 관계는 아래처럼 이해하는 것이 더 정확합니다.
+
+- `MasterPolicy`는 상품 규칙의 원본(source of truth)이다.
+- `FlightPolicy`는 그 상품 위에서 생성된 가입 실행 레코드다.
+- `FlightPolicy`는 `master` 필드로 상위 `MasterPolicy` 주소를 저장한다.
+- 하지만 `MasterPolicy` 안에는 하위 `FlightPolicy` 목록이 직접 들어 있지 않다.
+
+즉 온체인에서는:
+
+- 상위에서 하위를 직접 배열로 들고 있는 구조가 아니라
+- 각 하위 계정이 상위 계정 주소를 참조하는 구조입니다.
+
+그래서 백엔드나 인덱서가 관계를 복원할 때는 보통:
+
+1. `MasterPolicy` 계정을 모은다.
+2. `FlightPolicy` 계정을 모은다.
+3. 각 `FlightPolicy.master` 값으로 어느 `MasterPolicy`에 속하는지 매칭한다.
+
+라는 방식으로 조인합니다.
+
+### 무엇이 `MasterPolicy`에 있고, 무엇이 `FlightPolicy`에 있나
+
+이 관계를 이해할 때 가장 중요한 기준은 "어떤 정보가 상품 공통값이고, 어떤 정보가 가입 건별 상태인가"입니다.
+
+`MasterPolicy`가 들고 있는 것:
+
+- 보장 가능 기간 (`coverage_start_ts`, `coverage_end_ts`)
+- 건당 보험료 (`premium_per_policy`)
+- 지연 시간 구간별 지급 테이블 (`payout_delay_*`)
+- 참여사 비율, 재보험 비율, 확인 여부
+- 운영 권한 주체 (`leader`, `operator`)
+- 보험료/정산 관련 지갑 정보
+
+`FlightPolicy`가 들고 있는 것:
+
+- 어느 마스터에 속하는지 (`master`)
+- 누가 생성했는지 (`creator`)
+- 누구 가입 건인지 (`subscriber_ref`)
+- 어떤 항공편인지 (`flight_no`, `route`, `departure_ts`)
+- 실제 납부 보험료 (`premium_paid`)
+- 실제 지연/결항 결과 (`delay_minutes`, `cancelled`)
+- 최종 지급 결과 (`payout_amount`, `status`)
+
+즉 `MasterPolicy`는 "규칙", `FlightPolicy`는 "사건별 결과"에 가깝습니다.
+
+### 생성 시 복사되는 값과 나중에 참조되는 값
+
+코드를 보면 `create_flight_policy_from_master`에서 하위 가입 건을 만들 때 일부 값은 복사되고, 일부 값은 나중까지 상위 정책을 참조합니다.
+
+생성 시 `FlightPolicy`에 스냅샷처럼 들어가는 값:
+
+- `master = master_policy.key()`
+- `premium_paid = master.premium_per_policy`
+- 생성 시각의 가입 대상 정보 (`subscriber_ref`, `flight_no`, `route`, `departure_ts`)
+- 초기 상태값 (`AwaitingOracle`, `delay_minutes = 0`, `payout_amount = 0`)
+
+반대로 나중 오라클 처리 시점에도 `MasterPolicy`를 다시 참조하는 값:
+
+- 지연 구간별 지급 기준 (`payout_delay_2h`, `payout_delay_3h`, `payout_delay_4to5h`, `payout_delay_6h_or_cancelled`)
+- 처리 권한자 (`leader`, `operator`)
+- 마스터 활성 상태 (`MasterPolicy.status`)
+
+이 말은 곧:
+
+- `FlightPolicy`만 읽으면 "이 가입 건이 어느 상품에서 왔는지"는 알 수 있지만
+- "지급 계산 규칙 전체"는 `MasterPolicy`를 같이 봐야 완전히 이해할 수 있다는 뜻입니다.
+
+### `Policy`와 `MasterPolicy`는 계층 관계가 아니다
+
+가장 많이 헷갈리는 부분은 `Policy -> MasterPolicy -> FlightPolicy`처럼 3단계 상속 구조로 보는 경우입니다.
+
+하지만 실제 코드는 그렇게 동작하지 않습니다.
+
+- `Policy`는 독립형 보험 계약 플로우의 중심 계정
+- `MasterPolicy`는 재설계된 상품형 플로우의 중심 계정
+- `FlightPolicy`는 그 상품형 플로우의 하위 가입 계정
+
+즉 관계를 도식으로 그리면:
+
+```text
+기존 모델:
+Policy
+├─ Underwriting
+├─ RiskPool
+├─ Claim
+└─ PolicyholderRegistry
+
+재설계 모델:
+MasterPolicy
+└─ FlightPolicy ...
+```
+
+이 두 모델은 "동일한 문제를 다른 방식으로 푼 두 계정군"에 더 가깝고, `Policy`가 `MasterPolicy`의 상위 개념은 아닙니다.
+
 ### `Policy`와의 차이
 
 `Policy` 모델에서는 보통:
@@ -350,6 +450,13 @@ MasterPolicy B
 - `FlightPolicy`만 따로 뽑아
 
 JSON으로 반환합니다.
+
+중요한 점은 현재 API가 온체인 join 결과를 미리 만들어 주지는 않는다는 것입니다.
+
+- `/api/master-policies`는 `MasterPolicy` 목록만 반환
+- `/api/flight-policies`는 `FlightPolicy` 목록만 반환
+
+따라서 화면이나 운영 도구에서 "이 비행 가입 건이 어느 상품에 속하는가"를 보여주려면 `FlightPolicy.master`와 `MasterPolicy.pubkey`를 기준으로 애플리케이션 레벨에서 연결해야 합니다.
 
 ## 8. API 엔드포인트
 
@@ -444,6 +551,21 @@ PDA가 보통 상위 키와 함께 계산되기 때문에:
 
 으로 바뀌고, 이후 정산 함수에서 `Paid` 또는 `Expired`까지 진행됩니다.
 
+### `FlightPolicy`의 지급액은 단독으로 결정되지 않는다
+
+`FlightPolicy`에는 최종 결과로서 `payout_amount`가 저장되지만, 그 값을 계산하는 기준표 자체는 `MasterPolicy`에 있습니다.
+
+즉 처리 흐름은:
+
+1. `FlightPolicy`가 어떤 `MasterPolicy`에 속하는지 확인하고
+2. 오라클이 `delay_minutes`, `cancelled`를 확정한 뒤
+3. `MasterPolicy`의 `payout_delay_*` 테이블을 읽어
+4. 그 결과를 `FlightPolicy.payout_amount`에 기록합니다.
+
+그래서 `FlightPolicy`는 "결과 보관소"이고, `MasterPolicy`는 "계산 규칙 보관소"라고 생각하면 이해가 쉽습니다.
+
+운영 화면에서 payout을 설명하려면 보통 두 계정을 함께 보여주는 편이 맞습니다.
+
 ### `Policy`가 없어 보인다고 해서 타입이 삭제된 것은 아니다
 
 `Policy`는 여전히 컨트랙트에 정의되어 있습니다.
@@ -468,7 +590,118 @@ PDA가 보통 상위 키와 함께 계산되기 때문에:
 
 를 거쳐야 `Active`가 됩니다.
 
-## 10. 요약
+## 10. 실제 응답으로 보는 구성 예시
+
+실제 API 응답을 보면 현재 데이터는 아래처럼 읽을 수 있습니다.
+
+- `MasterPolicy`는 3개
+- `FlightPolicy`는 9개
+- 연결 기준은 `FlightPolicy.master = MasterPolicy.pubkey`
+
+즉 `master_id`가 아니라 `pubkey` 기준으로 묶어야 합니다.
+
+### 현재 응답을 묶으면 이렇게 된다
+
+```text
+MasterPolicy GRtxaowgJyeBvx4KGSbeE43ATqKPJxhrYXBPh3tJRFVR
+└─ 현재 응답에 연결된 FlightPolicy 없음
+
+MasterPolicy BEKMNWKeaZLMEoE6oDM5AVxiQBpTkMyJjCL2UnJFEt4X
+├─ FlightPolicy GPxXjMtfhkXUfaULLxHWHCvoRFPW69ArX9f1Bt8gZ4Jj
+│  └─ child_policy_id=1, KE017, AwaitingOracle
+├─ FlightPolicy B9WuvAAzTP55HqE4zh7m9xbq4iVRMxyBbBTtULi3xSpk
+│  └─ child_policy_id=2, ET3712, Paid, payout=3000000
+└─ FlightPolicy CRX4Lsffy3VpSBrX4YaAQcLhHkU7Q8xBBpB7eWntu5sa
+   └─ child_policy_id=3, AK3181, Expired
+
+MasterPolicy BMVgoyWDU5StUMUHGt54353VeXFmdP2Co7CmrMPyX5k2
+├─ FlightPolicy AEDw1zmsy4HBFiPVLhqwvHE8HJ5DtQYm2EDP4BdqozT3
+│  └─ child_policy_id=1, KE017, Paid, payout=2000000
+├─ FlightPolicy AzHCYmDoNhWSbrGTKbkaTFRKjDTZ1jiDAMkjmav9LXk8
+│  └─ child_policy_id=2, KE017, Claimable, payout=2000000
+├─ FlightPolicy DMENywvZcz5Qs3vYyKyTHjdAbkphqKHx3qbjUHyAHMCb
+│  └─ child_policy_id=3, KE081, NoClaim
+├─ FlightPolicy 6X6N3SH3atJ7KB6efre2cipKqMo44bUkhB3fmN8vLy8U
+│  └─ child_policy_id=4, KE081, AwaitingOracle
+├─ FlightPolicy 2pwvuFXqBABeJmn1B5iKQdjyUSfBS3v5vQrPviwP5M8t
+│  └─ child_policy_id=5, KE081, AwaitingOracle
+└─ FlightPolicy CocRPGQZxUbqgQpWkfxAyMBbnFthoke4xhvezdFqeKXW
+   └─ child_policy_id=6, KE081, AwaitingOracle
+```
+
+이 예시를 보면:
+
+- 첫 번째 마스터 정책 `GRtx...` 는 상품은 존재하지만 아직 이 응답 기준으로 연결된 가입 건이 없습니다.
+- 두 번째 마스터 정책 `BEKM...` 아래에는 3개의 가입 건이 있습니다.
+- 세 번째 마스터 정책 `BMVg...` 아래에는 6개의 가입 건이 있습니다.
+
+즉 현재 운영 데이터는 "상품 3개 중 2개 상품에 실제 가입 건이 매달린 상태"로 이해할 수 있습니다.
+
+### 왜 `master_id`가 아니라 `pubkey`로 묶어야 하나
+
+실제 응답에서:
+
+- `BEKM...` 의 `master_id = 1`
+- `BMVg...` 의 `master_id = 1`
+
+처럼 같은 숫자가 두 번 나옵니다.
+
+즉 `master_id`는 전역 유일값이라고 가정하면 안 되고, 실제 관계 복원은 반드시:
+
+- `FlightPolicy.master`
+- `MasterPolicy.pubkey`
+
+를 기준으로 해야 합니다.
+
+같은 이유로 `child_policy_id`도 마스터별 로컬 번호처럼 봐야 합니다.
+
+예를 들어:
+
+- `BEKM...` 아래 `child_policy_id = 1`
+- `BMVg...` 아래 `child_policy_id = 1`
+
+이 동시에 존재할 수 있습니다.
+
+### 같은 상품 아래 같은 항공편 가입이 여러 건 생길 수 있다
+
+응답을 보면 `BMVg...` 아래에 `KE081` 가입 건이 여러 개 있습니다.
+
+즉 하나의 `MasterPolicy`는:
+
+- 여러 가입자를 받을 수 있고
+- 같은 항공편에 대해서도 여러 `FlightPolicy`를 만들 수 있습니다.
+
+그래서 `MasterPolicy`는 "항공편 한 개"가 아니라 "상품 규칙 묶음"으로 보는 편이 맞습니다.
+
+### 지급액도 마스터 정책 규칙으로 설명할 수 있다
+
+실제 응답값을 보면 `FlightPolicy.payout_amount`는 개별 계정에 저장되지만, 그 값은 `MasterPolicy`의 지급표와 연결해서 해석할 수 있습니다.
+
+예를 들어:
+
+- `BEKM...` 의 `payout_delay_3h = 3000000`
+- 그 아래 `ET3712` 가입 건은 `delay_minutes = 190`, `payout_amount = 3000000`
+
+즉 3시간대 지급 규칙이 실제 하위 가입 건에 반영된 사례로 읽을 수 있습니다.
+
+또 다른 예:
+
+- `BMVg...` 의 `payout_delay_2h = 2000000`
+- 그 아래 `KE017` 가입 건 중 하나는 `delay_minutes = 120`, `payout_amount = 2000000`
+
+즉 하위 `FlightPolicy`의 결과는 상위 `MasterPolicy`의 지급 테이블을 읽어 계산된 결과라고 이해하면 됩니다.
+
+### 이 응답이 보여주는 구조를 한 줄로 정리하면
+
+현재 API 응답은:
+
+- `MasterPolicy`가 상품 단위로 존재하고
+- 각 `FlightPolicy`가 그 상품의 실제 가입 건으로 매달리며
+- 운영 화면에서는 `FlightPolicy.master -> MasterPolicy.pubkey`로 연결해 보여줘야 한다
+
+는 점을 잘 보여줍니다.
+
+## 11. 요약
 
 - `Policy`는 단독형 정책 모델
 - `MasterPolicy`는 상위 보험 상품 정의
