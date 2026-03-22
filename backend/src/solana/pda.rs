@@ -38,6 +38,18 @@ pub fn master_policy_pda(
     )
 }
 
+/// SPL Associated Token Account 주소 유도.
+/// ATA = findProgramAddress([wallet, TOKEN_PROGRAM_ID, mint], ASSOCIATED_TOKEN_PROGRAM_ID)
+pub fn get_associated_token_address(wallet: &Pubkey, mint: &Pubkey) -> Pubkey {
+    let spl_token_id = solana_sdk::pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+    let assoc_program_id = solana_sdk::pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bMW");
+    Pubkey::find_program_address(
+        &[wallet.as_ref(), spl_token_id.as_ref(), mint.as_ref()],
+        &assoc_program_id,
+    )
+    .0
+}
+
 /// Track A: ["flight_policy", master_policy, child_policy_id_le8]
 pub fn flight_policy_pda(
     program_id: &Pubkey,

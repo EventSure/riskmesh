@@ -21,3 +21,8 @@ pub const POLICY_STATE_ACTIVE: u8 = 3;
 /// Track A FlightPolicy.status
 pub const FLIGHT_POLICY_STATUS_ISSUED: u8 = 0;
 pub const FLIGHT_POLICY_STATUS_AWAITING_ORACLE: u8 = 1;
+pub const FLIGHT_POLICY_STATUS_CLAIMABLE: u8 = 2;
+pub const FLIGHT_POLICY_STATUS_NO_CLAIM: u8 = 4;
+
+/// Track B Policy.state (Claimable)
+pub const POLICY_STATE_CLAIMABLE: u8 = 4;
