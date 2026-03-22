@@ -11,6 +11,9 @@ Open Parametric 컨트랙트의 오라클 연동은 두 가지 독립적인 트�
 
 두 트랙 모두 [AviationStack API](https://aviationstack.com)를 항공편 지연 데이터 소스로 사용합니다.
 
+오라클 체크부터 정산까지 전 과정은 **백엔드 데몬(`backend/`)이 자동 처리**합니다.
+스크립트는 초기 셋업과 보험 가입(FlightPolicy 생성)에만 사용합니다.
+
 ---
 
 ## 공통 개념
@@ -56,11 +59,7 @@ Leader 또는 Operator가 AviationStack API에서 직접 데이터를 가져와 
 ```
 AviationStack API
        │
-       ▼
-  oracle-resolve.ts
-  (off-chain 집계)
-       │
-       ▼
+       ▼ (백엔드 데몬 / oracle-resolve.ts)
 resolve_flight_delay (온체인)
   ├─ payout > 0  → FlightPolicy: Claimable
   └─ payout = 0  → FlightPolicy: NoClaim
@@ -70,43 +69,52 @@ resolve_flight_delay (온체인)
 settle_    settle_
 flight_    flight_
 claim      no_claim
+(자동)     (자동)
 ```
 
 ### 사전 조건
 
 1. `MasterPolicy` 가 `Active` 상태
 2. `FlightPolicy` 가 `Issued` 또는 `AwaitingOracle` 상태
-3. `AVIATIONSTACK_API_KEY` 환경변수 설정
+3. 백엔드 데몬의 `AVIATIONSTACK_API_KEY` 설정
 
 ### FlightPolicy 상태 머신
 
 ```
 Issued / AwaitingOracle
        │
-       │ resolve_flight_delay
+       │ resolve_flight_delay  ← 데몬 자동
        │
   ┌────┴────────┐
   ▼             ▼
 Claimable    NoClaim
   │             │
-  ▼             ▼
+  ▼             ▼             ← 데몬 자동
  Paid         Expired
 (settle_      (settle_
  flight_       flight_
  claim)        no_claim)
 ```
 
-### 실행 방법
+### 자동화 흐름 (백엔드 데몬)
+
+데몬이 cron 주기마다 다음을 자동 실행합니다:
+
+1. `Issued` / `AwaitingOracle` / `Claimable` / `NoClaim` 상태 FlightPolicy 전체 스캔
+2. `departure_ts` 경과 확인
+3. AviationStack 조회 → `resolve_flight_delay` 전송
+4. MasterPolicy 온체인 파싱으로 토큰 계정 주소 획득
+5. `settle_flight_claim` 또는 `settle_flight_no_claim` 자동 전송
+
+> `Claimable` / `NoClaim` 상태도 스캔 대상에 포함되므로, 데몬이 resolve 후 settle 전에 중단돼도 다음 실행 시 자동으로 정산을 재시도합니다.
+
+### 수동 실행 (테스트용)
+
+백엔드 데몬 없이 resolve만 수동으로 실행할 수 있습니다:
 
 ```bash
-# 기본 실행 (localnet)
-AVIATIONSTACK_API_KEY=<키> \
-FLIGHT_NO=KE017 \
-yarn demo:oracle-resolve
-
-# devnet 실행
+# devnet 기준
 ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
-PROGRAM_ID=BXxqMY3f9y7dzvoQWJjhX95GMEyuRjD61kgfgherhSX7 \
 AVIATIONSTACK_API_KEY=<키> \
 FLIGHT_NO=KE017 \
 yarn demo:oracle-resolve
@@ -119,7 +127,9 @@ CHILD_POLICY_ID=1 \
 yarn demo:oracle-resolve
 ```
 
-### 환경변수
+resolve 실행 후 settle은 다음 데몬 주기에 자동 처리됩니다.
+
+### 환경변수 (수동 실행 시)
 
 | 변수 | 필수 | 설명 |
 |---|---|---|
@@ -130,25 +140,7 @@ yarn demo:oracle-resolve
 | `ANCHOR_PROVIDER_URL` | — | RPC 엔드포인트 (기본값: `http://localhost:8899`) |
 | `PROGRAM_ID` | — | 프로그램 ID override |
 
-### state.json 요구사항
-
-```jsonc
-{
-  "leaderKey": [...],   // leader 키페어 (필수)
-  "masterId": 1,        // MasterPolicy ID (필수)
-  "masterPda": "...",   // MasterPolicy PDA (필수)
-  "flightPolicies": [   // 최소 1개 이상 (필수)
-    {
-      "childId": 1,
-      "pda": "...",
-      "flightNo": "KE017",
-      "departureTs": 1234567890
-    }
-  ]
-}
-```
-
-### 실행 결과 예시
+### 실행 결과 예시 (수동)
 
 ```
 항공편 조회 중: KE017 / 2026-02-27
@@ -168,7 +160,7 @@ Tx             : 5abc...
 payout_amount  : 50000000
 status         : 2 (2=Claimable, 4=NoClaim)
 
-→ 지급 조건 충족. settle_flight_claim을 실행하세요.
+→ 지급 조건 충족. 백엔드 데몬이 다음 주기에 settle_flight_claim을 자동 실행합니다.
 ```
 
 ---
@@ -190,7 +182,7 @@ check_oracle_and_create_claim (온체인, 3-ix 트랜잭션)
   ├─ delay ≥ 120분 → Policy: Claimable, Claim 계정 생성
   └─ delay < 120분 → Policy: Active 유지 (Claim 없음)
        │
-  (Claimable인 경우)
+  (Claimable인 경우) ← 데몬 자동
   approve_claim → settle_claim
 ```
 
@@ -212,7 +204,7 @@ check_oracle_and_create_claim (온체인, 3-ix 트랜잭션)
 ```
 Draft → Open → Funded → Active
                            │
-                           │ check_oracle_and_create_claim
+                           │ check_oracle_and_create_claim  ← 데몬 자동
                            │
                    ┌───────┴────────┐
                    ▼                ▼
@@ -220,15 +212,28 @@ Draft → Open → Funded → Active
               (delay≥120분)     (delay<120분)
                    │
                    ▼
-               Approved
+               Approved           ← 데몬 자동
           (approve_claim)
                    │
                    ▼
-               Settled
+               Settled            ← 데몬 자동
            (settle_claim)
 ```
 
-### 실행 순서
+### 자동화 흐름 (백엔드 데몬)
+
+데몬이 cron 주기마다 다음을 자동 실행합니다:
+
+1. `Active` 상태 Policy 스캔 (리더 pubkey 필터)
+2. `departure_date` 경과 확인
+3. Switchboard Crossbar에서 서명된 oracle update 수신
+4. 3-ix 트랜잭션 전송: `check_oracle_and_create_claim`
+5. oracle 값 ≥ 120분이면:
+   - `approve_claim` 자동 전송
+   - RiskPool 계정에서 vault 주소 온체인 파싱
+   - `settle_claim` 자동 전송 (beneficiary = 리더 ATA)
+
+### 실행 순서 (수동 셋업)
 
 #### Step 1 — Feed 생성 (1회)
 
@@ -241,12 +246,10 @@ FLIGHT_NO=KE017 \
 yarn demo:oracle-feed-create
 ```
 
-**주의:** API 키가 feed 계정에 포함되어 온체인에 저장됩니다. 무료 플랜 키는 문제없지만 유료 키는 Switchboard Secrets 사용을 권장합니다.
+**주의:** API 키가 feed 계정에 포함되어 온체인에 저장됩니다. 유료 키는 Switchboard Secrets 사용을 권장합니다.
 
 **출력 예시:**
 ```
-Switchboard On-Demand 프로그램 로드 중...
-
 Pull Feed 생성 중 (항공편: KE017)...
 
 === Feed 생성 완료 ===
@@ -257,39 +260,17 @@ Feed Pubkey    : 278oAt1RBQLZAVfx35qYEjuhiH29nJmGpmzpKCVtDZTs
 
 #### Step 2 — Policy에 feedPubkey 등록
 
-`create_policy` 시 `oracleFeed` 파라미터에 Step 1의 `feedPubkey`를 지정합니다. 이미 배포된 Policy가 있다면 `Policy.oracle_feed`와 일치하는지 확인합니다.
+`create_policy` 시 `oracleFeed` 파라미터에 Step 1의 `feedPubkey`를 지정합니다.
 
-#### Step 3 — oracle 클레임 실행
+#### Step 3 — 데몬 실행
 
-Feed 생성 후 **1~2분** 대기 (oracle 노드가 데이터를 처리하는 시간).
+feed 생성 후 **1~2분** 대기 (oracle 노드 처리 시간) 후 데몬을 실행합니다.
+이후 check_oracle → approve → settle이 자동 처리됩니다.
 
+수동으로 oracle 클레임만 실행하려면:
 ```bash
 ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
 yarn demo:oracle-claim
-```
-
-**출력 예시 (지연 있을 때):**
-```
-Policy 상태  : Active (3)
-oracle update 요청 중 (Switchboard 네트워크)...
-oracle 응답 값: 120 분
-
-oracle_round (slot): 444920000
-Claim PDA          : 7xyz...
-
-=== check_oracle_and_create_claim 완료 ===
-Tx              : 4def...
-Policy 상태     : Claimable (4)
-oracle_value    : 120 분
-payout_amount   : 1000000
-
-→ Claimable 상태. 다음 단계:
-  approve_claim  → settle_claim 순서로 실행하세요.
-```
-
-**출력 예시 (지연 없을 때):**
-```
-→ oracle 값이 지연 기준(120분) 미만. Policy는 Active 유지.
 ```
 
 ### 환경변수
@@ -301,16 +282,6 @@ payout_amount   : 1000000
 | `FLIGHT_NO` | — | 항공편 코드 (기본값: `KE017`) |
 | `PROGRAM_ID` | — | 프로그램 ID override |
 
-### state.json 요구사항
-
-```jsonc
-{
-  "leaderKey": [...],      // leader 키페어 (필수)
-  "policyId": 1,           // Legacy Policy ID (필수)
-  "feedPubkey": "278o..."  // oracle-feed-create 실행 후 자동 저장
-}
-```
-
 ---
 
 ## 두 트랙 비교
@@ -318,12 +289,12 @@ payout_amount   : 1000000
 | 항목 | Track A (Trusted Resolver) | Track B (Switchboard) |
 |---|---|---|
 | **신뢰 모델** | Leader/Operator 신뢰 | 암호학적 검증 (탈중앙화) |
-| **데이터 흐름** | 스크립트 → API → 온체인 | oracle 노드 → API → feed → 온체인 |
+| **데이터 흐름** | 데몬 → API → 온체인 | oracle 노드 → API → feed → 온체인 |
 | **대상 계정** | `FlightPolicy` | `Policy` (Legacy) |
 | **지급 구조** | 4단계 티어드 | 단일 payout_amount |
+| **자동화 범위** | resolve + settle | check_oracle + approve + settle |
 | **네트워크** | localnet / devnet / mainnet | devnet 이상 필수 |
 | **지연 시간** | 즉시 | feed 생성 후 1~2분 대기 |
-| **실시간성** | 스크립트 실행 시점 | Switchboard oracle 처리 시점 |
 | **비용** | 일반 tx 수수료 | feed 생성 ~0.01–0.05 SOL 추가 |
 
 ---
@@ -342,53 +313,40 @@ payout_amount   : 1000000
 
 ---
 
-## 전체 스크립트 실행 순서
+## 전체 실행 순서 요약
 
 ### Track A (Master/Flight 플로우)
 
 ```bash
-# 1. 환경 설정
+# 1. 초기 셋업 (최초 1회)
+cd contract && yarn install
 export ANCHOR_PROVIDER_URL=https://api.devnet.solana.com
-export AVIATIONSTACK_API_KEY=<키>
+yarn demo:master-setup
 
-# 2. 기본 setup (지갑·토큰)
-yarn demo:setup
+# 2. 항공편 가입 (건당)
+FLIGHT_NO=KE017 ROUTE=ICN-NRT DEPARTURE_TS=<unix_ts> yarn demo:flight-create
 
-# 3. MasterPolicy 생성 → FlightPolicy 생성
-#    (별도 스크립트 또는 프론트엔드에서 수행)
-
-# 4. 오라클 해소
-FLIGHT_NO=KE017 yarn demo:oracle-resolve
-
-# 5a. 지급 조건 충족 시 (FlightPolicy: Claimable)
-#     settle_flight_claim 실행
-
-# 5b. 지급 조건 미충족 시 (FlightPolicy: NoClaim)
-#     settle_flight_no_claim 실행
+# 3. 백엔드 데몬 실행 → resolve + settle 자동 처리
+cd ../backend && RUST_LOG=info ./target/release/oracle-daemon
 ```
 
 ### Track B (Legacy Policy 플로우)
 
 ```bash
-# 1. 환경 설정
+# 1. 기본 setup → Policy 생성 → 언더라이팅 → 활성화
+cd contract && yarn install
 export ANCHOR_PROVIDER_URL=https://api.devnet.solana.com
-export AVIATIONSTACK_API_KEY=<키>
-
-# 2. 기본 setup → Policy 생성 → 언더라이팅 → 활성화
 yarn demo:setup
-yarn demo:create-policy   # oracleFeed는 Step 4의 feedPubkey로 지정
+yarn demo:create-policy
 yarn demo:open-uw
 yarn demo:accept-shares
 yarn demo:activate
 
-# 3. Feed 생성 (devnet, 1회)
-FLIGHT_NO=KE017 yarn demo:oracle-feed-create
+# 2. Feed 생성 (devnet, 1회)
+AVIATIONSTACK_API_KEY=<키> FLIGHT_NO=KE017 yarn demo:oracle-feed-create
 
-# 4. 1~2분 대기 후 오라클 클레임
-yarn demo:oracle-claim
-
-# 5. Claimable 상태인 경우 정산
-#    approve_claim → settle_claim
+# 3. 1~2분 대기 후 백엔드 데몬 실행 → check_oracle + approve + settle 자동 처리
+cd ../backend && RUST_LOG=info ./target/release/oracle-daemon
 ```
 
 ---
@@ -405,8 +363,9 @@ FlightPolicy  PDA: ["flight_policy", master_policy, child_policy_id_le8]
 ### Track B 관련 계정
 
 ```
-Policy  PDA: ["policy", leader, policy_id_le8]
-Claim   PDA: ["claim", policy, oracle_round_le8]
+Policy    PDA: ["policy", leader, policy_id_le8]
+RiskPool  PDA: ["pool", policy]
+Claim     PDA: ["claim", policy, oracle_round_le8]
           oracle_round = 클레임 시점의 확정 슬롯 번호 (unique seed)
 ```
 
