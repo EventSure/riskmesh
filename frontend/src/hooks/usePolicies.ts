@@ -23,8 +23,11 @@ export function usePolicies(
   const [error, setError] = useState<string | null>(null);
 
   const prevStateRef = useRef<Map<string, number>>(new Map());
-  const onStatusChange = options?.onStatusChange;
-  const pollInterval = options?.pollInterval ?? 60_000;
+  // [FIX] 기존: onStatusChange가 useCallback deps에 포함 → t() 등 불안정 참조로 무한 refetch 루프
+  // 수정: ref로 분리하여 fetchPolicies deps에서 제거
+  const onStatusChangeRef = useRef(options?.onStatusChange);
+  onStatusChangeRef.current = options?.onStatusChange;
+  const pollInterval = options?.pollInterval ?? 300_000;
 
   const fetchPolicies = useCallback(async () => {
     if (!program || !leaderPubkey || !connection) {
@@ -65,12 +68,13 @@ export function usePolicies(
 
       // Status change detection
       const prevMap = prevStateRef.current;
-      if (prevMap.size > 0 && onStatusChange) {
+      const cb = onStatusChangeRef.current;
+      if (prevMap.size > 0 && cb) {
         for (const p of mapped) {
           const key = p.publicKey.toBase58();
           const prev = prevMap.get(key);
           if (prev !== undefined && prev !== p.account.state) {
-            onStatusChange(p, prev, p.account.state);
+            cb(p, prev, p.account.state);
           }
         }
       }
@@ -80,25 +84,20 @@ export function usePolicies(
 
       setPolicies(mapped);
 
-      // Fetch Claim accounts per policy using memcmp (offset 8: discriminator(8) → policy pubkey)
+      // Fetch Claim accounts filtered per policy (memcmp on policy field, offset 8)
+      // ClaimAccount layout: discriminator(8) | policy(Pubkey=32) | ...
       if (mapped.length > 0) {
-        const allClaims: ClaimWithKey[] = [];
-        for (const p of mapped) {
-          const claimAccounts = await prog.account.claim.all([
-            {
-              memcmp: {
-                offset: 8, // discriminator(8) → policy field
-                bytes: p.publicKey.toBase58(),
-              },
-            },
-          ]);
-          for (const a of claimAccounts) {
-            allClaims.push({
-              publicKey: a.publicKey,
-              account: a.account as ClaimAccount,
-            });
-          }
-        }
+        const claimResults = await Promise.all(
+          mapped.map(p =>
+            prog.account.claim.all([
+              { memcmp: { offset: 8, bytes: p.publicKey.toBase58() } },
+            ]) as Promise<{ publicKey: PublicKey; account: ClaimAccount }[]>,
+          ),
+        );
+        const allClaims: ClaimWithKey[] = claimResults.flat().map(a => ({
+          publicKey: a.publicKey,
+          account: a.account,
+        }));
         setClaims(allClaims);
       } else {
         setClaims([]);
@@ -109,7 +108,7 @@ export function usePolicies(
     } finally {
       setLoading(false);
     }
-  }, [program, leaderPubkey, connection, onStatusChange]);
+  }, [program, leaderPubkey, connection]);
 
   // Initial fetch
   useEffect(() => {
@@ -123,12 +122,32 @@ export function usePolicies(
   );
 
   useEffect(() => {
-    if (!connection || policies.length === 0) return;
+    if (!connection || !program || policies.length === 0) return;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const coder = (program as any).coder.accounts;
     const subscriptionIds = policies.map(p =>
       connection.onAccountChange(
         p.publicKey,
-        () => { fetchPolicies(); },
+        (accountInfo) => {
+          try {
+            const decoded = coder.decode('policy', accountInfo.data) as PolicyAccount;
+            const key = p.publicKey;
+            setPolicies(prev => prev.map(item =>
+              item.publicKey.equals(key) ? { publicKey: key, account: decoded } : item,
+            ));
+            // Status change detection
+            const prevState = prevStateRef.current.get(key.toBase58());
+            const cb = onStatusChangeRef.current;
+            if (prevState !== undefined && prevState !== decoded.state && cb) {
+              cb({ publicKey: key, account: decoded }, prevState, decoded.state);
+            }
+            prevStateRef.current.set(key.toBase58(), decoded.state);
+          } catch {
+            // [FIX] 기존: decode 실패 → fetchPolicies() 전체 재호출 → 무한 refetch 연쇄
+            // 수정: 무시하고 polling이 자연 보정
+          }
+        },
         'confirmed',
       ),
     );
@@ -137,7 +156,7 @@ export function usePolicies(
       subscriptionIds.forEach(id => connection.removeAccountChangeListener(id));
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connection, policyKeys, fetchPolicies]);
+  }, [connection, program, policyKeys]);
 
   // Polling for new Policy accounts
   useEffect(() => {

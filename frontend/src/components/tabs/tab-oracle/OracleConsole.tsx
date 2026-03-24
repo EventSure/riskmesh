@@ -1,15 +1,13 @@
 import { useState, useMemo } from 'react';
 import styled from '@emotion/styled';
 import { PublicKey } from '@solana/web3.js';
-import BN from 'bn.js';
+import { BN } from '@coral-xyz/anchor';
 import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardBody, Button, FormGroup, FormLabel, FormInput, FormSelect, Divider, Tag, TierItem } from '@/components/common';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { useToast } from '@/components/common';
 import { useResolveFlightDelay } from '@/hooks/useResolveFlightDelay';
 import { useProgram } from '@/hooks/useProgram';
-import { useSettleFlight } from '@/hooks/useSettleFlight';
-import { useMasterPolicyAccount } from '@/hooks/useMasterPolicyAccount';
 import { getFlightPolicyPDA } from '@/lib/pda';
 import { TrackBPanel } from './TrackBPanel';
 
@@ -114,88 +112,6 @@ const SectionLabel = styled.div`
   margin-top: 4px;
 `;
 
-const MiniTable = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-
-  th {
-    padding: 4px 8px;
-    text-align: left;
-    font-size: 9px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: ${p => p.theme.colors.sub};
-    border-bottom: 1px solid ${p => p.theme.colors.border};
-    white-space: nowrap;
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: ${p => p.theme.colors.surface1};
-  }
-
-  td {
-    padding: 5px 8px;
-    border-bottom: 1px solid ${p => p.theme.colors.border};
-    font-size: 11px;
-  }
-
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: ${p => p.theme.colors.surface2}; }
-`;
-
-const MiniMono = styled.span`
-  font-family: 'DM Mono', monospace;
-  font-size: 10px;
-`;
-
-const MiniStatusBadge = styled.span<{ clr: string }>`
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 1px 5px;
-  border-radius: 4px;
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-family: 'DM Mono', monospace;
-  background: ${p => p.clr}1a;
-  color: ${p => p.clr};
-  border: 1px solid ${p => p.clr}44;
-`;
-
-const SettleBtn = styled.button`
-  font-size: 10px;
-  font-weight: 600;
-  padding: 3px 9px;
-  border-radius: 5px;
-  border: 1px solid ${p => p.theme.colors.primary};
-  background: rgba(153,69,255,0.08);
-  color: ${p => p.theme.colors.primary};
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-  transition: all 0.15s;
-
-  &:hover { background: rgba(153,69,255,0.18); }
-  &:disabled { opacity: 0.4; cursor: not-allowed; }
-`;
-
-const STATUS_COLORS: Record<string, string> = {
-  active: '#14F195',
-  claimed: '#9945FF',
-  noClaim: '#94A3B8',
-  expired: '#64748B',
-};
-
-const STATUS_ICONS: Record<string, string> = {
-  active: '⏳',
-  claimed: '✅',
-  noClaim: '──',
-  expired: '⏰',
-};
-
 /* ── Coming Soon placeholder ── */
 
 const ComingSoonWrap = styled.div`
@@ -230,39 +146,12 @@ const ComingSoonSub = styled.div`
 export function OracleConsole() {
   const { t } = useTranslation();
   const {
-    mode, contracts, claims, masterActive, masterPolicyPDA, payoutTiers,
-    runOracle, onChainResolve, onChainSettle, lastDaemonActivityTs,
+    mode, contracts, masterActive, masterPolicyPDA, payoutTiers,
+    runOracle, onChainResolve, lastDaemonActivityTs,
   } = useProtocolStore();
   const { toast } = useToast();
   const { resolveFlightDelay, loading } = useResolveFlightDelay();
   const { wallet } = useProgram();
-
-  const masterPK = masterPolicyPDA ? new PublicKey(masterPolicyPDA) : null;
-  const { account: masterAccount } = useMasterPolicyAccount(masterPK);
-  const { settleFlightClaim, settleFlightNoClaim, buildSettleAccounts, loading: settleLoading } = useSettleFlight();
-  const [settleLoadingId, setSettleLoadingId] = useState<number | null>(null);
-
-  const handleSettleClaim = async (cid: number) => {
-    if (!masterPK || !masterAccount) { toast(t('toast.walletNotAvailable'), 'd'); return; }
-    setSettleLoadingId(cid);
-    const [flightPDA] = getFlightPolicyPDA(masterPK, new BN(cid));
-    const accs = buildSettleAccounts(masterAccount);
-    const res = await settleFlightClaim({ masterPolicy: masterPK, flightPolicy: flightPDA, leaderDepositToken: accs.leaderDepositWallet, reinsurerPoolToken: accs.reinsurerPoolWallet, participantPoolWallets: accs.participantPoolWallets });
-    setSettleLoadingId(null);
-    if (!res.success) { toast(t('oracle.txFailedMsg', { error: res.error }), 'd'); }
-    else { onChainSettle(cid, res.signature); toast(t('oracle.settleClaimBtn'), 's'); }
-  };
-
-  const handleSettleNoClaim = async (cid: number) => {
-    if (!masterPK || !masterAccount) { toast(t('toast.walletNotAvailable'), 'd'); return; }
-    setSettleLoadingId(cid);
-    const [flightPDA] = getFlightPolicyPDA(masterPK, new BN(cid));
-    const accs = buildSettleAccounts(masterAccount);
-    const res = await settleFlightNoClaim({ masterPolicy: masterPK, flightPolicy: flightPDA, leaderDepositToken: accs.leaderDepositWallet, reinsurerDepositToken: accs.reinsurerDepositWallet, participantDepositWallets: accs.participantDepositWallets });
-    setSettleLoadingId(null);
-    if (!res.success) { toast(t('oracle.txFailedMsg', { error: res.error }), 'd'); }
-    else { onChainSettle(cid, res.signature); toast(t('oracle.settleNoClaimBtn'), 's'); }
-  };
 
   const [oracleMode, setOracleMode] = useState<OracleControlMode>('manual');
   const [contractId, setContractId] = useState<number>(0);
@@ -482,56 +371,9 @@ export function OracleConsole() {
                     {daemonStatus.label}
                   </span>
                 </DaemonBadge>
-                <SectionLabel>{t('oracle.policyMonitor')}</SectionLabel>
-                {contracts.length === 0 ? (
-                  <ComingSoonSub style={{ textAlign: 'center', padding: '8px 0' }}>{t('oracle.noContracts')}</ComingSoonSub>
-                ) : (
-                  <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 220 }}>
-                    <MiniTable>
-                      <thead>
-                        <tr>
-                          <th>#</th>
-                          <th>{t('oracle.th.flight')}</th>
-                          <th>{t('oracle.th.status')}</th>
-                          <th>{t('oracle.th.delay')}</th>
-                          <th></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {contracts.map(c => {
-                          const clr = STATUS_COLORS[c.status] || '#94A3B8';
-                          const icon = STATUS_ICONS[c.status] || '';
-                          const claim = claims.find(cl => cl.contractId === c.id);
-                          const isLoading = settleLoadingId === c.id && settleLoading;
-                          return (
-                            <tr key={c.id}>
-                              <td><MiniMono style={{ color: 'var(--accent)', fontWeight: 700 }}>#{c.id}</MiniMono></td>
-                              <td><MiniMono style={{ color: 'var(--accent)', fontWeight: 600 }}>{c.flight}</MiniMono></td>
-                              <td><MiniStatusBadge clr={clr}>{icon} {c.status.toUpperCase()}</MiniStatusBadge></td>
-                              <td>
-                                <MiniMono style={{ color: claim?.delay ? 'var(--warning)' : 'var(--sub)' }}>
-                                  {claim?.delay ? `${claim.delay}${t('common.min')}` : '—'}
-                                </MiniMono>
-                              </td>
-                              <td>
-                                {c.status === 'claimed' && (
-                                  <SettleBtn onClick={() => handleSettleClaim(c.id)} disabled={isLoading}>
-                                    {isLoading ? '…' : t('oracle.settleClaimBtn')}
-                                  </SettleBtn>
-                                )}
-                                {c.status === 'noClaim' && (
-                                  <SettleBtn onClick={() => handleSettleNoClaim(c.id)} disabled={isLoading}>
-                                    {isLoading ? '…' : t('oracle.settleNoClaimBtn')}
-                                  </SettleBtn>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </MiniTable>
-                  </div>
-                )}
+                <ComingSoonSub style={{ textAlign: 'center', padding: '8px 0' }}>
+                  {t('oracle.trackAMonitorHintPlain')}
+                </ComingSoonSub>
               </>
             ) : (
               <ComingSoonWrap>

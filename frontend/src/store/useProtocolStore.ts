@@ -697,8 +697,8 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
 
     const newShares: Shares = {
       leader: Math.round((data.participants[0]?.shareBps ?? 5000) / 100),
-      partA: Math.round((data.participants[1]?.shareBps ?? 3000) / 100),
-      partB: Math.round((data.participants[2]?.shareBps ?? 2000) / 100),
+      partA: Math.round((data.participants[1]?.shareBps ?? 0) / 100),
+      partB: Math.round((data.participants[2]?.shareBps ?? 0) / 100),
     };
 
     set({

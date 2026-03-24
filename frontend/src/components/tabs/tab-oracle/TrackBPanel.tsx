@@ -16,6 +16,7 @@ import { useRefundAfterExpiry } from '@/hooks/useRefundAfterExpiry';
 import { useRegisterPolicyholder } from '@/hooks/useRegisterPolicyholder';
 import { useTrackBSettle } from '@/hooks/useTrackBSettle';
 import { useUnderwriting } from '@/hooks/useUnderwriting';
+import { useCheckOracle } from '@/hooks/useCheckOracle';
 import {
   PolicyState,
   UnderwritingStatus,
@@ -167,6 +168,7 @@ const SmallInput = styled(FormInput)`
   font-size: 11px;
   padding: 5px 8px;
   font-family: 'DM Mono', monospace;
+  color-scheme: dark;
 `;
 
 const STATE_COLORS: Record<number, string> = {
@@ -275,6 +277,7 @@ export function TrackBPanel() {
   const { refundAfterExpiry, loading: refundLoading } = useRefundAfterExpiry();
   const { registerPolicyholder, loading: registerLoading } = useRegisterPolicyholder();
   const { approveClaim, settleClaim, loading: settleLoading } = useTrackBSettle();
+  const { checkOracle, loading: oracleCheckLoading } = useCheckOracle();
 
   // UI state
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
@@ -290,6 +293,9 @@ export function TrackBPanel() {
   const [cpOracleFeed, setCpOracleFeed] = useState('');
   const [cpActiveFrom, setCpActiveFrom] = useState('');
   const [cpActiveTo, setCpActiveTo] = useState('');
+  const [cpReinsurer, setCpReinsurer] = useState('');
+  const [cpCededBps, setCpCededBps] = useState('0');
+  const [cpReinsBps, setCpReinsBps] = useState('0');
   const [cpMint, setCpMint] = useState(CURRENCY_MINT.toBase58());
   const [cpParticipants, setCpParticipants] = useState<{ insurer: string; ratioBps: string }[]>([
     { insurer: '', ratioBps: '10000' },
@@ -306,7 +312,6 @@ export function TrackBPanel() {
   const [regCoverage, setRegCoverage] = useState('');
 
   // Oracle trigger form
-  const [oracleRound, setOracleRound] = useState('');
   const [oraclePolicyKey, setOraclePolicyKey] = useState('');
 
   const daemonStatus = useMemo(() => {
@@ -327,12 +332,12 @@ export function TrackBPanel() {
         policyId: new BN(cpId),
         route: cpRoute,
         flightNo: cpFlightNo,
-        departureDate: new BN(cpDepDate),
+        departureDate: new BN(Math.floor(new Date(cpDepDate).getTime() / 1000)),
         delayThresholdMin: 120,
         payoutAmount: new BN(cpPayout),
         oracleFeed: new PublicKey(cpOracleFeed),
-        activeFrom: new BN(cpActiveFrom),
-        activeTo: new BN(cpActiveTo),
+        activeFrom: new BN(Math.floor(new Date(cpActiveFrom).getTime() / 1000)),
+        activeTo: new BN(Math.floor(new Date(cpActiveTo).getTime() / 1000)),
         participants: cpParticipants.map(p => ({
           insurer: new PublicKey(p.insurer),
           ratioBps: parseInt(p.ratioBps),
@@ -352,7 +357,7 @@ export function TrackBPanel() {
         externalRef: regRef,
         policyId: new BN(regPolicyId),
         flightNo: regFlightNo,
-        departureDate: new BN(regDepDate),
+        departureDate: new BN(Math.floor(new Date(regDepDate).getTime() / 1000)),
         passengerCount: parseInt(regPassengers),
         premiumPaid: new BN(regPremium),
         coverageAmount: new BN(regCoverage),
@@ -508,7 +513,7 @@ export function TrackBPanel() {
                           </FormRow>
                           <FormRow>
                             <SmallInput placeholder={t('oracle.trackBFlightNo')} value={regFlightNo} onChange={e => setRegFlightNo(e.target.value)} style={{ flex: 1 }} />
-                            <SmallInput placeholder={t('oracle.trackBDepartureDate')} type="number" value={regDepDate} onChange={e => setRegDepDate(e.target.value)} style={{ flex: 1 }} />
+                            <SmallInput type="date" value={regDepDate} onChange={e => setRegDepDate(e.target.value)} style={{ flex: 1 }} />
                           </FormRow>
                           <FormRow>
                             <SmallInput placeholder={t('oracle.trackBPassengerCount')} type="number" value={regPassengers} onChange={e => setRegPassengers(e.target.value)} style={{ width: 80 }} />
@@ -564,19 +569,17 @@ export function TrackBPanel() {
             <FormRow>
               <FormGroup style={{ flex: 1, marginBottom: 0 }}>
                 <FormLabel style={{ fontSize: 10 }}>{t('oracle.trackBDepartureDate')}</FormLabel>
-                <SmallInput type="number" value={cpDepDate} onChange={e => setCpDepDate(e.target.value)} />
+                <SmallInput type="date" value={cpDepDate} onChange={e => setCpDepDate(e.target.value)} />
               </FormGroup>
             </FormRow>
-            <FormRow>
-              <FormGroup style={{ flex: 1, marginBottom: 0 }}>
-                <FormLabel style={{ fontSize: 10 }}>{t('oracle.trackBActiveFrom')}</FormLabel>
-                <SmallInput type="number" value={cpActiveFrom} onChange={e => setCpActiveFrom(e.target.value)} />
-              </FormGroup>
-              <FormGroup style={{ flex: 1, marginBottom: 0 }}>
-                <FormLabel style={{ fontSize: 10 }}>{t('oracle.trackBActiveTo')}</FormLabel>
-                <SmallInput type="number" value={cpActiveTo} onChange={e => setCpActiveTo(e.target.value)} />
-              </FormGroup>
-            </FormRow>
+            <FormGroup>
+              <FormLabel style={{ fontSize: 10 }}>{t('oracle.trackBActiveFrom')}</FormLabel>
+              <SmallInput type="date" value={cpActiveFrom} onChange={e => setCpActiveFrom(e.target.value)} />
+            </FormGroup>
+            <FormGroup>
+              <FormLabel style={{ fontSize: 10 }}>{t('oracle.trackBActiveTo')}</FormLabel>
+              <SmallInput type="date" value={cpActiveTo} onChange={e => setCpActiveTo(e.target.value)} />
+            </FormGroup>
             <FormGroup>
               <FormLabel style={{ fontSize: 10 }}>{t('oracle.trackBOracleFeed')}</FormLabel>
               <SmallInput value={cpOracleFeed} onChange={e => setCpOracleFeed(e.target.value)} placeholder="Pubkey..." />
@@ -586,8 +589,25 @@ export function TrackBPanel() {
               <SmallInput value={cpMint} onChange={e => setCpMint(e.target.value)} />
             </FormGroup>
 
+            {/* Reinsurer */}
+            <SectionLabel>{t('oracle.trackBReinsurer')}</SectionLabel>
+            <FormGroup>
+              <FormLabel style={{ fontSize: 10 }}>{t('oracle.trackBReinsurerAddr')}</FormLabel>
+              <SmallInput value={cpReinsurer} onChange={e => setCpReinsurer(e.target.value)} placeholder="Pubkey..." />
+            </FormGroup>
+            <FormRow>
+              <FormGroup style={{ flex: 1, marginBottom: 0 }}>
+                <FormLabel style={{ fontSize: 10 }}>{t('oracle.trackBCededBps')}</FormLabel>
+                <SmallInput type="number" value={cpCededBps} onChange={e => setCpCededBps(e.target.value)} placeholder="0" />
+              </FormGroup>
+              <FormGroup style={{ flex: 1, marginBottom: 0 }}>
+                <FormLabel style={{ fontSize: 10 }}>{t('oracle.trackBReinsBps')}</FormLabel>
+                <SmallInput type="number" value={cpReinsBps} onChange={e => setCpReinsBps(e.target.value)} placeholder="0" />
+              </FormGroup>
+            </FormRow>
+
             {/* Participants */}
-            <SectionLabel>{t('oracle.trackBParticipants')}</SectionLabel>
+            <SectionLabel style={{ marginTop: 8 }}>{t('oracle.trackBParticipants')}</SectionLabel>
             {cpParticipants.map((p, i) => (
               <FormRow key={i}>
                 <SmallInput
@@ -646,9 +666,6 @@ export function TrackBPanel() {
       {/* Manual oracle trigger */}
       <Section>
         <SectionLabel>{t('oracle.trackBManualTrigger')}</SectionLabel>
-        <div style={{ padding: '6px 10px', borderRadius: 6, background: 'rgba(245,158,11,.06)', border: '1px solid rgba(245,158,11,.25)', marginBottom: 8, fontSize: 11, color: 'var(--warning)' }}>
-          {t('oracle.trackBSwitchboardWarning')}
-        </div>
         <FormRow>
           <FormGroup style={{ flex: 2, marginBottom: 0 }}>
             <FormLabel style={{ fontSize: 10 }}>Policy</FormLabel>
@@ -667,13 +684,26 @@ export function TrackBPanel() {
                 ))}
             </SmallInput>
           </FormGroup>
-          <FormGroup style={{ flex: 1, marginBottom: 0 }}>
-            <FormLabel style={{ fontSize: 10 }}>{t('oracle.trackBOracleRound')}</FormLabel>
-            <SmallInput type="number" value={oracleRound} onChange={e => setOracleRound(e.target.value)} />
-          </FormGroup>
         </FormRow>
-        <ActionBtn variant="primary" disabled style={{ marginTop: 4 }}>
-          {t('oracle.trackBCheckOracle')}
+        <ActionBtn
+          variant="primary"
+          disabled={!oraclePolicyKey || oracleCheckLoading}
+          style={{ marginTop: 4 }}
+          onClick={async () => {
+            if (!oraclePolicyKey) return;
+            try {
+              const res = await checkOracle(new PublicKey(oraclePolicyKey));
+              if (res.success) {
+                toast(t('oracle.trackBOracleSuccess'), 's');
+              } else {
+                toast(t('oracle.trackBOracleFail', { error: res.error }), 'd');
+              }
+            } catch {
+              toast(t('oracle.trackBOracleFail', { error: 'Switchboard SDK error' }), 'd');
+            }
+          }}
+        >
+          {oracleCheckLoading ? '…' : t('oracle.trackBCheckOracleBtn')}
         </ActionBtn>
         <div style={{ fontSize: 10, color: 'var(--sub)', marginTop: 4 }}>
           {t('oracle.trackBManualHint')}
