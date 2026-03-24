@@ -266,7 +266,7 @@ const ko = {
   'oracle.noContracts': '등록된 계약이 없습니다',
   'oracle.statusChanged': '{{flight}} 상태 변경: {{from}} → {{to}}',
   'oracle.settleClaimBtn': '보험금 정산',
-  'oracle.settleNoClaimBtn': '프리미엄 반환',
+  'oracle.settleNoClaimBtn': '보험료 정산',
   'oracle.manualResolve': '수동 실행 (Manual Resolve)',
   'oracle.statusIssued': 'Issued',
   'oracle.statusAwaitingOracle': 'AwaitingOracle',

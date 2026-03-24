@@ -265,7 +265,7 @@ const en = {
   'oracle.noContracts': 'No contracts registered',
   'oracle.statusChanged': '{{flight}} status changed: {{from}} → {{to}}',
   'oracle.settleClaimBtn': 'Settle Claim',
-  'oracle.settleNoClaimBtn': 'Return Premium',
+  'oracle.settleNoClaimBtn': 'Settle Premium',
   'oracle.manualResolve': 'Manual Resolve',
   'oracle.statusIssued': 'Issued',
   'oracle.statusAwaitingOracle': 'AwaitingOracle',

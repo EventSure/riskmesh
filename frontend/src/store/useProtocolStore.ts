@@ -595,7 +595,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     // No trigger (delay < 120min): on-chain status → NoClaim, mark contract resolved
     if (!tier) {
       set(prev => ({
-        contracts: prev.contracts.map(c => c.id === contractId ? { ...c, status: 'claimed' as const } : c),
+        contracts: prev.contracts.map(c => c.id === contractId ? { ...c, status: 'noClaim' as const } : c),
       }));
       get().addLog(
         i18n.t('store.noTrigger', { id: contractId }), '#22c55e', 'resolve_flight_delay',
