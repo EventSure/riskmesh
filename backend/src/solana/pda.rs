@@ -1,32 +1,6 @@
 use solana_sdk::pubkey::Pubkey;
 
-/// Track B: ["policy", leader, policy_id_le8]
-pub fn policy_pda(program_id: &Pubkey, leader: &Pubkey, policy_id: u64) -> (Pubkey, u8) {
-    Pubkey::find_program_address(
-        &[b"policy", leader.as_ref(), &policy_id.to_le_bytes()],
-        program_id,
-    )
-}
-
-/// Track B: ["claim", policy, oracle_round_le8]
-pub fn claim_pda(program_id: &Pubkey, policy: &Pubkey, oracle_round: u64) -> (Pubkey, u8) {
-    Pubkey::find_program_address(
-        &[b"claim", policy.as_ref(), &oracle_round.to_le_bytes()],
-        program_id,
-    )
-}
-
-/// Track B: ["underwriting", policy]
-pub fn underwriting_pda(program_id: &Pubkey, policy: &Pubkey) -> (Pubkey, u8) {
-    Pubkey::find_program_address(&[b"underwriting", policy.as_ref()], program_id)
-}
-
-/// Track B: ["pool", policy]
-pub fn risk_pool_pda(program_id: &Pubkey, policy: &Pubkey) -> (Pubkey, u8) {
-    Pubkey::find_program_address(&[b"pool", policy.as_ref()], program_id)
-}
-
-/// Track A: ["master_policy", leader, master_id_le8]
+/// ["master_policy", leader, master_id_le8]
 pub fn master_policy_pda(
     program_id: &Pubkey,
     leader: &Pubkey,
