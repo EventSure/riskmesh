@@ -84,6 +84,7 @@ const STATUS_COLOR: Record<string, string> = {
   claimed: '#9945FF',
   noClaim: '#94A3B8',
   expired: '#64748B',
+  settled: '#22C55E',
 };
 
 const STATUS_ICON: Record<string, string> = {
@@ -91,6 +92,7 @@ const STATUS_ICON: Record<string, string> = {
   claimed: '✅',
   noClaim: '──',
   expired: '⏰',
+  settled: '💸',
 };
 
 /* ── Component ── */

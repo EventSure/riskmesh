@@ -4,6 +4,7 @@ const ko = {
   'common.claimed': 'Claimed',
   'common.noClaim': 'No Claim',
   'common.expired': 'Expired',
+  'common.settled': 'Settled',
   'common.inactive': 'Inactive',
   'common.pending': 'Pending',
   'common.confirmed': 'Confirmed',

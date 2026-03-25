@@ -23,7 +23,7 @@ export interface Contract {
   aNet: number;
   bNet: number;
   rNet: number;
-  status: 'active' | 'claimed' | 'noClaim' | 'expired';
+  status: 'active' | 'claimed' | 'noClaim' | 'expired' | 'settled';
   ts: string;
 }
 
@@ -654,6 +654,9 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
           ? { ...c, status: 'settled' as const, settledAt: nowDate() }
           : c,
       ),
+      contracts: prev.contracts.map(c =>
+        c.id === contractId ? { ...c, status: 'settled' as const } : c,
+      ),
       policyStateIdx: 6,
     }));
     get().addLog(
@@ -762,8 +765,10 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
         contractStatus = 'noClaim';
       } else if (a.status === FlightPolicyStatus.Expired) {
         contractStatus = 'expired';
+      } else if (a.status === FlightPolicyStatus.Paid) {
+        contractStatus = 'settled';
       } else {
-        contractStatus = 'claimed';
+        contractStatus = 'claimed'; // Claimable (2) only
       }
 
       const ct: Contract = {
