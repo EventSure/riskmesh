@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { MasterPolicyStatus, FlightPolicyStatus, type MasterPolicyAccount } from '@/lib/idl/open_parametric';
+import { MasterPolicyStatus, FlightPolicyStatus, type MasterPolicyAccount, type PolicyAccount, type ClaimAccount } from '@/lib/idl/open_parametric';
+import type { PublicKey } from '@solana/web3.js';
 import type { FlightPolicyWithKey } from '@/hooks/useFlightPolicies';
 import i18n from '@/i18n';
 
@@ -22,7 +23,7 @@ export interface Contract {
   aNet: number;
   bNet: number;
   rNet: number;
-  status: 'active' | 'claimed';
+  status: 'active' | 'claimed' | 'noClaim' | 'expired' | 'settled';
   ts: string;
 }
 
@@ -162,6 +163,18 @@ const nowDate = () =>
     hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
   });
 
+/* ── Track B Types ── */
+
+export interface PolicyWithKey {
+  publicKey: PublicKey;
+  account: PolicyAccount;
+}
+
+export interface ClaimWithKey {
+  publicKey: PublicKey;
+  account: ClaimAccount;
+}
+
 /* ── Store ── */
 interface ProtocolState {
   mode: ProtocolMode;
@@ -197,6 +210,7 @@ interface ProtocolState {
   masterPolicyPDA: string | null;
   lastTxSignature: string | null;
   masterPolicies: MasterPolicySummary[];
+  lastDaemonActivityTs: number | null;
 
   // Actions
   setMode: (m: ProtocolMode) => void;
@@ -225,6 +239,11 @@ interface ProtocolState {
   resetAll: () => void;
   syncMasterFromChain: (data: MasterPolicyAccount) => void;
   syncFlightPoliciesFromChain: (policies: FlightPolicyWithKey[]) => void;
+
+  // Track B on-chain state
+  trackBPolicies: PolicyWithKey[];
+  trackBClaims: ClaimWithKey[];
+  syncTrackBPoliciesFromChain: (policies: PolicyWithKey[], claims: ClaimWithKey[]) => void;
 }
 
 const INITIAL_ACC: Acc = { leaderPrem: 0, partAPrem: 0, partBPrem: 0, reinPrem: 0, leaderClaim: 0, partAClaim: 0, partBClaim: 0, reinClaim: 0 };
@@ -263,6 +282,9 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
   masterPolicyPDA: null,
   lastTxSignature: null,
   masterPolicies: [],
+  lastDaemonActivityTs: null,
+  trackBPolicies: [],
+  trackBClaims: [],
 
   setMode: (m) => {
     set({ mode: m });
@@ -380,7 +402,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
 
     const contract = st.contracts.find(c => c.id === contractId);
     if (!contract) return { ok: false, msg: i18n.t('store.contractNotFound', { id: contractId }), type: 'error' as const, code: 'E_CONTRACT_NOT_FOUND' };
-    if (contract.status === 'claimed') return { ok: false, msg: i18n.t('store.alreadyClaimed', { id: contractId }), type: 'error' as const, code: 'E_ALREADY_CLAIMED' };
+    if (contract.status !== 'active') return { ok: false, msg: i18n.t('store.alreadyClaimed', { id: contractId }), type: 'error' as const, code: 'E_ALREADY_CLAIMED' };
     const ceded = st.cededRatioBps / 10000;
     const commRate = st.reinsCommissionBps / 10000;
     const reinsEff = ceded * (1 - commRate);
@@ -573,7 +595,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     // No trigger (delay < 120min): on-chain status → NoClaim, mark contract resolved
     if (!tier) {
       set(prev => ({
-        contracts: prev.contracts.map(c => c.id === contractId ? { ...c, status: 'claimed' as const } : c),
+        contracts: prev.contracts.map(c => c.id === contractId ? { ...c, status: 'noClaim' as const } : c),
       }));
       get().addLog(
         i18n.t('store.noTrigger', { id: contractId }), '#22c55e', 'resolve_flight_delay',
@@ -632,6 +654,9 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
           ? { ...c, status: 'settled' as const, settledAt: nowDate() }
           : c,
       ),
+      contracts: prev.contracts.map(c =>
+        c.id === contractId ? { ...c, status: 'settled' as const } : c,
+      ),
       policyStateIdx: 6,
     }));
     get().addLog(
@@ -675,8 +700,8 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
 
     const newShares: Shares = {
       leader: Math.round((data.participants[0]?.shareBps ?? 5000) / 100),
-      partA: Math.round((data.participants[1]?.shareBps ?? 3000) / 100),
-      partB: Math.round((data.participants[2]?.shareBps ?? 2000) / 100),
+      partA: Math.round((data.participants[1]?.shareBps ?? 0) / 100),
+      partB: Math.round((data.participants[2]?.shareBps ?? 0) / 100),
     };
 
     set({
@@ -733,6 +758,19 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
         a.status === FlightPolicyStatus.AwaitingOracle;
       const date = new Date(a.departureTs.toNumber() * 1000).toISOString().slice(0, 10);
 
+      let contractStatus: Contract['status'];
+      if (isStillActive) {
+        contractStatus = 'active';
+      } else if (a.status === FlightPolicyStatus.NoClaim) {
+        contractStatus = 'noClaim';
+      } else if (a.status === FlightPolicyStatus.Expired) {
+        contractStatus = 'expired';
+      } else if (a.status === FlightPolicyStatus.Paid) {
+        contractStatus = 'settled';
+      } else {
+        contractStatus = 'claimed'; // Claimable (2) only
+      }
+
       const ct: Contract = {
         id,
         name: a.subscriberRef,
@@ -742,7 +780,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
         aNet: ctANet,
         bNet: ctBNet,
         rNet: ctRNet,
-        status: isStillActive ? 'active' : 'claimed',
+        status: contractStatus,
         ts: formatTs(a.createdAt.toNumber()),
       };
       contracts.push(ct);
@@ -806,6 +844,15 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     const totalPremium = contracts.length * pp;
     const totalClaim = claims.reduce((s, c) => s + c.payout, 0);
 
+    // Daemon activity heuristic: latest updatedAt among resolved FlightPolicies
+    const resolvedPolicies = policies.filter(fp =>
+      fp.account.status !== FlightPolicyStatus.Issued &&
+      fp.account.status !== FlightPolicyStatus.AwaitingOracle
+    );
+    const lastDaemonActivityTs = resolvedPolicies.length > 0
+      ? Math.max(...resolvedPolicies.map(fp => fp.account.updatedAt.toNumber()))
+      : null;
+
     set({
       contracts,
       claims,
@@ -814,7 +861,12 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       acc,
       totalPremium,
       totalClaim,
+      lastDaemonActivityTs,
     });
+  },
+
+  syncTrackBPoliciesFromChain: (policies, claims) => {
+    set({ trackBPolicies: policies, trackBClaims: claims });
   },
 }), {
   name: 'riskmesh-protocol',

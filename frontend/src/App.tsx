@@ -8,26 +8,66 @@ import { ToastProvider } from '@/components/common';
 import { Layout } from '@/components/layout/Layout';
 import { Dashboard } from '@/pages/Dashboard';
 import { LandingPage } from '@/pages/LandingPage';
+import { PortalPage } from '@/pages/PortalPage';
 import { useProtocolStore, type LogEntry } from '@/store/useProtocolStore';
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PublicKey } from '@solana/web3.js';
+import { useWallet } from '@solana/wallet-adapter-react';
 import { useMasterPolicyAccount } from '@/hooks/useMasterPolicyAccount';
-import { useFlightPolicies } from '@/hooks/useFlightPolicies';
+import { useFlightPolicies, type FlightPolicyWithKey } from '@/hooks/useFlightPolicies';
+import { usePolicies } from '@/hooks/usePolicies';
+import type { PolicyWithKey } from '@/store/useProtocolStore';
+import { useToast } from '@/components/common';
+
+const STATUS_NAMES: Record<number, string> = {
+  0: 'Issued', 1: 'AwaitingOracle', 2: 'Claimable', 3: 'Paid', 4: 'NoClaim', 5: 'Expired',
+};
 
 function ChainSyncer() {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const { publicKey } = useWallet();
+  useEffect(() => {
+    console.log('[Wallet] publicKey:', publicKey?.toBase58() ?? 'not connected');
+  }, [publicKey]);
   const mode = useProtocolStore(s => s.mode);
   const masterPolicyPDA = useProtocolStore(s => s.masterPolicyPDA);
   const syncMasterFromChain = useProtocolStore(s => s.syncMasterFromChain);
   const syncFlightPoliciesFromChain = useProtocolStore(s => s.syncFlightPoliciesFromChain);
+  const syncTrackBPoliciesFromChain = useProtocolStore(s => s.syncTrackBPoliciesFromChain);
+  const addLog = useProtocolStore(s => s.addLog);
 
   const pdaKey = useMemo(
     () => mode === 'onchain' && masterPolicyPDA ? new PublicKey(masterPolicyPDA) : null,
     [mode, masterPolicyPDA],
   );
 
+  const handleStatusChange = useCallback((fp: FlightPolicyWithKey, prev: number, next: number) => {
+    const name = `#${fp.account.childPolicyId.toNumber()} ${fp.account.flightNo}`;
+    const fromLabel = STATUS_NAMES[prev] ?? String(prev);
+    const toLabel = STATUS_NAMES[next] ?? String(next);
+
+    toast(t('oracle.statusChanged', { flight: name, from: fromLabel, to: toLabel }), next === 2 ? 'w' : 's');
+    addLog(
+      `${name}: ${fromLabel} → ${toLabel}`,
+      next === 2 ? '#F59E0B' : '#22C55E',
+      'daemon_resolve',
+    );
+  }, [t, toast, addLog]);
+
+  const handleTrackBStatusChange = useCallback((p: PolicyWithKey, prev: number, next: number) => {
+    const name = `Policy #${p.account.policyId.toNumber()} ${p.account.flightNo}`;
+    toast(t('oracle.statusChanged', { flight: name, from: String(prev), to: String(next) }), 'w');
+    addLog(`${name}: state ${prev} → ${next}`, '#9945FF', 'trackb_state_change');
+  }, [t, toast, addLog]);
+
   const { account } = useMasterPolicyAccount(pdaKey);
-  const { policies } = useFlightPolicies(pdaKey);
+  const { policies } = useFlightPolicies(pdaKey, { onStatusChange: handleStatusChange });
+  const { policies: trackBPolicies, claims: trackBClaims } = usePolicies(
+    mode === 'onchain' && publicKey ? publicKey : null,
+    { onStatusChange: handleTrackBStatusChange },
+  );
 
   useEffect(() => {
     if (account) syncMasterFromChain(account);
@@ -36,6 +76,10 @@ function ChainSyncer() {
   useEffect(() => {
     if (pdaKey) syncFlightPoliciesFromChain(policies);
   }, [policies]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (mode === 'onchain') syncTrackBPoliciesFromChain(trackBPolicies, trackBClaims);
+  }, [trackBPolicies, trackBClaims]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return null;
 }
@@ -86,6 +130,7 @@ export function App() {
                 <Route element={<Layout />}>
                   <Route path="/demo" element={<Dashboard />} />
                 </Route>
+                <Route path="/portal" element={<PortalPage />} />
                 <Route path="/dashboard" element={<Navigate to="/demo" replace />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

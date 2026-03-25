@@ -14,13 +14,14 @@ export default defineConfig({
       },
     }),
     nodePolyfills({
-      include: ['buffer', 'crypto', 'stream', 'util'],
+      include: ['buffer', 'crypto', 'stream', 'util', 'https', 'http', 'url'],
       globals: { Buffer: true },
     }),
   ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      yaml: path.resolve(__dirname, './node_modules/cosmiconfig/node_modules/yaml'),
     },
   },
   test: {

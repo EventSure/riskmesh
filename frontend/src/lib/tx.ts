@@ -11,12 +11,11 @@ export interface TxResult {
  * Returns the signature and success status.
  */
 export async function sendTx(
-  provider: AnchorProvider,
+  _provider: AnchorProvider,
   txFn: () => Promise<string>,
 ): Promise<TxResult> {
   try {
-    const signature = await txFn();
-    await provider.connection.confirmTransaction(signature, 'confirmed');
+    const signature = await txFn(); // .rpc() already confirms
     return { signature, success: true };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

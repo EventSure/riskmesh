@@ -3,6 +3,9 @@ export const theme = {
     bg: '#0B1120',
     card: '#111827',
     card2: '#0d1626',
+    surface1: '#111827',
+    surface2: '#1A2332',
+    surface3: '#0F1A2A',
     primary: '#9945FF',
     accent: '#14F195',
     danger: '#EF4444',
@@ -20,6 +23,13 @@ export const theme = {
     danger: 'rgba(239,68,68,0.25)',
     info: 'rgba(56,189,248,0.25)',
     warning: 'rgba(245,158,11,0.25)',
+  },
+  glowSubtle: {
+    primary: 'rgba(153,69,255,0.10)',
+    accent: 'rgba(20,241,149,0.10)',
+    danger: 'rgba(239,68,68,0.08)',
+    info: 'rgba(56,189,248,0.10)',
+    warning: 'rgba(245,158,11,0.08)',
   },
   fonts: {
     sans: "'Space Grotesk', sans-serif",
@@ -41,6 +51,18 @@ export const theme = {
     lg: '12px',
     xl: '14px',
     xxl: '16px',
+  },
+  breakpoints: {
+    sm: 640,
+    md: 768,
+    lg: 1024,
+    xl: 1280,
+  },
+  mediaQueries: {
+    sm: '@media (min-width: 640px)',
+    md: '@media (min-width: 768px)',
+    lg: '@media (min-width: 1024px)',
+    xl: '@media (min-width: 1280px)',
   },
 } as const;
 

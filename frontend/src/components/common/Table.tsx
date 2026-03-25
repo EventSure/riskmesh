@@ -21,6 +21,10 @@ export const DataTable = styled.table`
     font-weight: 700;
     border-bottom: 1px solid ${p => p.theme.colors.border};
     white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: ${p => p.theme.colors.surface1};
   }
 
   td {
@@ -34,7 +38,7 @@ export const DataTable = styled.table`
   }
 
   tr:hover td {
-    background: rgba(153, 69, 255, 0.03);
+    background: ${p => p.theme.colors.surface2};
   }
 `;
 

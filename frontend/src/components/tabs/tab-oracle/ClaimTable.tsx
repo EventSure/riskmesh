@@ -14,7 +14,7 @@ export function ClaimTable() {
           {t('common.count', { count: claims.length })}
         </span>
       </CardHeader>
-      <div style={{ overflowX: 'auto' }}>
+      <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 196 }}>
         <DataTable style={{ minWidth: 780 }}>
           <thead>
             <tr>
@@ -24,8 +24,8 @@ export function ClaimTable() {
           </thead>
           <tbody>
             {[...claims].reverse().map(c => {
-              const statusColor = c.status === 'settled' ? 'accent' : c.status === 'approved' ? 'warning' : 'danger';
-              const statusLabel = c.status === 'settled' ? t('claim.status.settled') : c.status === 'approved' ? t('claim.status.approved') : t('claim.status.pending');
+              const statusColor = c.status === 'settled' ? 'accent' : c.status === 'approved' ? 'warning' : c.status === 'claimable' ? 'danger' : 'danger';
+              const statusLabel = c.status === 'settled' ? t('claim.status.settled') : c.status === 'approved' ? t('claim.status.approved') : c.status === 'claimable' ? t('claim.status.claimable') : t('claim.status.pending');
               return (
                 <tr key={c.id} className="nr">
                   <td style={{ color: 'var(--sub)' }}>#{c.id}</td>
