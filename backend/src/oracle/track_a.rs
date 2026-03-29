@@ -293,3 +293,12 @@ pub fn anchor_instruction_discriminator(name: &str) -> [u8; 8] {
     result[..8].try_into().expect("sha256 길이 보장")
 }
 
+/// Anchor account discriminator: sha256("account:<name>")[..8]
+pub fn anchor_account_discriminator(name: &str) -> [u8; 8] {
+    use sha2::{Digest, Sha256};
+    let mut hasher = Sha256::new();
+    hasher.update(format!("account:{name}").as_bytes());
+    let result = hasher.finalize();
+    result[..8].try_into().expect("sha256 길이 보장")
+}
+

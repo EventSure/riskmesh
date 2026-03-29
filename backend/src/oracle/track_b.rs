@@ -92,53 +92,6 @@ pub async fn scan_flight_policies(
     Ok(result)
 }
 
-/// Active 상태이며 leader가 일치하는 Policy 목록을 온체인에서 조회한다.
-pub fn scan_active_policies(
-    client: &SolanaClient,
-    program_id: &Pubkey,
-    leader_pubkey: &Pubkey,
-) -> Result<Vec<PolicyInfo>> {
-    let policies = scan_policies(client, program_id)?;
-    Ok(policies
-        .into_iter()
-        .filter(|info| info.state == POLICY_STATE_ACTIVE && info.leader == *leader_pubkey)
-        .collect())
-}
-
-/// Policy 계정 데이터를 역직렬화한다 (borsh 레이아웃).
-///
-/// Policy 필드 순서 (state.rs 기준):
-///   discriminator[8], policy_id[8], leader[32], route[4+len], flight_no[4+len],
-///   departure_date[8], delay_threshold_min[2], payout_amount[8],
-///   currency_mint[32], oracle_feed[32], state[1], ...
-fn parse_policy(pubkey: &Pubkey, data: &[u8]) -> Result<PolicyInfo> {
-    use crate::oracle::track_a::{
-        read_i64, read_pubkey, read_string, read_u16, read_u64, read_u8,
-    };
-    let mut offset = 8usize; // skip discriminator
-
-    let policy_id = read_u64(data, &mut offset)?;
-    let leader = read_pubkey(data, &mut offset)?;
-    let _route = read_string(data, &mut offset)?;
-    let flight_no = read_string(data, &mut offset)?;
-    let departure_date = read_i64(data, &mut offset)?;
-    let _delay_threshold = read_u16(data, &mut offset)?;
-    let _payout_amount = read_u64(data, &mut offset)?;
-    let _currency_mint = read_pubkey(data, &mut offset)?;
-    let oracle_feed = read_pubkey(data, &mut offset)?;
-    let state = read_u8(data, &mut offset)?;
-
-    Ok(PolicyInfo {
-        pubkey: *pubkey,
-        policy_id,
-        leader,
-        flight_no,
-        departure_date,
-        oracle_feed,
-        state,
-    })
-}
-
 /// Track B 오라클 실행:
 ///   - `AwaitingOracle`: MasterPolicy 조회 → Switchboard oracle resolve → settle
 ///   - `Claimable` / `NoClaim`: oracle 없이 settle만 재시도
