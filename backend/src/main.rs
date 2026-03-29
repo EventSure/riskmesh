@@ -4,6 +4,7 @@ mod oracle;
 mod scheduler;
 mod solana;
 mod switchboard;
+mod web;
 
 use anyhow::Result;
 use std::sync::Arc;
@@ -21,12 +22,30 @@ async fn main() -> Result<()> {
     // 설정 로드
     let config = Arc::new(config::Config::from_env()?);
     tracing::info!(
-        "RiskMesh Oracle Daemon 시작\n  RPC: {}\n  Program: {}\n  Leader: {}",
+        "RiskMesh Backend 시작\n  RPC: {}\n  Program: {}\n  Leader: {}\n  Web: {}",
         config.rpc_url,
         config.program_id,
-        config.leader_pubkey
+        config.leader_pubkey,
+        config.web_bind_addr
     );
 
-    // 스케줄러 실행 (블로킹)
-    scheduler::start(config).await
+    let scheduler_task = tokio::spawn(scheduler::start(config.clone()));
+    let web_task = tokio::spawn(web::start(config.clone()));
+
+    tokio::select! {
+        res = scheduler_task => {
+            match res {
+                Ok(inner) => inner?,
+                Err(e) => return Err(e.into()),
+            }
+        }
+        res = web_task => {
+            match res {
+                Ok(inner) => inner?,
+                Err(e) => return Err(e.into()),
+            }
+        }
+    }
+
+    Ok(())
 }

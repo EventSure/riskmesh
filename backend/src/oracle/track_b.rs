@@ -32,10 +32,9 @@ pub struct PolicyInfo {
 }
 
 /// Active 상태 Policy 목록을 온체인에서 조회한다.
-pub fn scan_active_policies(
+pub fn scan_policies(
     client: &SolanaClient,
     program_id: &Pubkey,
-    leader_pubkey: &Pubkey,
 ) -> Result<Vec<PolicyInfo>> {
     let accounts = client
         .rpc
@@ -53,19 +52,26 @@ pub fn scan_active_policies(
             continue;
         }
         match parse_policy(&pubkey, &account.data) {
-            Ok(info)
-                if info.state == POLICY_STATE_ACTIVE
-                    && info.leader == *leader_pubkey =>
-            {
-                result.push(info);
-            }
-            Ok(_) => {}
+            Ok(info) => result.push(info),
             Err(e) => {
                 tracing::warn!("[track_b] Policy 파싱 실패 {pubkey}: {e}");
             }
         }
     }
     Ok(result)
+}
+
+/// Active 상태이며 leader가 일치하는 Policy 목록을 온체인에서 조회한다.
+pub fn scan_active_policies(
+    client: &SolanaClient,
+    program_id: &Pubkey,
+    leader_pubkey: &Pubkey,
+) -> Result<Vec<PolicyInfo>> {
+    let policies = scan_policies(client, program_id)?;
+    Ok(policies
+        .into_iter()
+        .filter(|info| info.state == POLICY_STATE_ACTIVE && info.leader == *leader_pubkey)
+        .collect())
 }
 
 /// Policy 계정 데이터를 역직렬화한다 (borsh 레이아웃).
@@ -212,4 +218,93 @@ fn build_check_oracle_ix(
         ],
         data,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{scan_active_policies, scan_policies};
+    use crate::solana::client::SolanaClient;
+    use solana_sdk::pubkey::Pubkey;
+    use std::{str::FromStr, sync::Once};
+
+    static LOAD_TEST_ENV: Once = Once::new();
+
+    fn load_test_env() {
+        LOAD_TEST_ENV.call_once(|| {
+            dotenv::dotenv().ok();
+            dotenv::from_filename("../.env").ok();
+        });
+    }
+
+    fn env_pubkey(key: &str) -> Pubkey {
+        load_test_env();
+        let value = std::env::var(key)
+            .unwrap_or_else(|_| panic!("{key} 환경변수가 필요합니다"));
+        Pubkey::from_str(&value)
+            .unwrap_or_else(|err| panic!("{key} 파싱 실패: {value} ({err})"))
+    }
+
+    fn rpc_url() -> String {
+        load_test_env();
+        std::env::var("RPC_URL").unwrap_or_else(|_| "https://api.devnet.solana.com".to_string())
+    }
+
+    #[test]
+    #[ignore = "실제 Solana RPC와 PROGRAM_ID 환경변수가 필요합니다. `cargo test scan_policies_prints_results -- --ignored --nocapture`로 실행하세요."]
+    fn scan_policies_prints_results() {
+        let client = SolanaClient::new(&rpc_url());
+        let program_id = env_pubkey("PROGRAM_ID");
+
+        let policies =
+            scan_policies(&client, &program_id).expect("policies should be fetched from RPC");
+
+        println!(
+            "[scan_policies_prints_results] program_id={} matched_policies={}",
+            program_id,
+            policies.len()
+        );
+
+        for policy in &policies {
+            println!(
+                "[scan_policies_prints_results] policy_pubkey={} policy_id={} leader={} flight_no={} departure_date={} oracle_feed={} state={}",
+                policy.pubkey,
+                policy.policy_id,
+                policy.leader,
+                policy.flight_no,
+                policy.departure_date,
+                policy.oracle_feed,
+                policy.state
+            );
+        }
+    }
+
+    #[test]
+    #[ignore = "실제 Solana RPC와 PROGRAM_ID/LEADER_PUBKEY 환경변수가 필요합니다. `cargo test scan_active_policies_prints_results -- --ignored --nocapture`로 실행하세요."]
+    fn scan_active_policies_prints_results() {
+        let client = SolanaClient::new(&rpc_url());
+        let program_id = env_pubkey("PROGRAM_ID");
+        let leader_pubkey = env_pubkey("LEADER_PUBKEY");
+
+        let policies = scan_active_policies(&client, &program_id, &leader_pubkey)
+            .expect("active policies should be fetched from RPC");
+
+        println!(
+            "[scan_active_policies_prints_results] program_id={} leader_pubkey={} matched_policies={}",
+            program_id,
+            leader_pubkey,
+            policies.len()
+        );
+
+        for policy in &policies {
+            println!(
+                "[scan_active_policies_prints_results] policy_pubkey={} policy_id={} flight_no={} departure_date={} oracle_feed={} state={}",
+                policy.pubkey,
+                policy.policy_id,
+                policy.flight_no,
+                policy.departure_date,
+                policy.oracle_feed,
+                policy.state
+            );
+        }
+    }
 }

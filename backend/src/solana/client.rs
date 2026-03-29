@@ -35,6 +35,10 @@ impl SolanaClient {
             .with_context(|| format!("계정 조회 실패: {pubkey}"))
     }
 
+    /// 현재 RPC 노드가 보고 있는 슬롯 번호를 조회한다.
+    ///
+    /// Track B에서는 이 값을 `oracle_round`로 사용해 Claim PDA seed를 만들므로,
+    /// "지금 어떤 시점의 온체인 상태를 기준으로 claim을 만들었는가"를 구분하는 역할을 한다.
     pub fn get_slot(&self) -> Result<u64> {
         self.rpc
             .get_slot()
@@ -115,5 +119,122 @@ impl SolanaClient {
         self.rpc
             .get_program_accounts_with_config(program_id, config)
             .context("getProgramAccounts 실패")
+    }
+}
+    
+#[cfg(test)]
+mod tests {
+    use super::SolanaClient;
+    use solana_sdk::{pubkey::Pubkey, system_program};
+    use std::{str::FromStr, sync::Once};
+
+    static LOAD_TEST_ENV: Once = Once::new();
+
+    fn load_test_env() {
+        LOAD_TEST_ENV.call_once(|| {
+            dotenv::dotenv().ok();
+            dotenv::from_filename("../.env").ok();
+        });
+    }
+
+    fn test_rpc_url() -> String {
+        load_test_env();
+        std::env::var("RPC_URL").unwrap_or_else(|_| "https://api.devnet.solana.com".to_string())
+    }
+
+    fn leader_pubkey_from_env() -> Pubkey {
+        load_test_env();
+        let value = std::env::var("LEADER_PUBKEY")
+            .expect("LEADER_PUBKEY 환경변수가 필요합니다");
+        Pubkey::from_str(&value)
+            .unwrap_or_else(|err| panic!("LEADER_PUBKEY 파싱 실패: {value} ({err})"))
+    }
+
+    #[test]
+    #[ignore = "LEADER_PUBKEY 환경변수가 필요합니다. `cargo test -- --ignored`로 실행하세요."]
+    fn test_account_pubkey_prints_configured_pubkey() {
+        let account_pubkey = leader_pubkey_from_env();
+        println!(
+            "[test_account_pubkey_prints_configured_pubkey] pubkey={}",
+            account_pubkey
+        );
+
+        assert_ne!(
+            account_pubkey,
+            Pubkey::default(),
+            "configured pubkey should not be default"
+        );
+    }
+
+    #[test]
+    #[ignore = "실제 Solana RPC 호출이 필요합니다. `cargo test -- --ignored`로 실행하세요."]
+    fn get_slot_works_against_rpc() {
+        let client = SolanaClient::new(&test_rpc_url());
+
+        let slot = client.get_slot().expect("slot should be fetched from RPC");
+        println!("[get_slot_works_against_rpc] slot={slot}");
+
+        assert!(slot > 0, "slot should be a positive number");
+    }
+
+    #[test]
+    #[ignore = "실제 Solana RPC 호출이 필요합니다. `cargo test -- --ignored`로 실행하세요."]
+    fn get_account_reads_leader_pubkey_from_env() {
+        let client = SolanaClient::new(&test_rpc_url());
+        let account_pubkey = leader_pubkey_from_env();
+
+        let account = client
+            .get_account(&account_pubkey)
+            .expect("configured account should exist");
+        println!(
+            "[get_account_reads_leader_pubkey_from_env] pubkey={} lamports={} owner={} data_len={}",
+            account_pubkey,
+            account.lamports,
+            account.owner,
+            account.data.len()
+        );
+
+        assert_ne!(account.owner, Pubkey::default(), "account owner should be set");
+        assert!(
+            account.lamports > 0 || !account.data.is_empty(),
+            "account should have lamports or data"
+        );
+    }
+
+    #[test]
+    #[ignore = "실제 Solana RPC 호출이 필요합니다. `cargo test -- --ignored`로 실행하세요."]
+    fn get_program_accounts_filtered_returns_vec() {
+        let client = SolanaClient::new(&test_rpc_url());
+        let impossible_discriminator = [255_u8; 8];
+        let no_match_value = [123_u8];
+
+        let accounts = client
+            .get_program_accounts_filtered(
+                &system_program::id(),
+                impossible_discriminator,
+                8,
+                &no_match_value,
+            )
+            .expect("RPC request itself should succeed");
+        println!(
+            "[get_program_accounts_filtered_returns_vec] matched_accounts={}",
+            accounts.len()
+        );
+        if let Some((pubkey, account)) = accounts.first() {
+            println!(
+                "[get_program_accounts_filtered_returns_vec] first_pubkey={} lamports={} data_len={}",
+                pubkey,
+                account.lamports,
+                account.data.len()
+            );
+        }
+
+        assert!(
+            accounts.is_empty()
+                || accounts
+                    .iter()
+                    .all(|(pubkey, _account)| *pubkey != Pubkey::default()),
+            "returned accounts should be well-formed"
+        );
     }
 }
