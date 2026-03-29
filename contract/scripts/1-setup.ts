@@ -1,73 +1,49 @@
 /**
- * anchor run setup
+ * yarn demo:setup
  *
- * 지갑 3개(leader, insurer1, insurer2)를 생성하고, SOL을 에어드롭합니다.
- * SPL 민트를 만들고 각 insurer의 토큰 계정에 초기 잔액을 채웁니다.
- * 이후 모든 스크립트가 읽을 .state.json을 저장합니다.
+ * Leader 키페어와 SPL 민트를 생성하고 초기 .state.json을 저장합니다.
+ * 이후 모든 oracle-* 스크립트가 이 파일을 읽습니다.
+ *
+ * 다음 단계:
+ *   Track A/B 공통: yarn demo:master-setup
+ *   Track B 전용:   yarn demo:oracle-feed-create (master-setup 전에 실행)
  */
 import { Connection, Keypair, LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { createMint, createAccount, mintTo } from "@solana/spl-token";
+import { createMint } from "@solana/spl-token";
 import { RPC_URL, saveState } from "./common";
 
 async function main() {
   const conn = new Connection(RPC_URL, "confirmed");
 
-  // 1. 키페어 생성
+  // 1. Leader 키페어 생성
   const leader = Keypair.generate();
-  const ins1   = Keypair.generate();
-  const ins2   = Keypair.generate();
-
   console.log("=== 생성된 주소 ===");
-  console.log("leader   :", leader.publicKey.toBase58());
-  console.log("insurer1 :", ins1.publicKey.toBase58());
-  console.log("insurer2 :", ins2.publicKey.toBase58());
+  console.log("leader :", leader.publicKey.toBase58());
 
-  // 2. SOL 에어드롭 (각 10 SOL)
-  for (const { publicKey, name } of [
-    { publicKey: leader.publicKey, name: "leader" },
-    { publicKey: ins1.publicKey,   name: "insurer1" },
-    { publicKey: ins2.publicKey,   name: "insurer2" },
-  ]) {
-    const sig = await conn.requestAirdrop(publicKey, 10 * LAMPORTS_PER_SOL);
-    await conn.confirmTransaction(sig, "confirmed");
-    console.log(`${name} airdrop 완료`);
-  }
+  // 2. SOL 에어드롭 (localnet: 10 SOL / devnet: 2 SOL)
+  const isLocalnet = RPC_URL.includes("localhost") || RPC_URL.includes("127.0.0.1");
+  const airdropAmount = isLocalnet ? 10 * LAMPORTS_PER_SOL : 2 * LAMPORTS_PER_SOL;
+  const sig = await conn.requestAirdrop(leader.publicKey, airdropAmount);
+  await conn.confirmTransaction(sig, "confirmed");
+  console.log(`leader airdrop 완료 (${airdropAmount / LAMPORTS_PER_SOL} SOL)`);
 
   // 3. SPL 민트 생성 (6 decimals, USDC 호환)
   const mint = await createMint(conn, leader, leader.publicKey, null, 6);
   console.log("\nSPL Mint :", mint.toBase58());
 
-  // 4. insurer 토큰 계정 생성
-  //    Keypair를 명시적으로 지정해 일반 계정(non-ATA)으로 생성합니다.
-  const ins1TokenKp = Keypair.generate();
-  const ins2TokenKp = Keypair.generate();
-  await createAccount(conn, leader, mint, ins1.publicKey, ins1TokenKp);
-  await createAccount(conn, leader, mint, ins2.publicKey, ins2TokenKp);
-
-  // 5. 토큰 민팅 (insurer1: 3,000,000 / insurer2: 1,000,000)
-  await mintTo(conn, leader, mint, ins1TokenKp.publicKey, leader, 3_000_000);
-  await mintTo(conn, leader, mint, ins2TokenKp.publicKey, leader, 1_000_000);
-
-  console.log("ins1Token:", ins1TokenKp.publicKey.toBase58(), "(3,000,000 tokens)");
-  console.log("ins2Token:", ins2TokenKp.publicKey.toBase58(), "(1,000,000 tokens)");
-
-  // 6. activeTo = 지금으로부터 2분 후 (expire 데모용)
-  const activeTo = Math.floor(Date.now() / 1000) + 120;
-
   saveState({
-    mint:      mint.toBase58(),
+    mint: mint.toBase58(),
     leaderKey: Array.from(leader.secretKey),
-    ins1Key:   Array.from(ins1.secretKey),
-    ins2Key:   Array.from(ins2.secretKey),
-    ins1Token: ins1TokenKp.publicKey.toBase58(),
-    ins2Token: ins2TokenKp.publicKey.toBase58(),
-    policyId:  1,
-    activeTo,
   });
 
   console.log("\n=== Setup 완료 ===");
-  console.log(`activeTo: ${new Date(activeTo * 1000).toLocaleTimeString()} (2분 후)`);
-  console.log("다음 단계: anchor run create-policy");
+  console.log(".state.json 저장됨");
+  console.log("\n다음 단계:");
+  console.log("  Track B: yarn demo:oracle-feed-create  (Switchboard feed 생성)");
+  console.log("  공  통 : yarn demo:master-setup        (MasterPolicy 생성 및 활성화)");
 }
 
-main().catch(e => { console.error(e); process.exit(1); });
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

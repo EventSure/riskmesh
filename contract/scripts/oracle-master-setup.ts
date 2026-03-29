@@ -5,7 +5,7 @@
  *   1. SPL Mint 생성 (state.json의 mint가 devnet에 없으면 신규 생성)
  *   2. PDA 소유 토큰 계정 생성 (leaderDeposit, reinsurerPool, leaderPool)
  *   3. 리더 ATA 생성 및 토큰 민팅
- *   4. create_master_policy
+ *   4. create_master_policy  ← oracle_feed: state.json의 feedPubkey (없으면 기본값 = Track A 전용)
  *   5. register_participant_wallets
  *   6. confirm_master (Reinsurer)
  *   7. activate_master
@@ -16,6 +16,10 @@
  *   - reinsurer = leader (self, ceded = 0%)
  *   - 프리미엄: 1,000,000 (1 USDC 단위, 6 decimals)
  *   - 페이아웃 tiered: 2H=2, 3H=3, 4-5H=4, 6H+=6 USDC
+ *
+ * Track B 사용 시:
+ *   oracle-feed-create를 먼저 실행하면 feedPubkey가 state.json에 저장되고
+ *   이 스크립트가 자동으로 oracle_feed에 등록합니다.
  */
 import * as fs from "fs";
 import * as os from "os";
@@ -110,6 +114,18 @@ async function main() {
   console.log(`leaderAta           : ${leaderAta.address.toBase58()} (premium payer)`);
 
   // ── create_master_policy ─────────────────────────────────────────────────────
+  // oracle_feed: Track B = state.json의 feedPubkey, Track A = PublicKey.default
+  const oracleFeed = s.feedPubkey
+    ? new PublicKey(s.feedPubkey)
+    : PublicKey.default;
+
+  if (s.feedPubkey) {
+    console.log(`\nTrack B oracle_feed: ${oracleFeed.toBase58()}`);
+  } else {
+    console.log("\noracle_feed 미설정 → Track A 전용 MasterPolicy");
+    console.log("  (Track B 사용 시: oracle-feed-create 먼저 실행)");
+  }
+
   const now = Math.floor(Date.now() / 1000);
   console.log("\ncreate_master_policy 호출 중...");
   const txCreate = await pg.methods
@@ -127,6 +143,7 @@ async function main() {
       participants: [
         { insurer: leader.publicKey, shareBps: 10000 },
       ],
+      oracleFeed,
     })
     .accountsPartial({
       leader:                 leader.publicKey,
