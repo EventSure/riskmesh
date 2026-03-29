@@ -43,6 +43,19 @@ struct FlightPoliciesResponse {
     flight_policies: Vec<crate::oracle::program_accounts::FlightPolicyInfo>,
 }
 
+#[derive(Serialize)]
+struct MasterPoliciesTreeResponse {
+    program_id: String,
+    count: usize,
+    master_policies: Vec<MasterPolicyAccountTree>,
+}
+
+#[derive(Serialize)]
+struct MasterPolicyAccountTree {
+    master_policy_pubkey: String,
+    flight_policy_pubkeys: Vec<String>,
+}
+
 struct ApiError(anyhow::Error);
 
 pub async fn start(config: Arc<Config>) -> Result<()> {
@@ -55,6 +68,7 @@ pub async fn start(config: Arc<Config>) -> Result<()> {
         .route("/health", get(health))
         .route("/api/master-policies", get(master_policies))
         .route("/api/flight-policies", get(flight_policies))
+        .route("/api/master-policies/tree", get(master_policies_tree))
         .with_state(AppState { config });
 
     tracing::info!("[web] listening on http://{addr}");
@@ -101,6 +115,40 @@ async fn flight_policies(
         program_id: state.config.program_id.to_string(),
         count: flight_policies.len(),
         flight_policies,
+    }))
+}
+
+async fn master_policies_tree(
+    State(state): State<AppState>,
+) -> Result<Json<MasterPoliciesTreeResponse>, ApiError> {
+    let client = SolanaClient::new(&state.config.rpc_url);
+    let master_policies = scan_master_policies(&client, &state.config.program_id)
+        .context("MasterPolicy 조회 실패")
+        .map_err(ApiError)?;
+    let flight_policies = scan_flight_policies(&client, &state.config.program_id)
+        .context("FlightPolicy 조회 실패")
+        .map_err(ApiError)?;
+
+    let master_policies = master_policies
+        .into_iter()
+        .map(|master_policy| {
+            let flight_policy_pubkeys = flight_policies
+                .iter()
+                .filter(|flight_policy| flight_policy.master == master_policy.pubkey)
+                .map(|flight_policy| flight_policy.pubkey.clone())
+                .collect();
+
+            MasterPolicyAccountTree {
+                master_policy_pubkey: master_policy.pubkey,
+                flight_policy_pubkeys,
+            }
+        })
+        .collect::<Vec<_>>();
+
+    Ok(Json(MasterPoliciesTreeResponse {
+        program_id: state.config.program_id.to_string(),
+        count: master_policies.len(),
+        master_policies,
     }))
 }
 
