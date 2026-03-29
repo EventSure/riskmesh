@@ -10,9 +10,13 @@ import * as path from "path";
 
 export const RPC_URL =
   process.env.ANCHOR_PROVIDER_URL ?? "http://localhost:8899";
-export const PROGRAM_ID = new PublicKey(
-  process.env.PROGRAM_ID ?? "BXxqMY3f9y7dzvoQWJjhX95GMEyuRjD61kgfgherhSX7"
-);
+
+// PROGRAM_ID는 IDL의 address 필드에서 읽어 항상 anchor build 결과와 동기화
+const _idlPath = path.join(__dirname, "../target/idl/open_parametric.json");
+const _idlAddress: string = process.env.PROGRAM_ID
+  ?? JSON.parse(fs.readFileSync(_idlPath, "utf-8")).address;
+export const PROGRAM_ID = new PublicKey(_idlAddress);
+
 export const STATE_PATH = path.join(__dirname, ".state.json");
 
 /** 스크립트 간 공유 상태 (.state.json) */
