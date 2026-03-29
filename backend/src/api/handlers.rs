@@ -12,6 +12,7 @@ use super::{
     types::{
         CreateFlightPolicyRequest, CreateFlightPolicyResponse, FlightPoliciesResponse,
         HealthResponse, MasterFlightPoliciesResponse, MasterPoliciesResponse,
+        MasterPolicyAccountsResponse,
         MasterPoliciesTreeResponse,
     },
 };
@@ -25,6 +26,15 @@ pub(super) async fn get_master_policies(
 ) -> Result<Json<MasterPoliciesResponse>, ApiError> {
     let client = SolanaClient::new(&state.config.rpc_url);
     service::list_master_policies(&client, &state.config)
+        .map(Json)
+        .map_err(ApiError)
+}
+
+pub(super) async fn get_master_policy_accounts(
+    State(state): State<AppState>,
+) -> Result<Json<MasterPolicyAccountsResponse>, ApiError> {
+    let client = SolanaClient::new(&state.config.rpc_url);
+    service::list_master_policy_accounts(&client, &state.config)
         .map(Json)
         .map_err(ApiError)
 }

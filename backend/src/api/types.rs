@@ -17,6 +17,13 @@ pub(super) struct MasterPoliciesResponse {
 }
 
 #[derive(Serialize)]
+pub(super) struct MasterPolicyAccountsResponse {
+    pub program_id: String,
+    pub count: usize,
+    pub master_policy_pubkeys: Vec<String>,
+}
+
+#[derive(Serialize)]
 pub(super) struct FlightPoliciesResponse {
     pub program_id: String,
     pub count: usize,

@@ -12,8 +12,9 @@ use super::{
     client::ProgramClient,
     types::{
         CreateFlightPolicyParamsWire, CreateFlightPolicyRequest, CreateFlightPolicyResponse,
-        FlightPoliciesResponse, HealthResponse, MasterFlightPoliciesResponse, MasterPoliciesResponse,
-        MasterPoliciesTreeResponse, MasterPolicyAccountTree,
+        FlightPoliciesResponse, HealthResponse, MasterFlightPoliciesResponse,
+        MasterPoliciesResponse, MasterPoliciesTreeResponse, MasterPolicyAccountTree,
+        MasterPolicyAccountsResponse,
     },
 };
 
@@ -37,6 +38,23 @@ pub(super) fn list_master_policies(
         program_id: config.program_id.to_string(),
         count: master_policies.len(),
         master_policies,
+    })
+}
+
+pub(super) fn list_master_policy_accounts(
+    client: &SolanaClient,
+    config: &Config,
+) -> Result<MasterPolicyAccountsResponse> {
+    let master_policy_pubkeys = scan_master_policies(client, &config.program_id)
+        .context("MasterPolicy 조회 실패")?
+        .into_iter()
+        .map(|master_policy| master_policy.pubkey)
+        .collect::<Vec<_>>();
+
+    Ok(MasterPolicyAccountsResponse {
+        program_id: config.program_id.to_string(),
+        count: master_policy_pubkeys.len(),
+        master_policy_pubkeys,
     })
 }
 

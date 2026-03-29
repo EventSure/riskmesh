@@ -9,6 +9,7 @@ pub(super) fn build_router(state: AppState) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/api/master-policies", get(get_master_policies))
+        .route("/api/master-policies/accounts", get(get_master_policy_accounts))
         .route("/api/flight-policies", get(get_flight_policies))
         .route("/api/master-policies/tree", get(get_master_policies_tree))
         .route(
