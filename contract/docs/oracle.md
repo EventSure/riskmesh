@@ -3,30 +3,56 @@
 ## 개요
 
 Open Parametric 컨트랙트의 오라클 연동은 두 가지 독립적인 트랙으로 구현되어 있습니다.
+두 트랙 모두 **Master/Flight 계정 구조**를 사용하며, 오라클 방식만 다릅니다.
 
-| 트랙 | 방식 | 대상 계정 | 신뢰 모델 |
+| 트랙 | 방식 | oracle instruction | 신뢰 모델 |
 |---|---|---|---|
-| **Track A** | Trusted Resolver | `FlightPolicy` (Master/Flight 플로우) | 중앙화 — Leader/Operator 서명 |
-| **Track B** | Switchboard On-Demand | `Policy` (Legacy 플로우) | 탈중앙화 — 암호학적 오라클 검증 |
+| **Track A** | Trusted Resolver (AviationStack API) | `resolve_flight_delay` | 중앙화 — Leader/Operator 서명 |
+| **Track B** | Switchboard On-Demand | `check_oracle_and_resolve_flight` | 탈중앙화 — 암호학적 오라클 검증 |
 
-두 트랙 모두 [AviationStack API](https://aviationstack.com)를 항공편 지연 데이터 소스로 사용합니다.
+양 트랙의 settlement(`settle_flight_claim` / `settle_flight_no_claim`)는 공용입니다.
 
 ---
 
 ## 공통 개념
 
-### 지연 데이터 형식
-
-오라클이 제공하는 `delay_minutes` 값은 **10분 단위 내림**으로 정규화됩니다.
+### 계정 구조
 
 ```
-실제 지연 127분 → 120분 (10분 단위 내림)
-실제 지연 155분 → 150분
+MasterPolicy  PDA: ["master_policy", leader, master_id_le8]
+FlightPolicy  PDA: ["flight_policy", master_policy, child_policy_id_le8]
 ```
 
-컨트랙트 온체인 검증: `oracle_delay_min % 10 == 0`
+`MasterPolicy`에는 Track B용 Switchboard 피드 주소가 저장됩니다.
 
-### 티어드 지급 구조 (Track A)
+```
+MasterPolicy.oracle_feed
+  - Track B master: Switchboard Pull Feed 계정 주소
+  - Track A master: Pubkey::default() (오라클 없음)
+```
+
+### FlightPolicy 상태 머신 (Track A / B 공통)
+
+```
+Issued / AwaitingOracle
+        │
+        │  [oracle instruction]
+        │  Track A: resolve_flight_delay (Leader/Operator 서명)
+        │  Track B: check_oracle_and_resolve_flight (누구나 호출)
+        │
+   ┌────┴─────────┐
+   ▼              ▼
+Claimable      NoClaim
+(payout > 0)  (payout = 0)
+   │              │
+   ▼              ▼
+  Paid          Expired
+(settle_       (settle_
+ flight_        flight_
+ claim)         no_claim)
+```
+
+### 티어드 지급 구조
 
 `MasterPolicy`에 설정된 4단계 지급액을 사용합니다.
 
@@ -41,8 +67,9 @@ Open Parametric 컨트랙트의 오라클 연동은 두 가지 독립적인 트�
 ### 주요 상수
 
 ```
-DELAY_THRESHOLD_MIN       = 120   (Track B Legacy 기준: 2시간)
-ORACLE_MAX_STALENESS_SLOTS = 150  (Track B: 약 60–90초 이내 데이터만 유효)
+DELAY_THRESHOLD_MIN        = 120   // 최소 지급 기준 (분)
+ORACLE_MAX_STALENESS_SLOTS = 150   // Track B: 약 60–90초 이내 데이터만 유효
+MAX_MASTER_PARTICIPANTS    = 8
 ```
 
 ---
@@ -51,7 +78,9 @@ ORACLE_MAX_STALENESS_SLOTS = 150  (Track B: 약 60–90초 이내 데이터만 �
 
 ### 개념
 
-Leader 또는 Operator가 AviationStack API에서 직접 데이터를 가져와 온체인 `resolve_flight_delay` 인스트럭션을 호출합니다. 오라클 데이터의 진위는 서명 주체(Leader/Operator)의 신뢰에 의존합니다.
+Leader 또는 Operator가 AviationStack API에서 직접 데이터를 가져와 온체인
+`resolve_flight_delay`를 호출합니다. 오라클 데이터의 진위는 서명 주체(Leader/Operator)의
+신뢰에 의존합니다. `cancelled = true` 전달로 결항 처리도 가능합니다.
 
 ```
 AviationStack API
@@ -61,7 +90,8 @@ AviationStack API
   (off-chain 집계)
        │
        ▼
-resolve_flight_delay (온체인)
+resolve_flight_delay  ← Leader 또는 Operator 서명 필수
+  (delay_minutes, cancelled)
   ├─ payout > 0  → FlightPolicy: Claimable
   └─ payout = 0  → FlightPolicy: NoClaim
        │
@@ -72,46 +102,34 @@ flight_    flight_
 claim      no_claim
 ```
 
+### Accounts 구조
+
+```rust
+pub struct ResolveFlightDelay<'info> {
+    pub resolver: Signer<'info>,          // leader 또는 operator만 가능
+    pub master_policy: Account<'info, MasterPolicy>,
+    pub flight_policy: Account<'info, FlightPolicy>,  // mut
+}
+```
+
 ### 사전 조건
 
 1. `MasterPolicy` 가 `Active` 상태
 2. `FlightPolicy` 가 `Issued` 또는 `AwaitingOracle` 상태
-3. `AVIATIONSTACK_API_KEY` 환경변수 설정
-
-### FlightPolicy 상태 머신
-
-```
-Issued / AwaitingOracle
-       │
-       │ resolve_flight_delay
-       │
-  ┌────┴────────┐
-  ▼             ▼
-Claimable    NoClaim
-  │             │
-  ▼             ▼
- Paid         Expired
-(settle_      (settle_
- flight_       flight_
- claim)        no_claim)
-```
+3. `resolver` 가 `master.leader` 또는 `master.operator`와 일치
+4. `AVIATIONSTACK_API_KEY` 환경변수 설정 (oracle daemon 또는 스크립트)
 
 ### 실행 방법
 
 ```bash
-# 기본 실행 (localnet)
-AVIATIONSTACK_API_KEY=<키> \
-FLIGHT_NO=KE017 \
-yarn demo:oracle-resolve
-
-# devnet 실행
+# devnet
 ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
 PROGRAM_ID=BXxqMY3f9y7dzvoQWJjhX95GMEyuRjD61kgfgherhSX7 \
 AVIATIONSTACK_API_KEY=<키> \
 FLIGHT_NO=KE017 \
 yarn demo:oracle-resolve
 
-# 특정 날짜 / 특정 FlightPolicy 지정
+# 특정 날짜 / FlightPolicy 지정
 AVIATIONSTACK_API_KEY=<키> \
 FLIGHT_NO=KE017 \
 FLIGHT_DATE=2026-02-27 \
@@ -130,184 +148,154 @@ yarn demo:oracle-resolve
 | `ANCHOR_PROVIDER_URL` | — | RPC 엔드포인트 (기본값: `http://localhost:8899`) |
 | `PROGRAM_ID` | — | 프로그램 ID override |
 
-### state.json 요구사항
-
-```jsonc
-{
-  "leaderKey": [...],   // leader 키페어 (필수)
-  "masterId": 1,        // MasterPolicy ID (필수)
-  "masterPda": "...",   // MasterPolicy PDA (필수)
-  "flightPolicies": [   // 최소 1개 이상 (필수)
-    {
-      "childId": 1,
-      "pda": "...",
-      "flightNo": "KE017",
-      "departureTs": 1234567890
-    }
-  ]
-}
-```
-
-### 실행 결과 예시
-
-```
-항공편 조회 중: KE017 / 2026-02-27
-데이터 소스: AviationStack API
-
-=== 항공편 데이터 ===
-상태           : landed
-결항 여부      : 운항
-원시 지연(분)  : 127
-10분 단위 지연 : 120 분
-예정 출발      : 2026-02-27T11:30:00+09:00
-실제 출발      : 2026-02-27T13:37:00+09:00
-
-=== resolve_flight_delay 완료 ===
-Tx             : 5abc...
-지연(온체인)   : 120 분
-payout_amount  : 50000000
-status         : 2 (2=Claimable, 4=NoClaim)
-
-→ 지급 조건 충족. settle_flight_claim을 실행하세요.
-```
-
 ---
 
 ## Track B — Switchboard On-Demand
 
 ### 개념
 
-Switchboard 오라클 네트워크가 AviationStack API를 직접 호출하여 결과를 온체인 feed 계정에 서명·기록합니다. `check_oracle_and_create_claim`은 동일 트랜잭션 내의 Switchboard 인스트럭션을 검증한 뒤 `Claim` 계정을 생성합니다.
+Switchboard 오라클 네트워크가 AviationStack API를 직접 호출하여 결과를 온체인 Pull Feed
+계정에 서명·기록합니다. `check_oracle_and_resolve_flight`는 동일 트랜잭션 내의 Switchboard
+인스트럭션을 온체인에서 암호학적으로 검증한 뒤 `FlightPolicy`의 상태를 직접 확정합니다.
+
+- **누구나 호출 가능** (trustless — 서명 검증이 온체인에서 이루어짐)
+- **결항 처리 불가**: Switchboard 피드는 숫자만 반환하므로 `cancelled`는 `false` 고정.
+  실제 결항 건은 Track A `resolve_flight_delay(cancelled=true)`로 처리.
 
 ```
 AviationStack API
        │
-       ▼ (Switchboard oracle 노드가 호출)
-Pull Feed 계정 (온체인, 암호학적 서명)
+       ▼  (Switchboard oracle 노드가 호출)
+Pull Feed 계정 (MasterPolicy.oracle_feed)
+  ← 온체인 기록 + 암호학적 서명
        │
        ▼
-check_oracle_and_create_claim (온체인, 3-ix 트랜잭션)
-  ├─ delay ≥ 120분 → Policy: Claimable, Claim 계정 생성
-  └─ delay < 120분 → Policy: Active 유지 (Claim 없음)
+check_oracle_and_resolve_flight (3-ix 트랜잭션 필수)
+  ├─ payout > 0  → FlightPolicy: Claimable
+  └─ payout = 0  → FlightPolicy: NoClaim
        │
-  (Claimable인 경우)
-  approve_claim → settle_claim
+  ┌────┴────┐
+  ▼         ▼
+settle_    settle_
+flight_    flight_
+claim      no_claim
 ```
 
 ### 3-인스트럭션 트랜잭션 구조
 
-`check_oracle_and_create_claim`은 반드시 같은 트랜잭션의 인덱스 0, 1 위치에 Switchboard 인스트럭션이 있어야 합니다.
+`check_oracle_and_resolve_flight`는 반드시 같은 트랜잭션의 인덱스 2에 위치해야 합니다.
+컨트랙트 내부에서 `verify_instruction_at(0)`으로 인덱스 0의 서명 검증 인스트럭션을 참조합니다.
 
 ```
 트랜잭션 인스트럭션 순서 (필수):
-  [0] Ed25519 서명 검증        ← Switchboard가 생성
-  [1] verified_update          ← Switchboard가 생성
-  [2] check_oracle_and_create_claim  ← 우리 프로그램
+  [0] Ed25519 서명 검증   ← Switchboard가 생성
+  [1] verified_update     ← Switchboard가 생성
+  [2] check_oracle_and_resolve_flight  ← 우리 프로그램
 ```
 
-컨트랙트 내부에서 `verify_instruction_at(0)`으로 인덱스 0의 서명 검증 인스트럭션을 참조합니다.
+v0 트랜잭션(Address Lookup Table 포함)으로 전송해야 합니다.
 
-### Policy 상태 머신 (Track B)
+### Accounts 구조
 
-```
-Draft → Open → Funded → Active
-                           │
-                           │ check_oracle_and_create_claim
-                           │
-                   ┌───────┴────────┐
-                   ▼                ▼
-              Claimable          Active 유지
-              (delay≥120분)     (delay<120분)
-                   │
-                   ▼
-               Approved
-          (approve_claim)
-                   │
-                   ▼
-               Settled
-           (settle_claim)
+```rust
+pub struct CheckOracleAndResolveFlight<'info> {
+    pub payer: Signer<'info>,                   // mut — 누구나 호출 가능
+    pub master_policy: Account<'info, MasterPolicy>,
+    pub flight_policy: Account<'info, FlightPolicy>,  // mut
+    /// CHECK: master_policy.oracle_feed와 일치 여부를 handler에서 검증
+    pub oracle_feed: UncheckedAccount<'info>,
+    /// CHECK: address = default_queue() (Switchboard 기본 큐)
+    pub queue: UncheckedAccount<'info>,
+    pub slot_hashes: Sysvar<'info, SlotHashes>,
+    pub instructions: Sysvar<'info, Instructions>,
+}
 ```
 
-### 실행 순서
+### Handler 검증 순서
 
-#### Step 1 — Feed 생성 (1회)
+1. `master.status == Active`
+2. `oracle_feed.key() == master.oracle_feed`
+3. `flight.master == master.key()`
+4. `flight.status == AwaitingOracle || Issued`
+5. `QuoteVerifier` — staleness ≤ `ORACLE_MAX_STALENESS_SLOTS` (150 slots ≈ 60–90s)
+6. 피드 값 파싱: `scale == 0`, `mantissa ≥ 0`, `mantissa ≤ u16::MAX` → `delay_minutes`
 
-Switchboard devnet에 Pull Feed 계정을 생성합니다. 생성된 `feedPubkey`가 `.state.json`에 저장됩니다.
+### MasterPolicy에 oracle_feed 등록
 
-```bash
-ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
-AVIATIONSTACK_API_KEY=<키> \
-FLIGHT_NO=KE017 \
-yarn demo:oracle-feed-create
+Track B를 사용하려면 `create_master_policy` 호출 시 `oracle_feed` 파라미터에 Switchboard
+Pull Feed 주소를 지정해야 합니다.
+
+```typescript
+await program.methods
+  .createMasterPolicy({
+    // ... 기타 파라미터 ...
+    oracleFeed: feedPubkey,   // Track B: Switchboard Pull Feed 주소
+                              // Track A: PublicKey.default() (오라클 없음)
+  })
+  .accounts({ ... })
+  .rpc();
 ```
 
-**주의:** API 키가 feed 계정에 포함되어 온체인에 저장됩니다. 무료 플랜 키는 문제없지만 유료 키는 Switchboard Secrets 사용을 권장합니다.
+### oracle daemon 자동화 (백엔드)
 
-**출력 예시:**
+`backend/src/oracle/track_b.rs`가 cron 스케줄(기본: 15분)에 따라 자동으로 실행됩니다.
+
 ```
-Switchboard On-Demand 프로그램 로드 중...
-
-Pull Feed 생성 중 (항공편: KE017)...
-
-=== Feed 생성 완료 ===
-Tx             : 3s335FL2...
-Feed Pubkey    : 278oAt1RBQLZAVfx35qYEjuhiH29nJmGpmzpKCVtDZTs
-항공편         : KE017
-```
-
-#### Step 2 — Policy에 feedPubkey 등록
-
-`create_policy` 시 `oracleFeed` 파라미터에 Step 1의 `feedPubkey`를 지정합니다. 이미 배포된 Policy가 있다면 `Policy.oracle_feed`와 일치하는지 확인합니다.
-
-#### Step 3 — oracle 클레임 실행
-
-Feed 생성 후 **1~2분** 대기 (oracle 노드가 데이터를 처리하는 시간).
-
-```bash
-ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
-yarn demo:oracle-claim
+scan FlightPolicy (AwaitingOracle | Claimable | NoClaim)
+  │
+  ├─ AwaitingOracle: departure_ts 지난 경우만 처리
+  │    1. MasterPolicy 조회 → oracle_feed 추출
+  │    2. Switchboard Crossbar API에서 서명된 oracle update 수신
+  │    3. [Ed25519, verified_update, check_oracle_and_resolve_flight] v0 tx 전송
+  │    4. FlightPolicy 재조회 → settle
+  │
+  └─ Claimable / NoClaim: oracle 완료, settle 재시도
+       → settle_flight_claim 또는 settle_flight_no_claim
 ```
 
-**출력 예시 (지연 있을 때):**
-```
-Policy 상태  : Active (3)
-oracle update 요청 중 (Switchboard 네트워크)...
-oracle 응답 값: 120 분
-
-oracle_round (slot): 444920000
-Claim PDA          : 7xyz...
-
-=== check_oracle_and_create_claim 완료 ===
-Tx              : 4def...
-Policy 상태     : Claimable (4)
-oracle_value    : 120 분
-payout_amount   : 1000000
-
-→ Claimable 상태. 다음 단계:
-  approve_claim  → settle_claim 순서로 실행하세요.
-```
-
-**출력 예시 (지연 없을 때):**
-```
-→ oracle 값이 지연 기준(120분) 미만. Policy는 Active 유지.
-```
+`Claimable`/`NoClaim` 상태를 scan에 포함하는 이유: `check_oracle_and_resolve_flight`는
+성공했지만 후속 settle 트랜잭션이 실패하면 해당 상태에 고착될 수 있습니다.
+다음 사이클에서 자동으로 재시도합니다.
 
 ### 환경변수
 
 | 변수 | 필수 | 설명 |
 |---|---|---|
-| `ANCHOR_PROVIDER_URL` | ✅ | devnet RPC (`https://api.devnet.solana.com`) |
-| `AVIATIONSTACK_API_KEY` | ✅ (feed-create만) | AviationStack API 키 |
-| `FLIGHT_NO` | — | 항공편 코드 (기본값: `KE017`) |
-| `PROGRAM_ID` | — | 프로그램 ID override |
+| `SWITCHBOARD_QUEUE` | ✅ | Switchboard 큐 주소 (devnet: `A43DyUGA7s8eXPxqEjJY6EBu1KKbNgfxF8h17VAHn13W`) |
+| `ANCHOR_PROVIDER_URL` | — | devnet RPC (`https://api.devnet.solana.com`) |
+| `AVIATIONSTACK_API_KEY` | — | Feed 생성 시 필요 (oracle 노드 실행 시) |
 
-### state.json 요구사항
+---
 
-```jsonc
-{
-  "leaderKey": [...],      // leader 키페어 (필수)
-  "policyId": 1,           // Legacy Policy ID (필수)
-  "feedPubkey": "278o..."  // oracle-feed-create 실행 후 자동 저장
+## Settlement — Track A / B 공용
+
+두 트랙은 동일한 settlement instruction을 사용합니다.
+
+### settle_flight_claim (Claimable → Paid)
+
+```rust
+pub struct SettleFlightClaim<'info> {
+    pub executor: Signer<'info>,            // leader 또는 operator
+    pub master_policy: Account<'info, MasterPolicy>,
+    pub flight_policy: Account<'info, FlightPolicy>,  // mut
+    pub leader_deposit_token: InterfaceAccount<'info, TokenAccount>,  // mut
+    pub reinsurer_pool_token: InterfaceAccount<'info, TokenAccount>,  // mut
+    pub token_program: Interface<'info, TokenInterface>,
+    // remaining_accounts: participant pool_wallet 목록 (mut)
+}
+```
+
+### settle_flight_no_claim (NoClaim → Expired)
+
+```rust
+pub struct SettleFlightNoClaim<'info> {
+    pub executor: Signer<'info>,            // leader 또는 operator
+    pub master_policy: Account<'info, MasterPolicy>,
+    pub flight_policy: Account<'info, FlightPolicy>,  // mut
+    pub leader_deposit_token: InterfaceAccount<'info, TokenAccount>,  // mut
+    pub reinsurer_deposit_token: InterfaceAccount<'info, TokenAccount>,  // mut
+    pub token_program: Interface<'info, TokenInterface>,
+    // remaining_accounts: participant deposit_wallet 목록 (mut)
 }
 ```
 
@@ -315,16 +303,17 @@ payout_amount   : 1000000
 
 ## 두 트랙 비교
 
-| 항목 | Track A (Trusted Resolver) | Track B (Switchboard) |
+| 항목 | Track A (Trusted Resolver) | Track B (Switchboard On-Demand) |
 |---|---|---|
 | **신뢰 모델** | Leader/Operator 신뢰 | 암호학적 검증 (탈중앙화) |
-| **데이터 흐름** | 스크립트 → API → 온체인 | oracle 노드 → API → feed → 온체인 |
-| **대상 계정** | `FlightPolicy` | `Policy` (Legacy) |
-| **지급 구조** | 4단계 티어드 | 단일 payout_amount |
+| **oracle instruction** | `resolve_flight_delay` | `check_oracle_and_resolve_flight` |
+| **대상 계정** | `FlightPolicy` | `FlightPolicy` |
+| **서명 요건** | Leader 또는 Operator | 누구나 (trustless) |
+| **결항 처리** | `cancelled=true` 파라미터 | 불가 (숫자 피드만) |
+| **tx 구조** | 일반 트랜잭션 | v0 트랜잭션 (3 instructions + LUT) |
 | **네트워크** | localnet / devnet / mainnet | devnet 이상 필수 |
-| **지연 시간** | 즉시 | feed 생성 후 1~2분 대기 |
-| **실시간성** | 스크립트 실행 시점 | Switchboard oracle 처리 시점 |
-| **비용** | 일반 tx 수수료 | feed 생성 ~0.01–0.05 SOL 추가 |
+| **oracle_feed** | `MasterPolicy.oracle_feed = Pubkey::default()` | Switchboard Pull Feed 주소 |
+| **자동화** | oracle daemon Track A | oracle daemon Track B |
 
 ---
 
@@ -337,84 +326,55 @@ payout_amount   : 1000000
 
 **무료 플랜 사용 시 동작:**
 - `flight_date` 파라미터를 URL에 포함하면 `function_access_restricted` 오류
-- 날짜 필터링은 클라이언트 측(`flight-api.ts`)에서 응답 데이터를 기준으로 처리
+- 날짜 필터링은 클라이언트 측(`flight-api.ts`)에서 응답 데이터 기준으로 처리
 - 실시간 운항 데이터만 조회 가능 (과거 항공편 이력 조회 불가)
 
 ---
 
 ## 전체 스크립트 실행 순서
 
-### Track A (Master/Flight 플로우)
+### Track A (Master/Flight + Trusted Resolver)
 
 ```bash
 # 1. 환경 설정
 export ANCHOR_PROVIDER_URL=https://api.devnet.solana.com
 export AVIATIONSTACK_API_KEY=<키>
 
-# 2. 기본 setup (지갑·토큰)
-yarn demo:setup
+# 2. MasterPolicy 생성 (oracle_feed = Pubkey::default())
+yarn demo:master-setup
 
-# 3. MasterPolicy 생성 → FlightPolicy 생성
-#    (별도 스크립트 또는 프론트엔드에서 수행)
+# 3. FlightPolicy 생성
+yarn demo:flight-create
 
-# 4. 오라클 해소
+# 4. 오라클 해소 (AviationStack API → resolve_flight_delay)
 FLIGHT_NO=KE017 yarn demo:oracle-resolve
 
-# 5a. 지급 조건 충족 시 (FlightPolicy: Claimable)
-#     settle_flight_claim 실행
-
-# 5b. 지급 조건 미충족 시 (FlightPolicy: NoClaim)
-#     settle_flight_no_claim 실행
+# 5a. Claimable → settle_flight_claim
+# 5b. NoClaim   → settle_flight_no_claim
+yarn demo:settle
 ```
 
-### Track B (Legacy Policy 플로우)
+### Track B (Master/Flight + Switchboard On-Demand)
 
 ```bash
 # 1. 환경 설정
 export ANCHOR_PROVIDER_URL=https://api.devnet.solana.com
-export AVIATIONSTACK_API_KEY=<키>
+export SWITCHBOARD_QUEUE=A43DyUGA7s8eXPxqEjJY6EBu1KKbNgfxF8h17VAHn13W
 
-# 2. 기본 setup → Policy 생성 → 언더라이팅 → 활성화
-yarn demo:setup
-yarn demo:create-policy   # oracleFeed는 Step 4의 feedPubkey로 지정
-yarn demo:open-uw
-yarn demo:accept-shares
-yarn demo:activate
+# 2. Switchboard Pull Feed 생성 (1회, feedPubkey 저장)
+AVIATIONSTACK_API_KEY=<키> FLIGHT_NO=KE017 yarn demo:oracle-feed-create
 
-# 3. Feed 생성 (devnet, 1회)
-FLIGHT_NO=KE017 yarn demo:oracle-feed-create
+# 3. MasterPolicy 생성 (oracle_feed = 위에서 얻은 feedPubkey)
+yarn demo:master-setup
 
-# 4. 1~2분 대기 후 오라클 클레임
-yarn demo:oracle-claim
+# 4. FlightPolicy 생성
+yarn demo:flight-create
 
-# 5. Claimable 상태인 경우 정산
-#    approve_claim → settle_claim
-```
+# 5. oracle daemon이 자동 처리 (15분 주기)
+#    또는 수동 트리거:
+cargo run --bin oracle-daemon
 
----
-
-## 온체인 계정 구조 참고
-
-### Track A 관련 계정
-
-```
-MasterPolicy  PDA: ["master_policy", leader, master_id_le8]
-FlightPolicy  PDA: ["flight_policy", master_policy, child_policy_id_le8]
-```
-
-### Track B 관련 계정
-
-```
-Policy  PDA: ["policy", leader, policy_id_le8]
-Claim   PDA: ["claim", policy, oracle_round_le8]
-          oracle_round = 클레임 시점의 확정 슬롯 번호 (unique seed)
-```
-
-### Switchboard Feed 연결
-
-```
-Policy.oracle_feed  ──→  Pull Feed 계정 (Switchboard devnet)
-                              │
-                              └─ jobs: [AviationStack HTTP 호출]
-                              └─ queue: ON_DEMAND_DEVNET_QUEUE
+# 6. Claimable → settle_flight_claim / NoClaim → settle_flight_no_claim
+#    (daemon이 자동 호출, 또는 수동)
+yarn demo:settle
 ```
