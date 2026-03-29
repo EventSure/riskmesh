@@ -5,7 +5,9 @@ use std::str::FromStr;
 
 use crate::{
     config::Config,
-    oracle::program_accounts::{fetch_master_policy, scan_flight_policies, scan_master_policies},
+    oracle::program_accounts::{
+        fetch_flight_policy, fetch_master_policy, scan_flight_policies, scan_master_policies,
+    },
     solana::client::SolanaClient,
 };
 
@@ -14,7 +16,7 @@ use super::{
     repository::FirebaseRepository,
     types::{
         CreateFlightPolicyParamsWire, CreateFlightPolicyRequest, CreateFlightPolicyResponse,
-        FirebaseTestDocumentResponse, FlightPoliciesResponse, HealthResponse,
+        FirebaseTestDocumentResponse, FlightPoliciesResponse, FlightPolicyResponse, HealthResponse,
         MasterFlightPoliciesResponse,
         MasterPoliciesResponse, MasterPoliciesTreeResponse, MasterPolicyAccountTree,
         MasterPolicyAccountsResponse, MasterPolicyResponse,
@@ -101,6 +103,20 @@ pub(super) fn list_flight_policies(
         program_id: config.program_id.to_string(),
         count: flight_policies.len(),
         flight_policies,
+    })
+}
+
+pub(super) fn get_flight_policy(
+    client: &SolanaClient,
+    config: &Config,
+    flight_policy_pubkey: &Pubkey,
+) -> Result<FlightPolicyResponse> {
+    let flight_policy =
+        fetch_flight_policy(client, flight_policy_pubkey).context("FlightPolicy 조회 실패")?;
+
+    Ok(FlightPolicyResponse {
+        program_id: config.program_id.to_string(),
+        flight_policy,
     })
 }
 

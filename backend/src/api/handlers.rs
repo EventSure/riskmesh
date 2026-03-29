@@ -11,7 +11,7 @@ use super::{
     state::AppState,
     types::{
         CreateFlightPolicyRequest, CreateFlightPolicyResponse, FlightPoliciesResponse,
-        FirebaseTestDocumentResponse,
+        FlightPolicyResponse, FirebaseTestDocumentResponse,
         HealthResponse, MasterFlightPoliciesResponse, MasterPoliciesResponse,
         MasterPoliciesTreeResponse, MasterPolicyAccountsResponse, MasterPolicyResponse,
     },
@@ -67,6 +67,20 @@ pub(super) async fn get_flight_policies(
 ) -> Result<Json<FlightPoliciesResponse>, ApiError> {
     let client = SolanaClient::new(&state.config.rpc_url);
     service::list_flight_policies(&client, &state.config)
+        .map(Json)
+        .map_err(ApiError)
+}
+
+pub(super) async fn get_flight_policy(
+    State(state): State<AppState>,
+    Path(flight_policy_pubkey): Path<String>,
+) -> Result<Json<FlightPolicyResponse>, ApiError> {
+    let client = SolanaClient::new(&state.config.rpc_url);
+    let flight_policy_pubkey = flight_policy_pubkey
+        .parse()
+        .map_err(|e| ApiError(anyhow::anyhow!("flight_policy_pubkey 주소 파싱 실패: {e}")))?;
+
+    service::get_flight_policy(&client, &state.config, &flight_policy_pubkey)
         .map(Json)
         .map_err(ApiError)
 }

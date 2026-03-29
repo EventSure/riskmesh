@@ -38,6 +38,13 @@ pub(super) struct FlightPoliciesResponse {
 }
 
 #[derive(Serialize)]
+pub(super) struct FlightPolicyResponse {
+    pub program_id: String,
+    pub flight_policy:
+        crate::oracle::program_accounts::FlightPolicyInfo,
+}
+
+#[derive(Serialize)]
 pub(super) struct MasterPoliciesTreeResponse {
     pub program_id: String,
     pub count: usize,

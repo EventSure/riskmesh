@@ -92,6 +92,14 @@ pub fn scan_flight_policies(
     scan_accounts(client, program_id, "FlightPolicy", parse_flight_policy)
 }
 
+pub fn fetch_flight_policy(
+    client: &SolanaClient,
+    flight_policy_pubkey: &Pubkey,
+) -> Result<FlightPolicyInfo> {
+    let account = client.get_account(flight_policy_pubkey)?;
+    parse_flight_policy(flight_policy_pubkey, &account.data)
+}
+
 fn scan_accounts<T>(
     client: &SolanaClient,
     program_id: &Pubkey,
