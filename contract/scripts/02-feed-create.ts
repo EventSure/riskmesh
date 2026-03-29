@@ -1,5 +1,5 @@
 /**
- * yarn demo:oracle-feed-create
+ * yarn demo:2-feed-create
  *
  * Track B (1회 실행) — Switchboard On-Demand Pull Feed 생성
  *
@@ -126,7 +126,7 @@ async function main() {
   console.log("\n.state.json에 feedPubkey 저장 완료");
   console.log("\n다음 단계:");
   console.log("  1. create-policy 스크립트에서 oracleFeed에 이 주소를 사용하세요.");
-  console.log("  2. oracle-claim.ts가 .state.json에서 feedPubkey를 자동으로 읽습니다.");
+  console.log("  2. 05b-claim.ts가 .state.json에서 feedPubkey를 자동으로 읽습니다.");
   console.log("\n주의: oracle 노드가 feed를 처리하기까지 1~2분 소요될 수 있습니다.");
 }
 

@@ -104,7 +104,7 @@ describe("settle_flight_claim", () => {
         ],
         oracleFeed: PublicKey.default,
       })
-      .accounts({
+      .accountsPartial({
         leader: payer.publicKey,
         operator: payer.publicKey,
         reinsurer: reinsurer.publicKey,
@@ -210,7 +210,7 @@ describe("settle_flight_claim", () => {
         route: "ICN-SFO",
         departureTs: new anchor.BN(now + 600),
       })
-      .accounts({
+      .accountsPartial({
         creator: payer.publicKey,
         masterPolicy: masterPolicyPda,
         flightPolicy: flightPolicyPda,
@@ -232,7 +232,7 @@ describe("settle_flight_claim", () => {
 
     await program.methods
       .settleFlightClaim()
-      .accounts({
+      .accountsPartial({
         executor: payer.publicKey,
         masterPolicy: masterPolicyPda,
         flightPolicy: flightPolicyPda,

@@ -40,7 +40,7 @@ export interface State {
 export function loadState(): State {
   if (!fs.existsSync(STATE_PATH)) {
     throw new Error(
-      "상태 파일이 없습니다. 먼저 `yarn demo:setup`을 실행하세요."
+      "상태 파일이 없습니다. 먼저 `yarn demo:1-setup`을 실행하세요."
     );
   }
   return JSON.parse(fs.readFileSync(STATE_PATH, "utf-8"));

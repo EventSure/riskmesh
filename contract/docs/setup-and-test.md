@@ -1,25 +1,8 @@
 # 개발 환경 설치 및 테스트 가이드
 
-## 1) Cargo 설치 방법
+## 1) 툴체인 설치
 
-Rust/Cargo는 `rustup`으로 설치하는 것이 표준입니다.
-
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source "$HOME/.cargo/env"
-cargo --version
-rustc --version
-```
-
-이미 설치되어 있으면 업데이트만 실행해도 됩니다.
-
-```bash
-rustup update
-```
-
-## 2) Anchor 설치 방법 (Solana 공식 설치 페이지 기준)
-
-Solana 공식 문서(Installation)의 Quick Installation 명령으로 Rust, Solana CLI, Anchor CLI를 한 번에 설치할 수 있습니다.
+Solana 공식 Quick Installation으로 Rust, Solana CLI, Anchor CLI를 한 번에 설치합니다.
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSfL https://solana-install.solana.workers.dev | bash
@@ -28,23 +11,23 @@ curl --proto '=https' --tlsv1.2 -sSfL https://solana-install.solana.workers.dev 
 설치 후 버전 확인:
 
 ```bash
-rustc --version
-solana --version
-anchor --version
-surfpool --version
-node --version
+rustc --version        # 1.84.1 (BPF toolchain)
+solana --version       # 2.3.13
+anchor --version       # 0.31.x
+node --version         # 18 이상
 yarn --version
 ```
 
-참고:
-- Quick Installation이 실패하면 Solana 문서의 `Install Dependencies` 섹션을 따라 개별 설치를 진행하세요.
-- 이 프로젝트는 현재 `anchor-lang = 0.31.1`을 사용하므로, `anchor --version` 확인 후 필요 시 버전 호환성을 점검하세요.
+> Quick Installation이 실패하면 Solana 문서의 `Install Dependencies` 섹션에서 개별 설치를 진행하세요.
 
-## 3) 테스트 방법
+---
 
-### 3-1. Rust 단위 테스트 실행
+## 2) 단위 테스트
+
+### Rust 단위 테스트
 
 ```bash
+# contract/programs/open_parametric/ 에서
 cargo test
 ```
 
@@ -52,34 +35,155 @@ cargo test
 
 ```bash
 cargo test settle_flight_claim_test
+cargo test settle_flight_no_claim_test
+cargo test activate_master_test
 ```
 
-### 3-2. Anchor/TypeScript 테스트 실행
+### Anchor/TypeScript 통합 테스트
 
-프로젝트 루트(`contract/`)에서 실행합니다.
-
-전체 테스트:
+`contract/` 디렉토리에서 실행합니다.
 
 ```bash
+# 전체 테스트 (로컬 validator 포함 자동 시작)
 anchor test
-```
 
-특정 파일만 실행:
-
-```bash
+# 특정 파일만
 yarn ts-mocha -p ./tsconfig.json -t 1000000 tests/settle_flight_claim.ts
 ```
 
 현재 테스트 파일:
 
-| 파일 | 커버리지 |
+| 파일 | 커버 범위 |
 |---|---|
-| `tests/settle_flight_claim.ts` | Master/Flight 플로우 전체 — Track A (Trusted Resolver) 기반 |
+| `tests/settle_flight_claim.ts` | Master/Flight 전체 — Track A(Trusted Resolver) 기반, Claim·NoClaim 양 경로 |
 
-> **Track B (Switchboard) 통합 테스트**: `QuoteVerifier`가 실제 온체인 Switchboard 환경을
-> 요구하므로 localnet에서 단위 테스트 불가. devnet 통합 테스트로 분류됩니다.
+> **Track B(Switchboard) 통합 테스트**: `QuoteVerifier`가 실제 온체인 Switchboard 환경을 요구하므로 localnet에서는 단위 테스트가 불가합니다. devnet 통합 테스트로 분류됩니다.
 
-## 4) 참고
+---
 
-- `anchor` 명령어가 없으면 설치 후 쉘 재시작(또는 PATH 반영) 뒤 다시 확인하세요.
-- Solana 로컬 테스트를 위해서는 `solana` CLI 설치 및 로컬 validator 환경이 필요할 수 있습니다.
+## 3) 데모 스크립트
+
+모든 스크립트는 `contract/` 디렉토리에서 `yarn demo:<N>-<이름>` 형태로 실행합니다.
+
+### 스크립트 목록 및 실행 순서
+
+| 번호 | 명령어 | 파일 | 설명 |
+|---|---|---|---|
+| 1 | `demo:1-setup` | `01-setup.ts` | 리더 키페어 + SPL 민트 생성, `.state.json` 초기화 |
+| 2 | `demo:2-feed-create` | `02-feed-create.ts` | **Track B 전용** — Switchboard Pull Feed 생성 (1회) |
+| 3 | `demo:3-master-setup` | `03-master-setup.ts` | MasterPolicy 생성·활성화 + 토큰 계정 셋업 |
+| 4 | `demo:4-flight-create` | `04-flight-create.ts` | FlightPolicy 발행 (프리미엄 이체) |
+| 5a | `demo:5a-resolve` | `05a-resolve.ts` | **Track A** — AviationStack API → `resolve_flight_delay` |
+| 5b | `demo:5b-claim` | `05b-claim.ts` | **Track B** — Switchboard oracle → `check_oracle_and_resolve_flight` |
+| 6 | `demo:6-settle` | `06-settle.ts` | 상태에 따라 `settle_flight_claim` 또는 `settle_flight_no_claim` 실행 |
+
+스크립트 간 상태는 `scripts/.state.json` 파일로 공유됩니다.
+
+---
+
+### Track A 전체 실행 순서 (AviationStack Trusted Resolver)
+
+```bash
+cd contract
+
+# 1. 초기 셋업 (키페어·민트 생성)
+yarn demo:1-setup
+
+# 2. MasterPolicy 생성 및 활성화
+#    oracle_feed = PublicKey.default (Track A 전용)
+ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
+yarn demo:3-master-setup
+
+# 3. FlightPolicy 발행
+ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
+FLIGHT_NO=KE017 \
+yarn demo:4-flight-create
+
+# 4. AviationStack API로 지연 데이터 조회 → 온체인 반영
+ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
+AVIATIONSTACK_API_KEY=<키> \
+FLIGHT_NO=KE017 \
+yarn demo:5a-resolve
+
+# 5. 정산
+ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
+yarn demo:6-settle
+```
+
+---
+
+### Track B 전체 실행 순서 (Switchboard On-Demand)
+
+```bash
+cd contract
+
+# 1. 초기 셋업
+yarn demo:1-setup
+
+# 2. Switchboard Pull Feed 생성 (1회, devnet)
+#    생성된 feedPubkey가 .state.json에 저장됨
+ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
+AVIATIONSTACK_API_KEY=<키> \
+FLIGHT_NO=KE017 \
+yarn demo:2-feed-create
+
+# 3. MasterPolicy 생성 및 활성화
+#    oracle_feed = state.json의 feedPubkey (자동으로 읽어 등록)
+ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
+yarn demo:3-master-setup
+
+# 4. FlightPolicy 발행
+ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
+FLIGHT_NO=KE017 \
+yarn demo:4-flight-create
+
+# 5. Switchboard oracle → check_oracle_and_resolve_flight
+#    1~2분 대기 후 실행 (oracle 노드 처리 시간)
+ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
+yarn demo:5b-claim
+
+# 6. 정산
+ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
+yarn demo:6-settle
+```
+
+---
+
+### 주요 환경변수
+
+| 변수 | 대상 스크립트 | 설명 |
+|---|---|---|
+| `ANCHOR_PROVIDER_URL` | 2–6 | RPC 엔드포인트 (기본: `http://localhost:8899`) |
+| `AVIATIONSTACK_API_KEY` | `2-feed-create`, `5a-resolve` | AviationStack API 키 |
+| `FLIGHT_NO` | `2-feed-create`, `4-flight-create`, `5a-resolve` | 항공편 코드 (기본: `KE017`) |
+| `FLIGHT_DATE` | `5a-resolve` | 날짜 `YYYY-MM-DD` (기본: FlightPolicy의 departure_ts) |
+| `CHILD_POLICY_ID` | `5a-resolve`, `5b-claim`, `6-settle` | 처리할 FlightPolicy ID (기본: 마지막 항목) |
+| `PROGRAM_ID` | 전체 | 프로그램 ID override |
+
+---
+
+### .state.json 구조
+
+스크립트들이 순서대로 실행되면서 `.state.json`에 데이터를 채워나갑니다.
+
+```jsonc
+{
+  "mint": "...",                    // 1-setup이 생성
+  "leaderKey": [...],               // 1-setup이 생성
+  "feedPubkey": "...",              // 2-feed-create가 저장 (Track B만)
+  "masterId": 1,                    // 3-master-setup이 저장
+  "masterPda": "...",               // 3-master-setup이 저장
+  "leaderAta": "...",               // 3-master-setup이 저장
+  "leaderDepositWallet": "...",     // 3-master-setup이 저장
+  "reinsurerPoolWallet": "...",     // 3-master-setup이 저장
+  "leaderPoolWallet": "...",        // 3-master-setup이 저장
+  "flightPolicies": [               // 4-flight-create가 추가
+    {
+      "childId": 1,
+      "pda": "...",
+      "flightNo": "KE017",
+      "departureTs": 1234567890
+    }
+  ]
+}
+```

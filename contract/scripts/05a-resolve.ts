@@ -1,5 +1,5 @@
 /**
- * yarn demo:oracle-resolve
+ * yarn demo:5a-resolve
  *
  * Track A — Trusted Resolver (직접 API 연동)
  *

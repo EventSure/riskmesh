@@ -1,5 +1,5 @@
 /**
- * yarn demo:master-setup
+ * yarn demo:3-master-setup
  *
  * Master Policy 전체 셋업 (devnet):
  *   1. SPL Mint 생성 (state.json의 mint가 devnet에 없으면 신규 생성)

@@ -1,5 +1,5 @@
 /**
- * yarn demo:settle
+ * yarn demo:6-settle
  *
  * FlightPolicy 상태에 따라 정산 실행:
  *   Claimable(2) → settle_flight_claim    → leaderPool → leaderDeposit
@@ -18,7 +18,7 @@ async function main() {
     throw new Error("masterId / flightPolicies 없음. 이전 단계를 먼저 실행하세요.");
   }
   if (!s.leaderDepositWallet || !s.reinsurerPoolWallet || !s.leaderPoolWallet || !s.leaderAta) {
-    throw new Error("토큰 계정 정보 없음. yarn demo:master-setup 먼저 실행하세요.");
+    throw new Error("토큰 계정 정보 없음. yarn demo:3-master-setup 먼저 실행하세요.");
   }
 
   const leader    = kp(s.leaderKey);

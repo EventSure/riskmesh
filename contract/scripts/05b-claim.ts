@@ -1,5 +1,5 @@
 /**
- * yarn demo:oracle-claim
+ * yarn demo:5b-claim
  *
  * Track B — Switchboard On-Demand oracle 자동화
  *
@@ -60,7 +60,7 @@ async function main() {
   if (!s.masterPda || !s.flightPolicies?.length) {
     throw new Error(
       ".state.json에 masterPda / flightPolicies가 없습니다.\n" +
-        "먼저 `yarn demo:master-setup` 및 `yarn demo:flight-create`를 실행하세요."
+        "먼저 `yarn demo:3-master-setup` 및 `yarn demo:4-flight-create`를 실행하세요."
     );
   }
 
@@ -195,9 +195,9 @@ async function main() {
   console.log("payout_amount  :", afterFp.payoutAmount.toString());
 
   if (afterFp.status === 2) {
-    console.log("\n→ Claimable. 다음 단계: yarn demo:settle");
+    console.log("\n→ Claimable. 다음 단계: yarn demo:6-settle");
   } else if (afterFp.status === 4) {
-    console.log("\n→ NoClaim (지연 기준 미달). 다음 단계: yarn demo:settle");
+    console.log("\n→ NoClaim (지연 기준 미달). 다음 단계: yarn demo:6-settle");
   }
 }
 

@@ -1,12 +1,12 @@
 /**
- * yarn demo:setup
+ * yarn demo:1-setup
  *
  * Leader 키페어와 SPL 민트를 생성하고 초기 .state.json을 저장합니다.
  * 이후 모든 oracle-* 스크립트가 이 파일을 읽습니다.
  *
  * 다음 단계:
- *   Track A/B 공통: yarn demo:master-setup
- *   Track B 전용:   yarn demo:oracle-feed-create (master-setup 전에 실행)
+ *   Track A/B 공통: yarn demo:3-master-setup
+ *   Track B 전용:   yarn demo:2-feed-create (master-setup 전에 실행)
  */
 import { Connection, Keypair, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { createMint } from "@solana/spl-token";
@@ -39,8 +39,8 @@ async function main() {
   console.log("\n=== Setup 완료 ===");
   console.log(".state.json 저장됨");
   console.log("\n다음 단계:");
-  console.log("  Track B: yarn demo:oracle-feed-create  (Switchboard feed 생성)");
-  console.log("  공  통 : yarn demo:master-setup        (MasterPolicy 생성 및 활성화)");
+  console.log("  Track B: yarn demo:2-feed-create  (Switchboard feed 생성)");
+  console.log("  공  통 : yarn demo:3-master-setup        (MasterPolicy 생성 및 활성화)");
 }
 
 main().catch((e) => {
