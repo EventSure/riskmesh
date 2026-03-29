@@ -35,7 +35,7 @@ import {
   kp, loadState, makeProgram, masterPolicyPub, RPC_URL, saveState,
 } from "./common";
 
-const MASTER_ID = 1;
+const MASTER_ID = process.env.MASTER_ID ? parseInt(process.env.MASTER_ID) : 1;
 
 // 고정 키페어 경로
 const KP_PATHS = {
