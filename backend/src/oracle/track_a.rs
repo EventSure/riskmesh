@@ -77,7 +77,7 @@ pub async fn scan_active_flight_policies(
 ///   subscriber_ref[4+len], flight_no[4+len], route[4+len],
 ///   departure_ts[8], premium_paid[8], delay_minutes[2], cancelled[1],
 ///   payout_amount[8], status[1], ...
-fn parse_flight_policy(pubkey: &Pubkey, data: &[u8]) -> Result<FlightPolicyInfo> {
+pub fn parse_flight_policy(pubkey: &Pubkey, data: &[u8]) -> Result<FlightPolicyInfo> {
     let mut offset = 8usize; // skip discriminator
 
     // child_policy_id (u64)
@@ -293,7 +293,7 @@ pub fn anchor_instruction_discriminator(name: &str) -> [u8; 8] {
     result[..8].try_into().expect("sha256 길이 보장")
 }
 
-/// Anchor account discriminator: sha256("account:<Name>")[..8]
+/// Anchor account discriminator: sha256("account:<name>")[..8]
 pub fn anchor_account_discriminator(name: &str) -> [u8; 8] {
     use sha2::{Digest, Sha256};
     let mut hasher = Sha256::new();
@@ -301,3 +301,4 @@ pub fn anchor_account_discriminator(name: &str) -> [u8; 8] {
     let result = hasher.finalize();
     result[..8].try_into().expect("sha256 길이 보장")
 }
+

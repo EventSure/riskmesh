@@ -48,15 +48,15 @@ async fn run_oracle_check(config: &Config) -> Result<()> {
     tracing::info!("[scheduler] 오라클 체크 시작. leader={}", leader.pubkey());
 
     // ── Track B ──────────────────────────────────────────────────────────────
-    let policies =
-        track_b::scan_active_policies(&client, &config.program_id, &config.leader_pubkey)?;
-    tracing::info!("[track_b] Active Policy {}개 발견", policies.len());
+    let track_b_policies =
+        track_b::scan_flight_policies(&client, &config.program_id).await?;
+    tracing::info!("[track_b] AwaitingOracle FlightPolicy {}개 발견", track_b_policies.len());
 
-    for policy in &policies {
-        if let Err(e) = track_b::run(config, &client, &leader, policy).await {
+    for fp in &track_b_policies {
+        if let Err(e) = track_b::run(config, &client, &leader, fp).await {
             tracing::error!(
                 "[track_b] {} 처리 실패: {e:#}",
-                policy.flight_no
+                fp.flight_no
             );
         }
     }

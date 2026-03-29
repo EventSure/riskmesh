@@ -63,13 +63,14 @@ describe("settle_flight_claim", () => {
       program.programId
     );
 
-    const leaderDeposit = await createAccount(connection, payer, mint, masterPolicyPda);
-    const reinsurerPool = await createAccount(connection, payer, mint, masterPolicyPda);
-    const reinsurerDeposit = await createAccount(connection, payer, mint, masterPolicyPda);
+    // PDA owner는 off-curve이므로 반드시 명시적 Keypair를 전달해 non-ATA 계정으로 생성한다.
+    const leaderDeposit = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
+    const reinsurerPool = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
+    const reinsurerDeposit = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
 
-    const leaderPool = await createAccount(connection, payer, mint, masterPolicyPda);
-    const aPool = await createAccount(connection, payer, mint, masterPolicyPda);
-    const bPool = await createAccount(connection, payer, mint, masterPolicyPda);
+    const leaderPool = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
+    const aPool = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
+    const bPool = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
 
     const aDeposit = await createAccount(connection, payer, mint, participantA.publicKey);
     const bDeposit = await createAccount(connection, payer, mint, participantB.publicKey);
@@ -90,10 +91,10 @@ describe("settle_flight_claim", () => {
         coverageStartTs: new anchor.BN(now - 10),
         coverageEndTs: new anchor.BN(now + 3600),
         premiumPerPolicy: new anchor.BN(premiumAmount.toString()),
-        payoutDelay2h: new anchor.BN(0),
-        payoutDelay3h: new anchor.BN(0),
-        payoutDelay4to5h: new anchor.BN(0),
-        payoutDelay6hOrCancelled: new anchor.BN(payoutAmount.toString()),
+        payoutDelay2H: new anchor.BN(0),
+        payoutDelay3H: new anchor.BN(0),
+        payoutDelay4To5H: new anchor.BN(0),
+        payoutDelay6HOrCancelled: new anchor.BN(payoutAmount.toString()),
         cededRatioBps: 5_000,
         reinsCommissionBps: 1_000,
         participants: [
@@ -101,6 +102,7 @@ describe("settle_flight_claim", () => {
           { insurer: participantA.publicKey, shareBps: 3_000 },
           { insurer: participantB.publicKey, shareBps: 2_000 },
         ],
+        oracleFeed: PublicKey.default,
       })
       .accounts({
         leader: payer.publicKey,

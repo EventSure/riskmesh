@@ -67,8 +67,17 @@ anchor test
 특정 파일만 실행:
 
 ```bash
-anchor run test -- tests/settle_flight_claim.ts
+yarn ts-mocha -p ./tsconfig.json -t 1000000 tests/settle_flight_claim.ts
 ```
+
+현재 테스트 파일:
+
+| 파일 | 커버리지 |
+|---|---|
+| `tests/settle_flight_claim.ts` | Master/Flight 플로우 전체 — Track A (Trusted Resolver) 기반 |
+
+> **Track B (Switchboard) 통합 테스트**: `QuoteVerifier`가 실제 온체인 Switchboard 환경을
+> 요구하므로 localnet에서 단위 테스트 불가. devnet 통합 테스트로 분류됩니다.
 
 ## 4) 참고
 

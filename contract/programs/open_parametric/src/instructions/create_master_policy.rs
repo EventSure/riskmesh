@@ -80,6 +80,7 @@ pub fn handler(ctx: Context<CreateMasterPolicy>, params: CreateMasterPolicyParam
     master.reinsurer_pool_wallet = ctx.accounts.reinsurer_pool_wallet.key();
     master.reinsurer_deposit_wallet = ctx.accounts.reinsurer_deposit_wallet.key();
     master.leader_deposit_wallet = ctx.accounts.leader_deposit_wallet.key();
+    master.oracle_feed = params.oracle_feed;
     master.status = MasterPolicyStatus::PendingConfirm as u8;
     master.created_at = Clock::get()?.unix_timestamp;
     master.bump = ctx.bumps.master_policy;
