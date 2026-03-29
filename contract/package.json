@@ -2,7 +2,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "test": "ts-mocha -p ./tsconfig.json -t 1000000 tests/*.ts",
-    "demo:1-setup":        "ts-node -P tsconfig.json scripts/01-setup.ts",
+    "demo:1-setup":        "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/01-setup.ts",
     "demo:2-feed-create":  "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/02-feed-create.ts",
     "demo:3-master-setup": "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/03-master-setup.ts",
     "demo:4-flight-create":"ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/04-flight-create.ts",
