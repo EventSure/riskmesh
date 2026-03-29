@@ -129,7 +129,7 @@ Feed 계정은 **최초 1회 생성**해야 합니다. 동일한 항공편이라
 ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
 AVIATIONSTACK_API_KEY=<키> \
 FLIGHT_NO=KE017 \
-yarn demo:oracle-feed-create
+yarn demo:2-feed-create
 ```
 
 실행 결과:
@@ -272,17 +272,16 @@ pub struct ResolveFlightDelay<'info> {
 ```bash
 # devnet
 ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
-PROGRAM_ID=BXxqMY3f9y7dzvoQWJjhX95GMEyuRjD61kgfgherhSX7 \
 AVIATIONSTACK_API_KEY=<키> \
 FLIGHT_NO=KE017 \
-yarn demo:oracle-resolve
+yarn demo:5a-resolve
 
 # 특정 날짜 / FlightPolicy 지정
 AVIATIONSTACK_API_KEY=<키> \
 FLIGHT_NO=KE017 \
 FLIGHT_DATE=2026-02-27 \
 CHILD_POLICY_ID=1 \
-yarn demo:oracle-resolve
+yarn demo:5a-resolve
 ```
 
 ### 환경변수
@@ -409,7 +408,7 @@ scan FlightPolicy (AwaitingOracle | Claimable | NoClaim)
 
 | 변수 | 필수 | 설명 |
 |---|---|---|
-| `SWITCHBOARD_QUEUE` | ✅ | Switchboard 큐 주소 (devnet: `A43DyUGA7s8eXPxqEjJY6EBu1KKbNgfxF8h17VAHn13W`) |
+| `SWITCHBOARD_QUEUE` | ✅ | Switchboard 큐 주소 (devnet: `EYiAmGSdsQTuCw413V5BzaruWuCCSDgTPtBGvLkXHbe7`) |
 | `ANCHOR_PROVIDER_URL` | — | devnet RPC (`https://api.devnet.solana.com`) |
 | `AVIATIONSTACK_API_KEY` | — | Feed 생성 시 필요 (oracle 노드 실행 시) |
 
@@ -484,45 +483,46 @@ pub struct SettleFlightNoClaim<'info> {
 ### Track A (Master/Flight + Trusted Resolver)
 
 ```bash
-# 1. 환경 설정
-export ANCHOR_PROVIDER_URL=https://api.devnet.solana.com
-export AVIATIONSTACK_API_KEY=<키>
+cd contract
+
+# 1. 초기 셋업 (최초 1회)
+yarn demo:1-setup
 
 # 2. MasterPolicy 생성 (oracle_feed = Pubkey::default())
-yarn demo:master-setup
+yarn demo:3-master-setup
 
 # 3. FlightPolicy 생성
-yarn demo:flight-create
+FLIGHT_NO=KE017 yarn demo:4-flight-create
 
 # 4. 오라클 해소 (AviationStack API → resolve_flight_delay)
-FLIGHT_NO=KE017 yarn demo:oracle-resolve
+AVIATIONSTACK_API_KEY=<키> FLIGHT_NO=KE017 yarn demo:5a-resolve
 
-# 5a. Claimable → settle_flight_claim
-# 5b. NoClaim   → settle_flight_no_claim
-yarn demo:settle
+# 5. 정산
+yarn demo:6-settle
 ```
 
 ### Track B (Master/Flight + Switchboard On-Demand)
 
 ```bash
-# 1. 환경 설정
-export ANCHOR_PROVIDER_URL=https://api.devnet.solana.com
-export SWITCHBOARD_QUEUE=A43DyUGA7s8eXPxqEjJY6EBu1KKbNgfxF8h17VAHn13W
+cd contract
 
-# 2. Switchboard Pull Feed 생성 (1회, feedPubkey 저장)
-AVIATIONSTACK_API_KEY=<키> FLIGHT_NO=KE017 yarn demo:oracle-feed-create
+# 1. 초기 셋업 (최초 1회)
+yarn demo:1-setup
 
-# 3. MasterPolicy 생성 (oracle_feed = 위에서 얻은 feedPubkey)
-yarn demo:master-setup
+# 2. Switchboard Pull Feed 생성 (1회, feedPubkey가 .state.json에 저장됨)
+AVIATIONSTACK_API_KEY=<키> FLIGHT_NO=KE017 yarn demo:2-feed-create
+
+# 3. MasterPolicy 생성 (oracle_feed = 위에서 얻은 feedPubkey 자동 적용)
+yarn demo:3-master-setup
 
 # 4. FlightPolicy 생성
-yarn demo:flight-create
+FLIGHT_NO=KE017 yarn demo:4-flight-create
 
-# 5. oracle daemon이 자동 처리 (15분 주기)
-#    또는 수동 트리거:
-cargo run --bin oracle-daemon
+# 5. Switchboard oracle → check_oracle_and_resolve_flight (수동 트리거)
+yarn demo:5b-claim
+#    또는 backend daemon이 15분 주기로 자동 처리:
+#    cd ../backend && cargo run
 
-# 6. Claimable → settle_flight_claim / NoClaim → settle_flight_no_claim
-#    (daemon이 자동 호출, 또는 수동)
-yarn demo:settle
+# 6. 정산
+yarn demo:6-settle
 ```
