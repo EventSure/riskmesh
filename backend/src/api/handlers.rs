@@ -13,7 +13,7 @@ use super::{
         CreateFlightPolicyRequest, CreateFlightPolicyResponse, FlightPoliciesResponse,
         FirebaseTestDocumentResponse,
         HealthResponse, MasterFlightPoliciesResponse, MasterPoliciesResponse,
-        MasterPoliciesTreeResponse, MasterPolicyAccountsResponse,
+        MasterPoliciesTreeResponse, MasterPolicyAccountsResponse, MasterPolicyResponse,
     },
 };
 
@@ -35,6 +35,20 @@ pub(super) async fn get_master_policy_accounts(
 ) -> Result<Json<MasterPolicyAccountsResponse>, ApiError> {
     let client = SolanaClient::new(&state.config.rpc_url);
     service::list_master_policy_accounts(&client, &state.config)
+        .map(Json)
+        .map_err(ApiError)
+}
+
+pub(super) async fn get_master_policy(
+    State(state): State<AppState>,
+    Path(master_policy_pubkey): Path<String>,
+) -> Result<Json<MasterPolicyResponse>, ApiError> {
+    let client = SolanaClient::new(&state.config.rpc_url);
+    let master_policy_pubkey = master_policy_pubkey
+        .parse()
+        .map_err(|e| ApiError(anyhow::anyhow!("master_policy_pubkey 주소 파싱 실패: {e}")))?;
+
+    service::get_master_policy(&client, &state.config, &master_policy_pubkey)
         .map(Json)
         .map_err(ApiError)
 }

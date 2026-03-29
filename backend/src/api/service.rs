@@ -17,7 +17,7 @@ use super::{
         FirebaseTestDocumentResponse, FlightPoliciesResponse, HealthResponse,
         MasterFlightPoliciesResponse,
         MasterPoliciesResponse, MasterPoliciesTreeResponse, MasterPolicyAccountTree,
-        MasterPolicyAccountsResponse,
+        MasterPolicyAccountsResponse, MasterPolicyResponse,
     },
 };
 
@@ -58,6 +58,20 @@ pub(super) fn list_master_policy_accounts(
         program_id: config.program_id.to_string(),
         count: master_policy_pubkeys.len(),
         master_policy_pubkeys,
+    })
+}
+
+pub(super) fn get_master_policy(
+    client: &SolanaClient,
+    config: &Config,
+    master_policy_pubkey: &Pubkey,
+) -> Result<MasterPolicyResponse> {
+    let master_policy =
+        fetch_master_policy(client, master_policy_pubkey).context("MasterPolicy 조회 실패")?;
+
+    Ok(MasterPolicyResponse {
+        program_id: config.program_id.to_string(),
+        master_policy,
     })
 }
 
