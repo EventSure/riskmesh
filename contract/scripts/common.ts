@@ -29,7 +29,12 @@ export interface State {
   leaderAta?: string;
   leaderDepositWallet?: string;
   reinsurerPoolWallet?: string;
+  reinsurerDepositWallet?: string;
   leaderPoolWallet?: string;
+  participantAPoolWallet?: string;
+  participantADepositWallet?: string;
+  participantBPoolWallet?: string;
+  participantBDepositWallet?: string;
   flightPolicies?: Array<{
     childId: number;
     pda: string;

@@ -2,52 +2,75 @@
  * yarn demo:3-master-setup
  *
  * Master Policy 전체 셋업 (devnet):
- *   1. SPL Mint 생성 (state.json의 mint가 devnet에 없으면 신규 생성)
- *   2. PDA 소유 토큰 계정 생성 (leaderDeposit, reinsurerPool, leaderPool)
- *   3. 리더 ATA 생성 및 토큰 민팅
- *   4. create_master_policy  ← oracle_feed: state.json의 feedPubkey (없으면 기본값 = Track A 전용)
- *   5. register_participant_wallets
- *   6. confirm_master (Reinsurer)
+ *   1. Mint 재사용 또는 신규 생성
+ *   2. PDA 소유 토큰 계정 생성 (leaderDeposit, reinsurerPool, reinsurerDeposit, 각 participant pool)
+ *   3. 각 참여사 ATA 생성 및 리더 ATA에 토큰 민팅
+ *   4. create_master_policy  ← oracle_feed: state.json의 feedPubkey (없으면 Track A)
+ *   5. register_participant_wallets (leader, A, B)
+ *   6. confirm_master(0) — leader, A, B
+ *      confirm_master(1) — reinsurer
  *   7. activate_master
- *   8. 리더 키페어 파일 저장 (Rust 데몬용)
  *
- * 설정:
- *   - 단일 참여사 = leader (share_bps = 10000)
- *   - reinsurer = leader (self, ceded = 0%)
- *   - 프리미엄: 1,000,000 (1 USDC 단위, 6 decimals)
- *   - 페이아웃 tiered: 2H=2, 3H=3, 4-5H=4, 6H+=6 USDC
+ * 고정 키페어 경로:
+ *   Leader    : ~/.config/solana/riskmesh-leader.json
+ *   Participant A: ~/.config/solana/riskmesh-participant-a.json
+ *   Participant B: ~/.config/solana/riskmesh-participant-b.json
+ *   Reinsurer : ~/.config/solana/riskmesh-reinsurer.json
  *
- * Track B 사용 시:
- *   oracle-feed-create를 먼저 실행하면 feedPubkey가 state.json에 저장되고
- *   이 스크립트가 자동으로 oracle_feed에 등록합니다.
+ * 참여사 배분 (shareBps):  Leader 50%, A 30%, B 20%
+ * 재보험 ceded ratio     : 0% (Track A 단순 데모용)
  */
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import { Connection, Keypair, PublicKey, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import {
-  createAccount,
-  createMint,
-  mintTo,
-  getOrCreateAssociatedTokenAccount,
-  TOKEN_PROGRAM_ID,
+  Connection, Keypair, PublicKey, SystemProgram, LAMPORTS_PER_SOL,
+} from "@solana/web3.js";
+import {
+  createAccount, createMint, mintTo,
+  getOrCreateAssociatedTokenAccount, TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { BN } from "@coral-xyz/anchor";
-import { kp, loadState, makeProgram, masterPolicyPub, RPC_URL, saveState } from "./common";
+import {
+  kp, loadState, makeProgram, masterPolicyPub, RPC_URL, saveState,
+} from "./common";
 
 const MASTER_ID = 1;
 
+// 고정 키페어 경로
+const KP_PATHS = {
+  leader:        path.join(os.homedir(), ".config/solana/riskmesh-leader.json"),
+  participantA:  path.join(os.homedir(), ".config/solana/riskmesh-participant-a.json"),
+  participantB:  path.join(os.homedir(), ".config/solana/riskmesh-participant-b.json"),
+  reinsurer:     path.join(os.homedir(), ".config/solana/riskmesh-reinsurer.json"),
+};
+
+function loadKp(p: string): Keypair {
+  if (!fs.existsSync(p)) throw new Error(`키페어 파일 없음: ${p}`);
+  return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync(p, "utf-8"))));
+}
+
 async function main() {
   const s = loadState();
-  const leader = kp(s.leaderKey);
+
+  // ── 키페어 로드 ──────────────────────────────────────────────────────────────
+  const leader  = kp(s.leaderKey);
+  const partyA  = loadKp(KP_PATHS.participantA);
+  const partyB  = loadKp(KP_PATHS.participantB);
+  const reins   = loadKp(KP_PATHS.reinsurer);
+
   const conn = new Connection(RPC_URL, "confirmed");
 
-  console.log(`\n리더 주소: ${leader.publicKey.toBase58()}`);
-  console.log(`RPC URL  : ${RPC_URL}`);
+  console.log("=== 지갑 주소 ===");
+  console.log(`Leader       : ${leader.publicKey.toBase58()}`);
+  console.log(`Participant A: ${partyA.publicKey.toBase58()}`);
+  console.log(`Participant B: ${partyB.publicKey.toBase58()}`);
+  console.log(`Reinsurer    : ${reins.publicKey.toBase58()}`);
+  console.log(`RPC          : ${RPC_URL}`);
 
-  // ── 잔액 확인 및 에어드롭 ────────────────────────────────────────────────────
+  // ── 잔액 확인 (리더만; 나머지는 devnet에서 충분히 보유 중) ──────────────────
   const balance = await conn.getBalance(leader.publicKey);
-  console.log(`리더 SOL 잔액: ${balance / LAMPORTS_PER_SOL} SOL`);
+  console.log(`\n리더 SOL 잔액: ${(balance / LAMPORTS_PER_SOL).toFixed(4)} SOL`);
   if (balance < 0.2 * LAMPORTS_PER_SOL) {
     console.log("잔액 부족, devnet 에어드롭 요청 중...");
     const sig = await conn.requestAirdrop(leader.publicKey, 2 * LAMPORTS_PER_SOL);
@@ -55,7 +78,7 @@ async function main() {
     console.log("에어드롭 완료 (+2 SOL)");
   }
 
-  // ── Mint 존재 여부 확인 → 없으면 신규 생성 ─────────────────────────────────
+  // ── Mint 확인 → 없으면 신규 생성 ────────────────────────────────────────────
   let mintPubkey: PublicKey;
   const existingMintInfo = await conn.getAccountInfo(new PublicKey(s.mint));
   if (!existingMintInfo) {
@@ -70,14 +93,13 @@ async function main() {
 
   const pg = makeProgram(leader);
 
-  // ── master PDA 사전 계산 ─────────────────────────────────────────────────────
+  // ── master PDA 계산 ──────────────────────────────────────────────────────────
   const masterPda = masterPolicyPub(leader.publicKey, MASTER_ID);
   console.log(`\nMaster PDA: ${masterPda.toBase58()}`);
 
-  // 이미 생성된 경우 확인
   const existing = await conn.getAccountInfo(masterPda);
   if (existing) {
-    console.log("이미 MasterPolicy가 존재합니다. 상태를 확인합니다...");
+    console.log("이미 MasterPolicy가 존재합니다. 상태 확인 중...");
     const master = await pg.account.masterPolicy.fetch(masterPda);
     console.log(`status: ${master.status} (2=Active)`);
     if (master.status === 2) {
@@ -86,45 +108,54 @@ async function main() {
     }
   }
 
-  // ── 리더 ATA 생성 및 토큰 민팅 ──────────────────────────────────────────────
-  console.log("\n리더 ATA 생성 및 토큰 민팅 중...");
-  const leaderAta = await getOrCreateAssociatedTokenAccount(
-    conn, leader, mintPubkey, leader.publicKey
-  );
+  // ── ATAs (identity 지갑별 deposit 계정) ─────────────────────────────────────
+  console.log("\nATA 생성 중...");
+  const leaderAta = await getOrCreateAssociatedTokenAccount(conn, leader, mintPubkey, leader.publicKey);
+  const aAta      = await getOrCreateAssociatedTokenAccount(conn, leader, mintPubkey, partyA.publicKey);
+  const bAta      = await getOrCreateAssociatedTokenAccount(conn, leader, mintPubkey, partyB.publicKey);
+  const reinsAta  = await getOrCreateAssociatedTokenAccount(conn, leader, mintPubkey, reins.publicKey);
+
+  // 리더 ATA에 premium 지불용 토큰 민팅 (10 USDC)
   await mintTo(conn, leader, mintPubkey, leaderAta.address, leader, 10_000_000);
-  console.log(`리더 ATA: ${leaderAta.address.toBase58()} (+10 USDC 민팅)`);
+  console.log(`Leader ATA    : ${leaderAta.address.toBase58()} (+10 USDC)`);
+  console.log(`Participant A ATA: ${aAta.address.toBase58()}`);
+  console.log(`Participant B ATA: ${bAta.address.toBase58()}`);
+  console.log(`Reinsurer ATA : ${reinsAta.address.toBase58()}`);
 
   // ── PDA 소유 토큰 계정 생성 ──────────────────────────────────────────────────
   // ATA는 (mint, owner) 쌍으로 유일 → 다수의 PDA 소유 계정은 명시적 Keypair 사용
-  console.log("\nPDA 소유 토큰 계정 생성 중...");
-  const leaderDepositKp = Keypair.generate();
-  const reinsurerPoolKp = Keypair.generate();
-  const leaderPoolKp    = Keypair.generate();
+  console.log("\nPDA 소유 pool/deposit 계정 생성 중...");
+  const leaderDepositKp  = Keypair.generate();
+  const reinsurerPoolKp  = Keypair.generate();
+  const reinsurerDepKp   = Keypair.generate();
+  const leaderPoolKp     = Keypair.generate();
+  const aPoolKp          = Keypair.generate();
+  const bPoolKp          = Keypair.generate();
 
   await createAccount(conn, leader, mintPubkey, masterPda, leaderDepositKp);
   await createAccount(conn, leader, mintPubkey, masterPda, reinsurerPoolKp);
+  await createAccount(conn, leader, mintPubkey, masterPda, reinsurerDepKp);
   await createAccount(conn, leader, mintPubkey, masterPda, leaderPoolKp);
+  await createAccount(conn, leader, mintPubkey, masterPda, aPoolKp);
+  await createAccount(conn, leader, mintPubkey, masterPda, bPoolKp);
 
-  // leaderPool에 청구 정산용 자금 적립 (6 USDC — 최대 페이아웃 tier)
-  await mintTo(conn, leader, mintPubkey, leaderPoolKp.publicKey, leader, 6_000_000);
+  // 각 pool에 최대 페이아웃 분담분 적립 (6 USDC 기준, ceded=0)
+  // Leader 50% = 3 USDC, A 30% = 1.8 USDC, B 20% = 1.2 USDC
+  await mintTo(conn, leader, mintPubkey, leaderPoolKp.publicKey, leader, 3_000_000);
+  await mintTo(conn, leader, mintPubkey, aPoolKp.publicKey,      leader, 1_800_000);
+  await mintTo(conn, leader, mintPubkey, bPoolKp.publicKey,      leader, 1_200_000);
 
   console.log(`leaderDepositWallet : ${leaderDepositKp.publicKey.toBase58()}`);
   console.log(`reinsurerPoolWallet : ${reinsurerPoolKp.publicKey.toBase58()}`);
-  console.log(`leaderPoolWallet    : ${leaderPoolKp.publicKey.toBase58()} (6 USDC 적립)`);
-  console.log(`leaderAta           : ${leaderAta.address.toBase58()} (premium payer)`);
+  console.log(`reinsurerDepWallet  : ${reinsurerDepKp.publicKey.toBase58()}`);
+  console.log(`leaderPoolWallet    : ${leaderPoolKp.publicKey.toBase58()} (+3 USDC)`);
+  console.log(`participantAPool    : ${aPoolKp.publicKey.toBase58()} (+1.8 USDC)`);
+  console.log(`participantBPool    : ${bPoolKp.publicKey.toBase58()} (+1.2 USDC)`);
 
   // ── create_master_policy ─────────────────────────────────────────────────────
-  // oracle_feed: Track B = state.json의 feedPubkey, Track A = PublicKey.default
-  const oracleFeed = s.feedPubkey
-    ? new PublicKey(s.feedPubkey)
-    : PublicKey.default;
-
-  if (s.feedPubkey) {
-    console.log(`\nTrack B oracle_feed: ${oracleFeed.toBase58()}`);
-  } else {
-    console.log("\noracle_feed 미설정 → Track A 전용 MasterPolicy");
-    console.log("  (Track B 사용 시: oracle-feed-create 먼저 실행)");
-  }
+  const oracleFeed = s.feedPubkey ? new PublicKey(s.feedPubkey) : PublicKey.default;
+  if (s.feedPubkey) console.log(`\nTrack B oracle_feed: ${oracleFeed.toBase58()}`);
+  else              console.log("\noracle_feed 미설정 → Track A 전용 MasterPolicy");
 
   const now = Math.floor(Date.now() / 1000);
   console.log("\ncreate_master_policy 호출 중...");
@@ -141,19 +172,21 @@ async function main() {
       cededRatioBps:       0,
       reinsCommissionBps:  0,
       participants: [
-        { insurer: leader.publicKey, shareBps: 10000 },
+        { insurer: leader.publicKey, shareBps: 5_000 },
+        { insurer: partyA.publicKey, shareBps: 3_000 },
+        { insurer: partyB.publicKey, shareBps: 2_000 },
       ],
       oracleFeed,
     })
     .accountsPartial({
       leader:                 leader.publicKey,
       operator:               leader.publicKey,
-      reinsurer:              leader.publicKey,
+      reinsurer:              reins.publicKey,
       currencyMint:           mintPubkey,
       masterPolicy:           masterPda,
       leaderDepositWallet:    leaderDepositKp.publicKey,
       reinsurerPoolWallet:    reinsurerPoolKp.publicKey,
-      reinsurerDepositWallet: leaderAta.address,   // ceded=0 이므로 실제 사용 안 됨
+      reinsurerDepositWallet: reinsurerDepKp.publicKey,
       systemProgram:          SystemProgram.programId,
     })
     .signers([leader])
@@ -162,27 +195,46 @@ async function main() {
 
   // ── register_participant_wallets ─────────────────────────────────────────────
   console.log("\nregister_participant_wallets 호출 중...");
-  const txReg = await pg.methods
-    .registerParticipantWallets()
-    .accountsPartial({
-      insurer:      leader.publicKey,
-      masterPolicy: masterPda,
-      poolWallet:   leaderPoolKp.publicKey,
-      depositWallet: leaderAta.address,
-    })
-    .signers([leader])
-    .rpc();
-  console.log("  Tx:", txReg);
+  for (const [actor, poolWallet, depositWallet, signers] of [
+    [leader, leaderPoolKp.publicKey, leaderAta.address, [leader]],
+    [partyA, aPoolKp.publicKey,      aAta.address,      [partyA]],
+    [partyB, bPoolKp.publicKey,      bAta.address,      [partyB]],
+  ] as const) {
+    await pg.methods
+      .registerParticipantWallets()
+      .accountsPartial({
+        insurer:       actor.publicKey,
+        masterPolicy:  masterPda,
+        poolWallet,
+        depositWallet,
+      })
+      .signers([...signers])
+      .rpc();
+    console.log(`  ${actor.publicKey.toBase58().slice(0, 8)}... 완료`);
+  }
 
-  // ── confirm_master (Reinsurer role=1) ────────────────────────────────────────
-  // leader는 create 시 auto-confirmed(Participant), reinsurer confirm만 추가로 필요
-  console.log("\nconfirm_master (Reinsurer) 호출 중...");
-  const txConf = await pg.methods
+  // ── confirm_master ───────────────────────────────────────────────────────────
+  console.log("\nconfirm_master(0) — 참여사 전원 승인 중...");
+  for (const [actor, signers] of [
+    [leader, [leader]],
+    [partyA, [partyA]],
+    [partyB, [partyB]],
+  ] as const) {
+    await pg.methods
+      .confirmMaster(0)
+      .accountsPartial({ actor: actor.publicKey, masterPolicy: masterPda })
+      .signers([...signers])
+      .rpc();
+    console.log(`  ${actor.publicKey.toBase58().slice(0, 8)}... 완료`);
+  }
+
+  console.log("\nconfirm_master(1) — 재보험사 승인 중...");
+  await pg.methods
     .confirmMaster(1)
-    .accountsPartial({ actor: leader.publicKey, masterPolicy: masterPda })
-    .signers([leader])
+    .accountsPartial({ actor: reins.publicKey, masterPolicy: masterPda })
+    .signers([reins])
     .rpc();
-  console.log("  Tx:", txConf);
+  console.log(`  ${reins.publicKey.toBase58().slice(0, 8)}... 완료`);
 
   // ── activate_master ──────────────────────────────────────────────────────────
   console.log("\nactivate_master 호출 중...");
@@ -195,28 +247,25 @@ async function main() {
 
   // ── 결과 확인 ────────────────────────────────────────────────────────────────
   const master = await pg.account.masterPolicy.fetch(masterPda);
-  console.log(`\n✓ MasterPolicy 활성화 완료`);
-  console.log(`  status           : ${master.status} (2=Active)`);
-  console.log(`  premiumPerPolicy : ${master.premiumPerPolicy.toString()} (1 USDC)`);
-  console.log(`  payoutDelay2H    : ${master.payoutDelay2H.toString()} (2 USDC)`);
-
-  // ── Rust 데몬용 리더 키페어 파일 저장 ────────────────────────────────────────
-  const leaderKpPath = path.join(os.homedir(), ".config/solana/riskmesh-leader.json");
-  fs.writeFileSync(leaderKpPath, JSON.stringify(Array.from(leader.secretKey)));
-  console.log(`\n✓ 리더 키페어 저장: ${leaderKpPath}`);
+  console.log(`\n✓ MasterPolicy 활성화 완료 (status=${master.status}, 2=Active)`);
 
   // ── .state.json 업데이트 ──────────────────────────────────────────────────────
   saveState({
     ...s,
-    mint:               mintPubkey.toBase58(),
-    masterId:           MASTER_ID,
-    masterPda:          masterPda.toBase58(),
-    leaderAta:          leaderAta.address.toBase58(),
-    leaderDepositWallet: leaderDepositKp.publicKey.toBase58(),
-    reinsurerPoolWallet: reinsurerPoolKp.publicKey.toBase58(),
-    leaderPoolWallet:   leaderPoolKp.publicKey.toBase58(),
-    flightPolicies:     [],
-  } as any);
+    mint:                   mintPubkey.toBase58(),
+    masterId:               MASTER_ID,
+    masterPda:              masterPda.toBase58(),
+    leaderAta:              leaderAta.address.toBase58(),
+    leaderDepositWallet:    leaderDepositKp.publicKey.toBase58(),
+    reinsurerPoolWallet:    reinsurerPoolKp.publicKey.toBase58(),
+    reinsurerDepositWallet: reinsurerDepKp.publicKey.toBase58(),
+    leaderPoolWallet:       leaderPoolKp.publicKey.toBase58(),
+    participantAPoolWallet: aPoolKp.publicKey.toBase58(),
+    participantADepositWallet: aAta.address.toBase58(),
+    participantBPoolWallet: bPoolKp.publicKey.toBase58(),
+    participantBDepositWallet: bAta.address.toBase58(),
+    flightPolicies:         [],
+  });
   console.log("✓ .state.json 업데이트 완료");
 }
 
