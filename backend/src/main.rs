@@ -1,10 +1,10 @@
+mod api;
 mod config;
 mod flight_api;
 mod oracle;
 mod scheduler;
 mod solana;
 mod switchboard;
-mod web;
 
 use anyhow::Result;
 use std::sync::Arc;
@@ -29,23 +29,9 @@ async fn main() -> Result<()> {
         config.web_bind_addr
     );
 
-    let scheduler_task = tokio::spawn(scheduler::start(config.clone()));
-    let web_task = tokio::spawn(web::start(config.clone()));
-
-    tokio::select! {
-        res = scheduler_task => {
-            match res {
-                Ok(inner) => inner?,
-                Err(e) => return Err(e.into()),
-            }
-        }
-        res = web_task => {
-            match res {
-                Ok(inner) => inner?,
-                Err(e) => return Err(e.into()),
-            }
-        }
-    }
+    // 로컬 개발 중에는 스케줄러를 비활성화하고 API 서버만 실행한다.
+    // let scheduler_task = tokio::spawn(scheduler::start(config.clone()));
+    api::start(config.clone()).await?;
 
     Ok(())
 }

@@ -77,6 +77,14 @@ pub fn scan_master_policies(
     scan_accounts(client, program_id, "MasterPolicy", parse_master_policy)
 }
 
+pub fn fetch_master_policy(
+    client: &SolanaClient,
+    master_policy_pubkey: &Pubkey,
+) -> Result<MasterPolicyInfo> {
+    let account = client.get_account(master_policy_pubkey)?;
+    parse_master_policy(master_policy_pubkey, &account.data)
+}
+
 pub fn scan_flight_policies(
     client: &SolanaClient,
     program_id: &Pubkey,
