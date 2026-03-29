@@ -2,7 +2,7 @@ import { PublicKey } from '@solana/web3.js';
 
 export const RPC_ENDPOINT = 'https://api.devnet.solana.com';
 
-export const PROGRAM_ID = new PublicKey('BXxqMY3f9y7dzvoQWJjhX95GMEyuRjD61kgfgherhSX7');
+export const PROGRAM_ID = new PublicKey('ETEEEssGKAAQEGwz3ggDcy9vzPAPtBjtb2KocdyLBMjh');
 
 export const CURRENCY_MINT = new PublicKey('5YsAiRYU3tTFc5B8aaGwVL1oC9DVxBEddnXCaHcQQg2k');
 
