@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import BN from 'bn.js';
 import { Transaction, TransactionInstruction, SystemProgram, Keypair, PublicKey } from '@solana/web3.js';
-import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createInitializeAccount3Instruction, createTransferInstruction, ACCOUNT_SIZE, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { getAssociatedTokenAddress, createInitializeAccount3Instruction, createTransferInstruction, ACCOUNT_SIZE, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { Card, CardHeader, CardTitle, CardBody, Button, FormGroup, FormLabel, FormInput, Divider, Tag } from '@/components/common';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { useToast } from '@/components/common';
@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useProgram } from '@/hooks/useProgram';
 import { getMasterPolicyPDA } from '@/lib/pda';
 import { CURRENCY_MINT, DEFAULT_PAYOUT_TIERS } from '@/lib/constants';
-import { generateDemoKeypairs, setPoolWallet } from '@/lib/demo-keypairs';
+import { setPoolWallet } from '@/lib/demo-keypairs';
 import { ConfirmRole } from '@/lib/idl/open_parametric';
 
 export function MasterContractSetup() {
@@ -27,6 +27,9 @@ export function MasterContractSetup() {
   const [payout6h, setPayout6h] = useState(DEFAULT_PAYOUT_TIERS.delay6hOrCancelled);
   const [loading, setLoading] = useState(false);
   const [fundLoading, setFundLoading] = useState(false);
+  const [partAAddress, setPartAAddress] = useState('');
+  const [partBAddress, setPartBAddress] = useState('');
+  const [reinsurerAddress, setReinsurerAddress] = useState('');
 
   const handleSetTerms = async () => {
     if (mode === 'simulation') {
@@ -46,15 +49,23 @@ export function MasterContractSetup() {
       return;
     }
 
+    // 참여사 지갑 주소 검증 (setLoading 전에 수행)
+    let partAPubkey: PublicKey, partBPubkey: PublicKey, reinsurerPubkey: PublicKey;
+    try {
+      partAPubkey = new PublicKey(partAAddress);
+      partBPubkey = new PublicKey(partBAddress);
+      reinsurerPubkey = new PublicKey(reinsurerAddress);
+    } catch {
+      toast('유효하지 않은 지갑 주소입니다', 'd');
+      return;
+    }
+
     setLoading(true);
     try {
       const leaderKey = wallet.publicKey;
       const leaderATA = await getAssociatedTokenAddress(CURRENCY_MINT, leaderKey);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const prog = program as any;
-
-      // demo: 데모용 인메모리 키페어 생성 — 프로덕션에서는 UI에서 참여사 지갑 주소 입력
-      const { partA: partAKp, partB: partBKp } = generateDemoKeypairs();
 
       // PDA-owned pool 계정 키페어 (settle 시 MasterPolicy PDA가 서명하려면 SPL Token owner = PDA 필요)
       const leaderPoolKp = Keypair.generate();
@@ -66,32 +77,8 @@ export function MasterContractSetup() {
       const masterIdBN = new BN(masterId);
       const [masterPolicyPDA] = getMasterPolicyPDA(leaderKey, masterIdBN);
 
-      // demo: 각 역할별 별도 지갑이어야 함 — 현재 데모에서는 leader=operator=reinsurer
       const operatorKey = leaderKey;
-      const reinsurerKey = leaderKey;
-
-      // demo: 데모 키페어에 SOL 전송 (confirm TX 가스비용)
-      const fundPartA = SystemProgram.transfer({
-        fromPubkey: leaderKey,
-        toPubkey: partAKp.publicKey,
-        lamports: 10_000_000, // 0.01 SOL
-      });
-      const fundPartB = SystemProgram.transfer({
-        fromPubkey: leaderKey,
-        toPubkey: partBKp.publicKey,
-        lamports: 10_000_000,
-      });
-
-      // demo: 데모 키페어의 ATA(SPL Token Account, deposit wallet) 생성 — leader가 rent 비용 부담
-      // 실제 환경에서는 각 참여사가 자체 ATA를 이미 보유
-      const partAATA = await getAssociatedTokenAddress(CURRENCY_MINT, partAKp.publicKey);
-      const partBATA = await getAssociatedTokenAddress(CURRENCY_MINT, partBKp.publicKey);
-      const createPartAATAIx = createAssociatedTokenAccountInstruction(
-        leaderKey, partAATA, partAKp.publicKey, CURRENCY_MINT,
-      );
-      const createPartBATAIx = createAssociatedTokenAccountInstruction(
-        leaderKey, partBATA, partBKp.publicKey, CURRENCY_MINT,
-      );
+      const reinsurerKey = reinsurerPubkey;
 
       // ── PDA-owned pool 계정 생성 ──
       // settle_flight_claim.rs에서 pool_wallet.owner == master.key() 검증을 통과하려면
@@ -125,11 +112,10 @@ export function MasterContractSetup() {
           payoutDelay6HOrCancelled: new BN(payout6h * 1_000_000),
           cededRatioBps: 5000,
           reinsCommissionBps: 1000,
-          // demo: 데모에서는 3명 모두 다른 지갑 키페어 사용
           participants: [
             { insurer: leaderKey, shareBps: shares.leader * 100 },
-            { insurer: partAKp.publicKey, shareBps: shares.partA * 100 },
-            { insurer: partBKp.publicKey, shareBps: shares.partB * 100 },
+            { insurer: partAPubkey, shareBps: shares.partA * 100 },
+            { insurer: partBPubkey, shareBps: shares.partB * 100 },
           ],
         })
         .accounts({
@@ -140,7 +126,7 @@ export function MasterContractSetup() {
           masterPolicy: masterPolicyPDA,
           leaderDepositWallet: leaderATA,
           reinsurerPoolWallet: reinsurerPoolKp.publicKey, // PDA-owned
-          reinsurerDepositWallet: leaderATA,
+          reinsurerDepositWallet: await getAssociatedTokenAddress(CURRENCY_MINT, reinsurerPubkey),
           tokenProgram: TOKEN_PROGRAM_ID,
         })
         .instruction();
@@ -162,14 +148,12 @@ export function MasterContractSetup() {
         .accounts({ actor: leaderKey, masterPolicy: masterPolicyPDA })
         .instruction();
 
-      // ── TX1: pool 계정 생성 + fund + ATA 생성 ──
+      // ── TX1: pool 계정 생성 ──
       const tx1 = new Transaction().add(
         createLeaderPoolIx, initLeaderPoolIx,
         createPartAPoolIx, initPartAPoolIx,
         createPartBPoolIx, initPartBPoolIx,
         createReinsurerPoolIx, initReinsurerPoolIx,
-        fundPartA, fundPartB,
-        createPartAATAIx, createPartBATAIx,
       );
       await provider.sendAndConfirm(tx1, [
         leaderPoolKp, partAPoolKp, partBPoolKp, reinsurerPoolKp,
@@ -332,6 +316,40 @@ export function MasterContractSetup() {
           </div>
         ))}
         <Divider />
+        {mode === 'onchain' && (
+          <>
+            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--sub)', marginBottom: 6 }}>
+              {t('master.participantAddresses')}
+            </div>
+            <FormGroup>
+              <FormLabel>{t('master.partAAddress')}</FormLabel>
+              <FormInput
+                value={partAAddress}
+                onChange={e => setPartAAddress(e.target.value)}
+                placeholder="Participant A wallet address"
+                style={{ fontFamily: "'DM Mono', monospace", fontSize: 10 }}
+              />
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>{t('master.partBAddress')}</FormLabel>
+              <FormInput
+                value={partBAddress}
+                onChange={e => setPartBAddress(e.target.value)}
+                placeholder="Participant B wallet address"
+                style={{ fontFamily: "'DM Mono', monospace", fontSize: 10 }}
+              />
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>{t('master.reinsurerAddress')}</FormLabel>
+              <FormInput
+                value={reinsurerAddress}
+                onChange={e => setReinsurerAddress(e.target.value)}
+                placeholder="Reinsurer wallet address"
+                style={{ fontFamily: "'DM Mono', monospace", fontSize: 10 }}
+              />
+            </FormGroup>
+          </>
+        )}
         {mode === 'onchain' && !connected && (
           <div style={{ fontSize: 9, color: 'var(--danger)', marginBottom: 6, textAlign: 'center' }}>
             Wallet not connected — connect to use on-chain mode
@@ -342,7 +360,7 @@ export function MasterContractSetup() {
         </Button>
         {mode === 'onchain' && masterActive && (
           <Button variant="warning" fullWidth onClick={handleFundPools} disabled={fundLoading} style={{ marginTop: 6 }} data-guide="fund-pool-btn">
-            {fundLoading ? 'Funding...' : 'Demo: Fund Pool (USDC)'}
+            {fundLoading ? 'Funding...' : t('master.fundAllPools')}
           </Button>
         )}
       </CardBody>

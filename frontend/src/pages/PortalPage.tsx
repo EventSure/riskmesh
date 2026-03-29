@@ -360,7 +360,7 @@ export function PortalPage() {
     <PageShell header={<PortalHeader role={primaryRole} masterPDA={masterParam} roles={roles} />}>
       <TabBar tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
       <TabContent visible={activeTab === 'overview'}>
-        <PortalOverview participantInfo={participantInfo} allRoles={roles} />
+        <PortalOverview participantInfo={participantInfo} allRoles={roles} masterPDA={masterPDA} />
       </TabContent>
       <TabContent visible={activeTab === 'contracts'}>
         <PortalContracts masterPDA={masterPDA} />
