@@ -14,6 +14,154 @@ Open Parametric 컨트랙트의 오라클 연동은 두 가지 독립적인 트�
 
 ---
 
+## Switchboard On-Demand 개념
+
+### Pull Feed란
+
+Switchboard On-Demand의 **Pull Feed**는 Solana 온체인 계정입니다.
+이 계정은 "어떤 외부 데이터를 어떻게 가져와야 하는가"를 정의하는 **Job 목록**을 담고 있으며,
+오라클 노드가 해당 Job을 실행하고 서명한 결과값을 이 계정에 기록합니다.
+
+```
+Pull Feed 계정 (온체인 Solana 계정)
+  ├─ pubkey: <피드 주소>          ← MasterPolicy.oracle_feed에 저장하는 값
+  ├─ jobs: [ OracleJob, ... ]    ← 데이터 fetch/변환 파이프라인 정의
+  ├─ queue: <큐 주소>             ← 어느 오라클 네트워크가 처리할지
+  ├─ latest_value: <최신값>       ← 마지막으로 기록된 오라클 결과
+  └─ latest_slot: <슬롯>          ← 기록 시점 (staleness 판별용)
+```
+
+`MasterPolicy.oracle_feed`에 넣는 주소는 **이 Pull Feed 계정의 pubkey**입니다.
+계정을 먼저 생성(1회)하고, 그 주소를 `create_master_policy` 파라미터로 전달합니다.
+
+### Job이란
+
+**Job**은 오라클 노드가 실행할 데이터 수집·변환 파이프라인입니다.
+`OracleJob`은 순서가 있는 task 배열로 구성되며, 각 task의 출력이 다음 task의 입력이 됩니다.
+
+이 프로젝트에서 사용하는 Job 예시 (`oracle-feed-create.ts`):
+
+```
+task[0]: httpTask  — AviationStack API HTTP 호출
+         URL: http://api.aviationstack.com/v1/flights
+              ?access_key=<API_KEY>&flight_iata=KE017
+
+task[1]: jsonParseTask — 응답 JSON에서 출발 지연(분) 추출
+         path: "$.data[0].departure.delay"
+         예: 127 (분)
+
+task[2]: divideTask(10) — 10으로 나눔 (정수 나눗셈 = 내림 효과)
+         예: 12
+
+task[3]: multiplyTask(10) — 10을 곱해 분 단위로 복원
+         예: 120 (분)
+```
+
+최종 출력값 `120`이 온체인에 기록되고, `check_oracle_and_resolve_flight`에서
+`delay_minutes = 120`으로 읽힙니다.
+
+**중요**: Job 정의(API 키 포함)는 Feed 계정 데이터에 직접 저장되므로 온체인에 노출됩니다.
+무료 AviationStack 키는 문제없지만, 유료 키는 Switchboard Secrets 기능 사용을 권장합니다.
+
+### 오라클 네트워크 동작 방식
+
+Switchboard On-Demand는 **Pull 방식**입니다. 누군가 업데이트를 요청할 때만 오라클 노드가
+동작합니다(Push 방식인 Chainlink와 다름).
+
+```
+1. 업데이트 요청 (백엔드 daemon 또는 누구나)
+        │
+        ▼
+2. Crossbar API 호출
+   POST https://crossbar.switchboard.xyz/updates/solana/{queue}/{feed_pubkey}
+        │
+        ▼ (Crossbar가 여러 오라클 노드에 요청)
+3. 오라클 노드들이 Job 실행
+   - AviationStack API 호출
+   - JSON 파싱 + 수학 변환
+   - 결과에 Ed25519 서명
+        │
+        ▼
+4. Crossbar가 서명된 결과 집계 후 응답
+   - instructions[0]: Ed25519 서명 검증 instruction
+   - instructions[1]: verified_update instruction (feed 계정 갱신)
+   - luts: Address Lookup Tables (계정 목록 압축용)
+        │
+        ▼
+5. 백엔드가 3-instruction v0 트랜잭션 전송
+   [Ed25519 검증, verified_update, check_oracle_and_resolve_flight]
+        │
+        ▼
+6. 온체인 검증 (QuoteVerifier)
+   - ix[0]의 Ed25519 서명이 Switchboard 오라클 노드 키로 서명됐는지 확인
+   - staleness: 현재 슬롯 - oracle 슬롯 ≤ 150 슬롯 (≈ 60–90초)
+   - 검증 통과 시 feed 값을 신뢰하고 FlightPolicy 상태 확정
+```
+
+### 왜 3개의 instruction인가
+
+Switchboard On-Demand의 보안 모델은 **동일 트랜잭션 내 instruction 참조**에 의존합니다.
+
+```
+ix[0]: Ed25519Program.verify(오라클_서명, 오라클_데이터)
+         ↑ 이 instruction이 존재하면 Solana 런타임이 서명을 검증함
+
+ix[1]: switchboard::verified_update(feed_account)
+         ↑ ix[0]에서 검증된 서명이 Switchboard 오라클 노드 키임을 확인
+         ↑ feed 계정의 latest_value, latest_slot 갱신
+
+ix[2]: check_oracle_and_resolve_flight
+         ↑ QuoteVerifier.verify_instruction_at(0)으로 ix[0]을 참조
+         ↑ "이 트랜잭션에서 Ed25519 검증이 통과됐다"는 사실을 신뢰
+         ↑ 직접 인터넷 호출 없이 오라클 값을 온체인에서 검증
+```
+
+트랜잭션이 원자적(atomic)이므로, ix[0]의 서명 검증이 실패하면 트랜잭션 전체가 실패합니다.
+이것이 탈중앙화 신뢰 모델의 핵심입니다.
+
+### oracle_feed 주소를 어떻게 얻는가
+
+Feed 계정은 **최초 1회 생성**해야 합니다. 동일한 항공편이라도 MasterPolicy마다 별도 Feed를
+생성할 수도 있고, 여러 MasterPolicy가 같은 Feed를 공유할 수도 있습니다.
+
+```bash
+# devnet Feed 생성 스크립트 실행
+ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
+AVIATIONSTACK_API_KEY=<키> \
+FLIGHT_NO=KE017 \
+yarn demo:oracle-feed-create
+```
+
+실행 결과:
+```
+=== Feed 생성 완료 ===
+Tx          : 3s335FL2...
+Feed Pubkey : 278oAt1RBQLZAVfx35qYEjuhiH29nJmGpmzpKCVtDZTs   ← 이 주소를 사용
+항공편      : KE017
+```
+
+생성된 `Feed Pubkey`가 `oracle_feed` 파라미터에 들어가는 값입니다.
+
+```typescript
+// create_master_policy 호출 시
+await program.methods.createMasterPolicy({
+  oracleFeed: new PublicKey("278oAt1RBQLZAVfx35qYEjuhiH29nJmGpmzpKCVtDZTs"),
+  // ...
+})
+```
+
+### Feed 재사용 가능 여부
+
+| 상황 | 권장 |
+|---|---|
+| 같은 항공편(KE017), 다른 MasterPolicy | ✅ 재사용 가능 |
+| 항공편 코드가 다른 경우 | ❌ 별도 Feed 생성 필요 (Job의 URL이 다름) |
+| 테스트 환경과 프로덕션 | ❌ 별도 생성 (devnet Feed는 mainnet에서 무효) |
+
+Feed는 온체인 계정이므로 생성 시 약 0.01–0.05 SOL의 렌트 비용이 발생합니다.
+
+---
+
 ## 공통 개념
 
 ### 계정 구조
