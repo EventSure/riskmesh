@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use solana_sdk::pubkey::Pubkey;
+use solana_sdk::signature::Signer;
 use std::str::FromStr;
 
 use crate::{
@@ -152,7 +153,6 @@ pub(super) fn create_flight_policy(
 ) -> Result<CreateFlightPolicyResponse> {
     let program_client = ProgramClient::new(client, config);
 
-    let payer_token_pubkey = parse_pubkey("payer_token_pubkey", &req.payer_token_pubkey)?;
     let master_policy =
         fetch_master_policy(client, master_policy_pubkey).context("MasterPolicy 조회 실패")?;
 
@@ -176,6 +176,10 @@ pub(super) fn create_flight_policy(
     let leader = program_client.load_leader_signer()?;
     let flight_policy_pubkey =
         program_client.derive_flight_policy_pubkey(master_policy_pubkey, req.child_policy_id);
+    let currency_mint = parse_pubkey("currency_mint", &master_policy.currency_mint)
+        .context("currency_mint 파싱 실패")?;
+    let payer_token_pubkey =
+        program_client.derive_associated_token_account_pubkey(&leader.pubkey(), &currency_mint);
     let leader_deposit_token = Pubkey::from_str(&master_policy.leader_deposit_wallet)
         .context("leader_deposit_wallet 주소 파싱 실패")?;
 

@@ -58,7 +58,6 @@ pub(super) struct CreateFlightPolicyRequest {
     pub flight_no: String,
     pub route: String,
     pub departure_ts: i64,
-    pub payer_token_pubkey: String,
 }
 
 #[derive(Serialize)]

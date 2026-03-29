@@ -51,6 +51,22 @@ impl<'a> ProgramClient<'a> {
         flight_policy_pubkey
     }
 
+    pub(super) fn derive_associated_token_account_pubkey(
+        &self,
+        owner: &Pubkey,
+        mint: &Pubkey,
+    ) -> Pubkey {
+        let (associated_token_account, _bump) = Pubkey::find_program_address(
+            &[
+                owner.as_ref(),
+                spl_token_program_id().as_ref(),
+                mint.as_ref(),
+            ],
+            &spl_associated_token_program_id(),
+        );
+        associated_token_account
+    }
+
     pub(super) fn create_flight_policy(
         &self,
         leader: &Keypair,
@@ -107,4 +123,8 @@ fn build_create_flight_policy_ix(
 
 fn spl_token_program_id() -> Pubkey {
     Pubkey::from_str("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA").expect("valid pubkey")
+}
+
+fn spl_associated_token_program_id() -> Pubkey {
+    Pubkey::from_str("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL").expect("valid pubkey")
 }
