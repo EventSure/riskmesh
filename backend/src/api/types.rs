@@ -1,6 +1,8 @@
 use borsh::BorshSerialize;
 use serde::{Deserialize, Serialize};
 
+pub(super) type FirebaseTestDocumentResponse = super::repository::SeedResult;
+
 #[derive(Serialize)]
 pub(super) struct HealthResponse {
     pub status: &'static str,

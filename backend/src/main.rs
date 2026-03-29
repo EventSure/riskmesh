@@ -1,5 +1,6 @@
 mod api;
 mod config;
+mod firebase;
 mod flight_api;
 mod oracle;
 mod scheduler;

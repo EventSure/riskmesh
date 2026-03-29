@@ -10,6 +10,7 @@ use crate::{
 
 use super::{
     client::ProgramClient,
+    repository::FirebaseRepository,
     types::{
         CreateFlightPolicyParamsWire, CreateFlightPolicyRequest, CreateFlightPolicyResponse,
         FlightPoliciesResponse, HealthResponse, MasterFlightPoliciesResponse,
@@ -56,6 +57,13 @@ pub(super) fn list_master_policy_accounts(
         count: master_policy_pubkeys.len(),
         master_policy_pubkeys,
     })
+}
+
+pub(super) async fn create_firebase_test_document(
+) -> Result<super::repository::SeedResult> {
+    FirebaseRepository::from_env()?
+        .insert_test_document()
+        .await
 }
 
 pub(super) fn list_flight_policies(

@@ -11,9 +11,9 @@ use super::{
     state::AppState,
     types::{
         CreateFlightPolicyRequest, CreateFlightPolicyResponse, FlightPoliciesResponse,
+        FirebaseTestDocumentResponse,
         HealthResponse, MasterFlightPoliciesResponse, MasterPoliciesResponse,
-        MasterPolicyAccountsResponse,
-        MasterPoliciesTreeResponse,
+        MasterPoliciesTreeResponse, MasterPolicyAccountsResponse,
     },
 };
 
@@ -35,6 +35,15 @@ pub(super) async fn get_master_policy_accounts(
 ) -> Result<Json<MasterPolicyAccountsResponse>, ApiError> {
     let client = SolanaClient::new(&state.config.rpc_url);
     service::list_master_policy_accounts(&client, &state.config)
+        .map(Json)
+        .map_err(ApiError)
+}
+
+pub(super) async fn post_firebase_test_document(
+    State(_state): State<AppState>,
+) -> Result<Json<FirebaseTestDocumentResponse>, ApiError> {
+    service::create_firebase_test_document()
+        .await
         .map(Json)
         .map_err(ApiError)
 }
