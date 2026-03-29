@@ -30,8 +30,8 @@ async fn main() -> Result<()> {
         config.web_bind_addr
     );
 
-    // 로컬 개발 중에는 스케줄러를 비활성화하고 API 서버만 실행한다.
-    // let scheduler_task = tokio::spawn(scheduler::start(config.clone()));
+    // 스케줄러와 API 서버를 함께 실행한다.
+    let _scheduler_task = tokio::spawn(scheduler::start(config.clone()));
     api::start(config.clone()).await?;
 
     Ok(())
