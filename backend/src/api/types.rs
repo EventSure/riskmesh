@@ -1,8 +1,6 @@
 use borsh::BorshSerialize;
 use serde::{Deserialize, Serialize};
 
-pub(super) type FirebaseTestDocumentResponse = super::repository::SeedResult;
-
 #[derive(Serialize)]
 pub(super) struct HealthResponse {
     pub status: &'static str,
@@ -69,6 +67,15 @@ pub(super) struct CreateFlightPolicyResponse {
     pub master_policy_pubkey: String,
     pub flight_policy_pubkey: String,
     pub tx_signature: String,
+}
+
+#[derive(Serialize)]
+pub(super) struct FirebaseTestDocumentResponse {
+    pub firebase_saved: bool,
+    pub collection_id: String,
+    pub document_id: String,
+    pub firebase_document_path: String,
+    pub auth_principal: String,
 }
 
 #[derive(BorshSerialize)]

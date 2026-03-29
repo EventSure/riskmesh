@@ -1,7 +1,10 @@
 use anyhow::{Context, Result};
 use serde::Serialize;
 use serde_json::{json, Value};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+    sync::atomic::{AtomicU64, Ordering},
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use crate::firebase::{FirebaseClient, FirestoreDocument};
 
@@ -20,7 +23,7 @@ impl FirebaseRepository {
 
     pub(super) async fn insert_test_document(&self) -> Result<SeedResult> {
         let unix_ms = current_unix_ms()?;
-        let document_id = format!("riskmesh-seed-{unix_ms}");
+        let document_id = next_document_id(unix_ms);
         let auth = self.client.resolve_auth().await?;
         let fields = sample_firestore_fields(self.client.config(), unix_ms, &auth.principal);
         let document = self
@@ -71,4 +74,10 @@ fn current_unix_ms() -> Result<u128> {
         .duration_since(UNIX_EPOCH)
         .context("시스템 시간이 UNIX_EPOCH보다 이전입니다")?
         .as_millis())
+}
+
+fn next_document_id(unix_ms: u128) -> String {
+    static SEQ: AtomicU64 = AtomicU64::new(0);
+    let seq = SEQ.fetch_add(1, Ordering::Relaxed);
+    format!("riskmesh-seed-{unix_ms}-{seq}")
 }

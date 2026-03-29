@@ -13,7 +13,8 @@ use super::{
     repository::FirebaseRepository,
     types::{
         CreateFlightPolicyParamsWire, CreateFlightPolicyRequest, CreateFlightPolicyResponse,
-        FlightPoliciesResponse, HealthResponse, MasterFlightPoliciesResponse,
+        FirebaseTestDocumentResponse, FlightPoliciesResponse, HealthResponse,
+        MasterFlightPoliciesResponse,
         MasterPoliciesResponse, MasterPoliciesTreeResponse, MasterPolicyAccountTree,
         MasterPolicyAccountsResponse,
     },
@@ -60,10 +61,18 @@ pub(super) fn list_master_policy_accounts(
 }
 
 pub(super) async fn create_firebase_test_document(
-) -> Result<super::repository::SeedResult> {
-    FirebaseRepository::from_env()?
+) -> Result<FirebaseTestDocumentResponse> {
+    let saved = FirebaseRepository::from_env()?
         .insert_test_document()
-        .await
+        .await?;
+
+    Ok(FirebaseTestDocumentResponse {
+        firebase_saved: true,
+        collection_id: saved.collection_id,
+        document_id: saved.document_id,
+        firebase_document_path: saved.document.name,
+        auth_principal: saved.auth_local_id,
+    })
 }
 
 pub(super) fn list_flight_policies(
