@@ -9,7 +9,7 @@ pub mod state;
 use instructions::*;
 use state::*;
 
-declare_id!("BXxqMY3f9y7dzvoQWJjhX95GMEyuRjD61kgfgherhSX7");
+declare_id!("ETEEEssGKAAQEGwz3ggDcy9vzPAPtBjtb2KocdyLBMjh");
 
 #[program]
 pub mod open_parametric {
