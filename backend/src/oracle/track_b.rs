@@ -47,15 +47,16 @@ struct MasterPolicyInfo {
     pub participant_deposit_wallets: Vec<Pubkey>,
 }
 
-/// AwaitingOracle(1) 상태 FlightPolicy 목록을 온체인에서 조회한다.
+/// Track B 처리 대상 FlightPolicy 목록을 온체인에서 조회한다.
 ///
-/// # TODO: 고아 Claimable/NoClaim 재시도 미지원
-/// `check_oracle_and_resolve_flight` 성공 후 `settle_flight_claim/no_claim`이 실패하면
-/// FlightPolicy는 Claimable(2) 또는 NoClaim(4) 상태에 머문다.
-/// 이 함수는 AWAITING_ORACLE만 스캔하므로 해당 flight는 다음 사이클에서도 선택되지 않는다.
-/// Track A도 ISSUED/AWAITING_ORACLE만 처리하므로 수동 개입이 필요하다.
+/// 다음 세 가지 상태를 반환한다:
+/// - `AwaitingOracle(1)`: oracle resolve + settle 수행
+/// - `Claimable(2)`: oracle 이미 완료 — settle_flight_claim 재시도
+/// - `NoClaim(4)`:   oracle 이미 완료 — settle_flight_no_claim 재시도
 ///
-/// 해결 방향: scan 단계에서 Claimable/NoClaim도 포함하고 settle만 재시도하도록 분기 추가.
+/// Claimable/NoClaim을 포함하는 이유: `check_oracle_and_resolve_flight`가 성공했지만
+/// 후속 settle 트랜잭션이 실패하면 해당 상태에 고착된다. 이를 다음 사이클에서
+/// 자동으로 재시도하기 위해 scan 범위에 포함한다.
 pub async fn scan_flight_policies(
     client: &SolanaClient,
     program_id: &Pubkey,
@@ -75,7 +76,11 @@ pub async fn scan_flight_policies(
             continue;
         }
         match parse_flight_policy(&pubkey, &account.data) {
-            Ok(info) if info.status == FLIGHT_POLICY_STATUS_AWAITING_ORACLE => {
+            Ok(info)
+                if info.status == FLIGHT_POLICY_STATUS_AWAITING_ORACLE
+                    || info.status == FLIGHT_POLICY_STATUS_CLAIMABLE
+                    || info.status == FLIGHT_POLICY_STATUS_NO_CLAIM =>
+            {
                 result.push(info);
             }
             Ok(_) => {}
@@ -135,13 +140,34 @@ fn parse_policy(pubkey: &Pubkey, data: &[u8]) -> Result<PolicyInfo> {
 }
 
 /// Track B 오라클 실행:
-///   MasterPolicy 조회 → Switchboard oracle resolve → FlightPolicy 재조회 → auto-settle
+///   - `AwaitingOracle`: MasterPolicy 조회 → Switchboard oracle resolve → settle
+///   - `Claimable` / `NoClaim`: oracle 없이 settle만 재시도
 pub async fn run(
     config: &Config,
     client: &SolanaClient,
     payer: &solana_sdk::signature::Keypair,
     flight: &FlightPolicyInfo,
 ) -> Result<()> {
+    // Claimable/NoClaim: oracle resolve는 이미 완료 → settle만 재시도
+    if flight.status == FLIGHT_POLICY_STATUS_CLAIMABLE
+        || flight.status == FLIGHT_POLICY_STATUS_NO_CLAIM
+    {
+        tracing::info!(
+            "[track_b] {} settle 재시도 (FlightPolicy={}, status={})",
+            flight.flight_no,
+            flight.pubkey,
+            flight.status
+        );
+        let master = fetch_master_policy(client, &flight.master_policy)
+            .with_context(|| format!("MasterPolicy 조회 실패: {}", flight.master_policy))?;
+        return do_settle(
+            config, client, payer,
+            &flight.flight_no, &flight.pubkey, &master, flight.status,
+        )
+        .await;
+    }
+
+    // AwaitingOracle: 출발 전이면 스킵
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)?
         .as_secs() as i64;
@@ -215,62 +241,68 @@ pub async fn run(
         sig
     );
 
-    // 4. FlightPolicy 재조회 → Claimable/NoClaim에 따라 자동 settle
+    // 4. FlightPolicy 재조회 → Claimable/NoClaim에 따라 settle
     let updated_account = client
         .get_account(&flight.pubkey)
         .with_context(|| format!("FlightPolicy 재조회 실패: {}", flight.pubkey))?;
     let updated = parse_flight_policy(&flight.pubkey, &updated_account.data)
         .context("FlightPolicy 재파싱 실패")?;
 
-    match updated.status {
+    do_settle(
+        config, client, payer,
+        &flight.flight_no, &flight.pubkey, &master, updated.status,
+    )
+    .await
+}
+
+/// Claimable/NoClaim 상태에 따라 settle 트랜잭션을 전송한다.
+/// oracle resolve 직후와 settle 재시도 경로 모두에서 호출된다.
+async fn do_settle(
+    config: &Config,
+    client: &SolanaClient,
+    payer: &solana_sdk::signature::Keypair,
+    flight_no: &str,
+    flight_pubkey: &Pubkey,
+    master: &MasterPolicyInfo,
+    status: u8,
+) -> Result<()> {
+    match status {
         FLIGHT_POLICY_STATUS_CLAIMABLE => {
-            tracing::info!("[track_b] {} Claimable → settle_flight_claim", flight.flight_no);
-            let settle_ix = build_settle_flight_claim_ix(
+            tracing::info!("[track_b] {} Claimable → settle_flight_claim", flight_no);
+            let ix = build_settle_flight_claim_ix(
                 &config.program_id,
                 &payer.pubkey(),
                 &master.pubkey,
-                &flight.pubkey,
+                flight_pubkey,
                 &master.leader_deposit_wallet,
                 &master.reinsurer_pool_wallet,
                 &master.participant_pool_wallets,
             )?;
             let sig = client
-                .send_transaction(&[settle_ix], payer)
+                .send_transaction(&[ix], payer)
                 .context("settle_flight_claim 트랜잭션 실패")?;
-            tracing::info!(
-                "[track_b] {} settle_flight_claim 완료. tx={}",
-                flight.flight_no,
-                sig
-            );
+            tracing::info!("[track_b] {} settle_flight_claim 완료. tx={}", flight_no, sig);
         }
         FLIGHT_POLICY_STATUS_NO_CLAIM => {
-            tracing::info!("[track_b] {} NoClaim → settle_flight_no_claim", flight.flight_no);
-            let settle_ix = build_settle_flight_no_claim_ix(
+            tracing::info!("[track_b] {} NoClaim → settle_flight_no_claim", flight_no);
+            let ix = build_settle_flight_no_claim_ix(
                 &config.program_id,
                 &payer.pubkey(),
                 &master.pubkey,
-                &flight.pubkey,
+                flight_pubkey,
                 &master.leader_deposit_wallet,
                 &master.reinsurer_deposit_wallet,
                 &master.participant_deposit_wallets,
             )?;
             let sig = client
-                .send_transaction(&[settle_ix], payer)
+                .send_transaction(&[ix], payer)
                 .context("settle_flight_no_claim 트랜잭션 실패")?;
-            tracing::info!(
-                "[track_b] {} settle_flight_no_claim 완료. tx={}",
-                flight.flight_no,
-                sig
-            );
+            tracing::info!("[track_b] {} settle_flight_no_claim 완료. tx={}", flight_no, sig);
         }
         s => {
-            tracing::warn!(
-                "[track_b] {} oracle 완료 후 예상치 못한 상태: {s}, settle 스킵",
-                flight.flight_no
-            );
+            tracing::warn!("[track_b] {} 예상치 못한 상태: {s}, settle 스킵", flight_no);
         }
     }
-
     Ok(())
 }
 
