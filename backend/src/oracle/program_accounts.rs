@@ -10,7 +10,7 @@ use crate::{
     solana::client::SolanaClient,
 };
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct MasterParticipantInfo {
     pub insurer: String,
     pub share_bps: u16,
@@ -19,7 +19,7 @@ pub struct MasterParticipantInfo {
     pub deposit_wallet: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct MasterPolicyInfo {
     pub pubkey: String,
     pub master_id: u64,
@@ -48,7 +48,7 @@ pub struct MasterPolicyInfo {
     pub bump: u8,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct FlightPolicyInfo {
     pub pubkey: String,
     pub child_policy_id: u64,

@@ -10,6 +10,7 @@ path = "src/main.rs"
 [dependencies]
 # Web server
 axum = "0.7"
+tower-http = { version = "0.5", features = ["cors"] }
 
 # Solana
 solana-client = "1.18"
@@ -40,3 +41,5 @@ solana-account-decoder = "1.18"
 sha2      = "0.10"
 bincode   = "1"
 base64    = "0.22"
+tokio-stream = { version = "0.1", features = ["sync"] }
+futures-util = "0.3"

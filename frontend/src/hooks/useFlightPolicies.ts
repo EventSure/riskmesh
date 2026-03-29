@@ -1,17 +1,66 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { PublicKey } from '@solana/web3.js';
-import { useProgram } from './useProgram';
 import type { FlightPolicyAccount } from '@/lib/idl/open_parametric';
+import { BACKEND_URL } from '@/lib/constants';
 
 export interface FlightPolicyWithKey {
   publicKey: PublicKey;
   account: FlightPolicyAccount;
 }
 
-/**
- * Fetch all FlightPolicy accounts belonging to a specific MasterPolicy.
- * Uses getProgramAccounts with a memcmp filter on the master field.
- */
+const fakeBN = (n: number) => ({
+  toNumber: () => n,
+  toString: () => String(n),
+});
+
+interface BackendFlightPolicy {
+  pubkey: string;
+  child_policy_id: number;
+  master: string;
+  creator: string;
+  subscriber_ref: string;
+  flight_no: string;
+  route: string;
+  departure_ts: number;
+  premium_paid: number;
+  delay_minutes: number;
+  cancelled: boolean;
+  payout_amount: number;
+  status: number;
+  premium_distributed: boolean;
+  created_at: number;
+  updated_at: number;
+  bump: number;
+}
+
+function toFlightPolicyWithKey(data: BackendFlightPolicy): FlightPolicyWithKey {
+  const SYSTEM_PROGRAM = '11111111111111111111111111111111';
+  const safePubkey = (s: string | undefined | null) =>
+    new PublicKey(s && s.length > 0 ? s : SYSTEM_PROGRAM);
+
+  return {
+    publicKey: safePubkey(data.pubkey),
+    account: {
+      childPolicyId: fakeBN(data.child_policy_id) as unknown as import('@coral-xyz/anchor').BN,
+      master: safePubkey(data.master),
+      creator: safePubkey(data.creator),
+      subscriberRef: data.subscriber_ref,
+      flightNo: data.flight_no,
+      route: data.route,
+      departureTs: fakeBN(data.departure_ts) as unknown as import('@coral-xyz/anchor').BN,
+      premiumPaid: fakeBN(data.premium_paid) as unknown as import('@coral-xyz/anchor').BN,
+      delayMinutes: data.delay_minutes,
+      cancelled: data.cancelled,
+      payoutAmount: fakeBN(data.payout_amount) as unknown as import('@coral-xyz/anchor').BN,
+      status: data.status,
+      premiumDistributed: data.premium_distributed,
+      createdAt: fakeBN(data.created_at) as unknown as import('@coral-xyz/anchor').BN,
+      updatedAt: fakeBN(data.updated_at) as unknown as import('@coral-xyz/anchor').BN,
+      bump: data.bump,
+    } as unknown as FlightPolicyAccount,
+  };
+}
+
 export function useFlightPolicies(
   masterPolicyPDA: PublicKey | null,
   options?: {
@@ -19,20 +68,18 @@ export function useFlightPolicies(
     pollInterval?: number;
   },
 ) {
-  const { program, connection } = useProgram();
   const [policies, setPolicies] = useState<FlightPolicyWithKey[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const prevStatusRef = useRef<Map<number, number>>(new Map());
-  // [FIX] 기존: onStatusChange가 useCallback deps에 포함 → t() 등 불안정 참조로 무한 refetch 루프
-  // 수정: ref로 분리하여 fetchPolicies deps에서 제거
   const onStatusChangeRef = useRef(options?.onStatusChange);
   onStatusChangeRef.current = options?.onStatusChange;
-  const pollInterval = options?.pollInterval ?? 300_000;
+
+  const masterKey = masterPolicyPDA?.toBase58() ?? null;
 
   const fetchPolicies = useCallback(async () => {
-    if (!program || !masterPolicyPDA || !connection) {
+    if (!masterKey) {
       setPolicies([]);
       return;
     }
@@ -40,32 +87,14 @@ export function useFlightPolicies(
     setLoading(true);
     setError(null);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const prog = program as any;
-      // FlightPolicy has `master: Pubkey` as the 2nd field (after discriminator + child_policy_id)
-      // Discriminator (8 bytes) + child_policy_id (8 bytes) = offset 16 for master field
-      const accounts = await prog.account.flightPolicy.all([
-        {
-          memcmp: {
-            offset: 16, // 8 (discriminator) + 8 (child_policy_id u64)
-            bytes: masterPolicyPDA.toBase58(),
-          },
-        },
-      ]);
+      const res = await fetch(`${BACKEND_URL}/api/flight-policies?master=${masterKey}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json: { flight_policies: BackendFlightPolicy[] } = await res.json();
 
-      const mapped: FlightPolicyWithKey[] = accounts.map(
-        (a: { publicKey: PublicKey; account: FlightPolicyAccount }) => ({
-          publicKey: a.publicKey,
-          account: a.account,
-        }),
+      const mapped = json.flight_policies.map(toFlightPolicyWithKey);
+      mapped.sort(
+        (a, b) => a.account.childPolicyId.toNumber() - b.account.childPolicyId.toNumber(),
       );
-
-      // Sort by child_policy_id ascending
-      mapped.sort((a, b) => {
-        const aId = a.account.childPolicyId.toNumber();
-        const bId = b.account.childPolicyId.toNumber();
-        return aId - bId;
-      });
 
       // Status diff detection
       const prevMap = prevStatusRef.current;
@@ -81,80 +110,72 @@ export function useFlightPolicies(
         }
       }
       prevStatusRef.current = new Map(
-        mapped.map(fp => [fp.account.childPolicyId.toNumber(), fp.account.status])
+        mapped.map((fp) => [fp.account.childPolicyId.toNumber(), fp.account.status]),
       );
 
       setPolicies(mapped);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message);
+      setError(err instanceof Error ? err.message : String(err));
       setPolicies([]);
     } finally {
       setLoading(false);
     }
-  }, [program, masterPolicyPDA, connection]);
+  }, [masterKey]);
 
   // Initial fetch
   useEffect(() => {
     fetchPolicies();
   }, [fetchPolicies]);
 
-  // Stable key for WebSocket subscription dependencies
-  const policyKeys = useMemo(
-    () => policies.map(p => p.publicKey.toBase58()).join(','),
-    [policies],
-  );
-
-  // Subscribe to individual FlightPolicy account changes (real-time, in-place decode)
+  // SSE for real-time flight policy updates
   useEffect(() => {
-    if (!connection || !program || policies.length === 0) return;
+    if (!masterKey) return;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const coder = (program as any).coder.accounts;
-    const subscriptionIds = policies.map(fp =>
-      connection.onAccountChange(
-        fp.publicKey,
-        (accountInfo) => {
-          try {
-            const decoded = coder.decode('flightPolicy', accountInfo.data) as FlightPolicyAccount;
-            const key = fp.publicKey;
-            setPolicies(prev => prev.map(p =>
-              p.publicKey.equals(key) ? { publicKey: key, account: decoded } : p,
-            ));
-            // Status change detection
-            const prevStatus = prevStatusRef.current.get(decoded.childPolicyId.toNumber());
-            const cb = onStatusChangeRef.current;
-            if (prevStatus !== undefined && prevStatus !== decoded.status && cb) {
-              cb({ publicKey: key, account: decoded }, prevStatus, decoded.status);
+    const es = new EventSource(`${BACKEND_URL}/api/events?master=${masterKey}`);
+
+    es.addEventListener('flight_policy_updated', (e: MessageEvent) => {
+      try {
+        const data: BackendFlightPolicy = JSON.parse(e.data);
+        if (data.master !== masterKey) return;
+
+        const updated = toFlightPolicyWithKey(data);
+        const id = updated.account.childPolicyId.toNumber();
+
+        setPolicies((prev) => {
+          const idx = prev.findIndex((p) => p.account.childPolicyId.toNumber() === id);
+
+          // Status change detection
+          const cb = onStatusChangeRef.current;
+          const existing = idx >= 0 ? prev[idx]! : undefined;
+          if (existing && cb) {
+            const prevStatus = existing.account.status;
+            if (prevStatus !== updated.account.status) {
+              cb(updated, prevStatus, updated.account.status);
             }
-            prevStatusRef.current.set(decoded.childPolicyId.toNumber(), decoded.status);
-          } catch {
-            // [FIX] 기존: decode 실패 → fetchPolicies() 전체 재호출 → 무한 refetch 연쇄
-            // 수정: 무시하고 polling이 자연 보정
           }
-        },
-        'confirmed',
-      ),
-    );
+          prevStatusRef.current.set(id, updated.account.status);
 
-    return () => {
-      subscriptionIds.forEach(id =>
-        connection.removeAccountChangeListener(id),
-      );
+          if (idx >= 0) {
+            const next = [...prev];
+            next[idx] = updated;
+            return next;
+          }
+          // New policy — append and sort
+          return [...prev, updated].sort(
+            (a, b) => a.account.childPolicyId.toNumber() - b.account.childPolicyId.toNumber(),
+          );
+        });
+      } catch {
+        // ignore parse errors
+      }
+    });
+
+    es.onerror = () => {
+      // SSE auto-reconnects
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connection, program, policyKeys]);
 
-  // Long-interval polling for discovering new FlightPolicy accounts
-  useEffect(() => {
-    if (!masterPolicyPDA || pollInterval <= 0) return;
-
-    const interval = setInterval(() => {
-      fetchPolicies();
-    }, pollInterval);
-
-    return () => clearInterval(interval);
-  }, [fetchPolicies, masterPolicyPDA, pollInterval]);
+    return () => es.close();
+  }, [masterKey]);
 
   return { policies, loading, error, refetch: fetchPolicies };
 }

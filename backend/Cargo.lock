@@ -3257,6 +3257,7 @@ dependencies = [
  "borsh 0.10.4",
  "bs58 0.5.1",
  "dotenv",
+ "futures-util",
  "reqwest 0.12.4",
  "serde",
  "serde_json",
@@ -3267,6 +3268,8 @@ dependencies = [
  "solana-sdk",
  "tokio",
  "tokio-cron-scheduler",
+ "tokio-stream",
+ "tower-http",
  "tracing",
  "tracing-subscriber",
 ]
@@ -5049,6 +5052,7 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]
@@ -5149,6 +5153,22 @@ dependencies = [
  "tower-layer",
  "tower-service",
  "tracing",
+]
+
+[[package]]
+name = "tower-http"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e9cd434a998747dd2c4276bc96ee2e0c7a2eadf3cae88e52be55a05fa9053f5"
+dependencies = [
+ "bitflags 2.11.0",
+ "bytes",
+ "http 1.4.0",
+ "http-body 1.0.1",
+ "http-body-util",
+ "pin-project-lite",
+ "tower-layer",
+ "tower-service",
 ]
 
 [[package]]
