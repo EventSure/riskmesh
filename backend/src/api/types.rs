@@ -31,6 +31,14 @@ pub(super) struct MasterPoliciesTreeResponse {
 }
 
 #[derive(Serialize)]
+pub(super) struct MasterFlightPoliciesResponse {
+    pub program_id: String,
+    pub master_policy_pubkey: String,
+    pub count: usize,
+    pub flight_policies: Vec<crate::oracle::program_accounts::FlightPolicyInfo>,
+}
+
+#[derive(Serialize)]
 pub(super) struct MasterPolicyAccountTree {
     pub master_policy_pubkey: String,
     pub flight_policy_pubkeys: Vec<String>,

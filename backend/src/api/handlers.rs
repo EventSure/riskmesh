@@ -11,7 +11,8 @@ use super::{
     state::AppState,
     types::{
         CreateFlightPolicyRequest, CreateFlightPolicyResponse, FlightPoliciesResponse,
-        HealthResponse, MasterPoliciesResponse, MasterPoliciesTreeResponse,
+        HealthResponse, MasterFlightPoliciesResponse, MasterPoliciesResponse,
+        MasterPoliciesTreeResponse,
     },
 };
 
@@ -42,6 +43,20 @@ pub(super) async fn get_master_policies_tree(
 ) -> Result<Json<MasterPoliciesTreeResponse>, ApiError> {
     let client = SolanaClient::new(&state.config.rpc_url);
     service::list_master_policies_tree(&client, &state.config)
+        .map(Json)
+        .map_err(ApiError)
+}
+
+pub(super) async fn get_flight_policies_by_master(
+    State(state): State<AppState>,
+    Path(master_policy_pubkey): Path<String>,
+) -> Result<Json<MasterFlightPoliciesResponse>, ApiError> {
+    let client = SolanaClient::new(&state.config.rpc_url);
+    let master_policy_pubkey = master_policy_pubkey
+        .parse()
+        .map_err(|e| ApiError(anyhow::anyhow!("master_policy_pubkey 주소 파싱 실패: {e}")))?;
+
+    service::list_flight_policies_by_master(&client, &state.config, &master_policy_pubkey)
         .map(Json)
         .map_err(ApiError)
 }

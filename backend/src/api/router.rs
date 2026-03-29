@@ -1,5 +1,5 @@
 use axum::{
-    routing::{get, post},
+    routing::get,
     Router,
 };
 
@@ -13,7 +13,7 @@ pub(super) fn build_router(state: AppState) -> Router {
         .route("/api/master-policies/tree", get(get_master_policies_tree))
         .route(
             "/api/master-policies/:master_policy_pubkey/flight-policies",
-            post(post_flight_policy),
+            get(get_flight_policies_by_master).post(post_flight_policy),
         )
         .with_state(state)
 }
