@@ -10,7 +10,7 @@ use crate::{
     solana::client::SolanaClient,
 };
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct MasterParticipantInfo {
     pub insurer: String,
     pub share_bps: u16,
@@ -19,7 +19,7 @@ pub struct MasterParticipantInfo {
     pub deposit_wallet: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct MasterPolicyInfo {
     pub pubkey: String,
     pub master_id: u64,
@@ -48,7 +48,7 @@ pub struct MasterPolicyInfo {
     pub bump: u8,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct FlightPolicyInfo {
     pub pubkey: String,
     pub child_policy_id: u64,
@@ -77,11 +77,27 @@ pub fn scan_master_policies(
     scan_accounts(client, program_id, "MasterPolicy", parse_master_policy)
 }
 
+pub fn fetch_master_policy(
+    client: &SolanaClient,
+    master_policy_pubkey: &Pubkey,
+) -> Result<MasterPolicyInfo> {
+    let account = client.get_account(master_policy_pubkey)?;
+    parse_master_policy(master_policy_pubkey, &account.data)
+}
+
 pub fn scan_flight_policies(
     client: &SolanaClient,
     program_id: &Pubkey,
 ) -> Result<Vec<FlightPolicyInfo>> {
     scan_accounts(client, program_id, "FlightPolicy", parse_flight_policy)
+}
+
+pub fn fetch_flight_policy(
+    client: &SolanaClient,
+    flight_policy_pubkey: &Pubkey,
+) -> Result<FlightPolicyInfo> {
+    let account = client.get_account(flight_policy_pubkey)?;
+    parse_flight_policy(flight_policy_pubkey, &account.data)
 }
 
 fn scan_accounts<T>(

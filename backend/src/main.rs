@@ -1,10 +1,11 @@
+mod api;
 mod config;
+mod firebase;
 mod flight_api;
 mod oracle;
 mod scheduler;
 mod solana;
 mod switchboard;
-mod web;
 
 use anyhow::Result;
 use std::sync::Arc;
@@ -29,23 +30,9 @@ async fn main() -> Result<()> {
         config.web_bind_addr
     );
 
-    let scheduler_task = tokio::spawn(scheduler::start(config.clone()));
-    let web_task = tokio::spawn(web::start(config.clone()));
-
-    tokio::select! {
-        res = scheduler_task => {
-            match res {
-                Ok(inner) => inner?,
-                Err(e) => return Err(e.into()),
-            }
-        }
-        res = web_task => {
-            match res {
-                Ok(inner) => inner?,
-                Err(e) => return Err(e.into()),
-            }
-        }
-    }
+    // 스케줄러와 API 서버를 함께 실행한다.
+    let _scheduler_task = tokio::spawn(scheduler::start(config.clone()));
+    api::start(config.clone()).await?;
 
     Ok(())
 }
