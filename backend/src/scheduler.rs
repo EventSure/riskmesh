@@ -1,12 +1,17 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use std::sync::Arc;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
-use crate::config::Config;
+use crate::{api::repository::FirebaseRepository, config::Config};
 
 /// 스케줄러를 시작하고 cron 표현식에 따라 오라클 체크 잡을 등록한다.
 pub async fn start(config: Arc<Config>) -> Result<()> {
     let sched = JobScheduler::new().await?;
+    let repository = Arc::new(FirebaseRepository::from_env()?);
+
+    if let Err(e) = run_firebase_sync(&config, &repository).await {
+        tracing::error!("[scheduler] 초기 Firebase 동기화 실패: {e:#}");
+    }
 
     let cfg = config.clone();
     let job = Job::new_async(config.oracle_check_cron.as_str(), move |_uuid, _lock| {
@@ -18,17 +23,58 @@ pub async fn start(config: Arc<Config>) -> Result<()> {
         })
     })?;
 
+    let sync_cfg = config.clone();
+    let sync_repo = repository.clone();
+    let sync_job = Job::new_async(config.firebase_sync_cron.as_str(), move |_uuid, _lock| {
+        let sync_cfg = sync_cfg.clone();
+        let sync_repo = sync_repo.clone();
+        Box::pin(async move {
+            if let Err(e) = run_firebase_sync(&sync_cfg, &sync_repo).await {
+                tracing::error!("[scheduler] Firebase 동기화 실패: {e:#}");
+            }
+        })
+    })?;
+
     sched.add(job).await?;
+    sched.add(sync_job).await?;
     sched.start().await?;
     tracing::info!(
-        "[scheduler] 시작. cron='{}'",
-        config.oracle_check_cron
+        "[scheduler] 시작. oracle_cron='{}' firebase_sync_cron='{}'",
+        config.oracle_check_cron,
+        config.firebase_sync_cron
     );
 
     // 스케줄러가 계속 실행되도록 대기
     loop {
         tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
     }
+}
+
+async fn run_firebase_sync(config: &Config, repository: &FirebaseRepository) -> Result<()> {
+    use crate::{
+        oracle::program_accounts::{scan_flight_policies, scan_master_policies},
+        solana::client::SolanaClient,
+    };
+
+    let client = SolanaClient::new(&config.rpc_url);
+    let master_policies = scan_master_policies(&client, &config.program_id)
+        .context("MasterPolicy RPC 스캔 실패")?;
+    let flight_policies = scan_flight_policies(&client, &config.program_id)
+        .context("FlightPolicy RPC 스캔 실패")?;
+
+    let summary = repository
+        .sync_policy_snapshots(config, &master_policies, &flight_policies)
+        .await
+        .context("Firebase 정책 스냅샷 저장 실패")?;
+
+    tracing::info!(
+        "[scheduler] Firebase 동기화 완료. master_policies={} flight_policies={} synced_at={}",
+        summary.master_policy_count,
+        summary.flight_policy_count,
+        summary.synced_at
+    );
+
+    Ok(())
 }
 
 /// 단일 오라클 체크 사이클: Track A + Track B 모두 실행

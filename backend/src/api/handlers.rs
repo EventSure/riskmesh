@@ -4,6 +4,7 @@ use axum::{
 };
 
 use crate::solana::client::SolanaClient;
+use solana_sdk::pubkey::Pubkey;
 
 use super::{
     error::ApiError,
@@ -25,8 +26,8 @@ pub(super) async fn get_master_policies(
     State(state): State<AppState>,
     Query(query): Query<MasterPoliciesQuery>,
 ) -> Result<Json<MasterPoliciesResponse>, ApiError> {
-    let client = SolanaClient::new(&state.config.rpc_url);
-    service::list_master_policies(&client, &state.config, &query)
+    service::list_master_policies(&state.firebase_repository, &query)
+        .await
         .map(Json)
         .map_err(ApiError)
 }
@@ -44,12 +45,12 @@ pub(super) async fn get_master_policy(
     State(state): State<AppState>,
     Path(master_policy_pubkey): Path<String>,
 ) -> Result<Json<crate::oracle::program_accounts::MasterPolicyInfo>, ApiError> {
-    let client = SolanaClient::new(&state.config.rpc_url);
-    let master_policy_pubkey = master_policy_pubkey
-        .parse()
+    master_policy_pubkey
+        .parse::<Pubkey>()
         .map_err(|e| ApiError(anyhow::anyhow!("master_policy_pubkey 주소 파싱 실패: {e}")))?;
 
-    service::get_master_policy(&client, &master_policy_pubkey)
+    service::get_master_policy(&state.firebase_repository, &master_policy_pubkey)
+        .await
         .map(Json)
         .map_err(ApiError)
 }
@@ -67,8 +68,8 @@ pub(super) async fn get_flight_policies(
     State(state): State<AppState>,
     Query(query): Query<FlightPoliciesQuery>,
 ) -> Result<Json<FlightPoliciesResponse>, ApiError> {
-    let client = SolanaClient::new(&state.config.rpc_url);
-    service::list_flight_policies(&client, &state.config, &query)
+    service::list_flight_policies(&state.firebase_repository, &query)
+        .await
         .map(Json)
         .map_err(ApiError)
 }
@@ -77,12 +78,12 @@ pub(super) async fn get_flight_policy(
     State(state): State<AppState>,
     Path(flight_policy_pubkey): Path<String>,
 ) -> Result<Json<crate::oracle::program_accounts::FlightPolicyInfo>, ApiError> {
-    let client = SolanaClient::new(&state.config.rpc_url);
-    let flight_policy_pubkey = flight_policy_pubkey
-        .parse()
+    flight_policy_pubkey
+        .parse::<Pubkey>()
         .map_err(|e| ApiError(anyhow::anyhow!("flight_policy_pubkey 주소 파싱 실패: {e}")))?;
 
-    service::get_flight_policy(&client, &flight_policy_pubkey)
+    service::get_flight_policy(&state.firebase_repository, &flight_policy_pubkey)
+        .await
         .map(Json)
         .map_err(ApiError)
 }
@@ -90,8 +91,8 @@ pub(super) async fn get_flight_policy(
 pub(super) async fn get_master_policies_tree(
     State(state): State<AppState>,
 ) -> Result<Json<MasterPoliciesTreeResponse>, ApiError> {
-    let client = SolanaClient::new(&state.config.rpc_url);
-    service::list_master_policies_tree(&client, &state.config)
+    service::list_master_policies_tree(&state.firebase_repository, &state.config)
+        .await
         .map(Json)
         .map_err(ApiError)
 }
@@ -100,12 +101,16 @@ pub(super) async fn get_flight_policies_by_master(
     State(state): State<AppState>,
     Path(master_policy_pubkey): Path<String>,
 ) -> Result<Json<MasterFlightPoliciesResponse>, ApiError> {
-    let client = SolanaClient::new(&state.config.rpc_url);
     let master_policy_pubkey = master_policy_pubkey
         .parse()
         .map_err(|e| ApiError(anyhow::anyhow!("master_policy_pubkey 주소 파싱 실패: {e}")))?;
 
-    service::list_flight_policies_by_master(&client, &state.config, &master_policy_pubkey)
+    service::list_flight_policies_by_master(
+        &state.firebase_repository,
+        &state.config,
+        &master_policy_pubkey,
+    )
+        .await
         .map(Json)
         .map_err(ApiError)
 }

@@ -1,7 +1,7 @@
 mod client;
 mod error;
 mod handlers;
-mod repository;
+pub(crate) mod repository;
 mod router;
 mod service;
 mod state;
@@ -19,7 +19,11 @@ pub async fn start(config: Arc<Config>) -> Result<()> {
         .parse()
         .with_context(|| format!("WEB_BIND_ADDR 파싱 실패: {}", config.web_bind_addr))?;
 
-    let app = router::build_router(state::AppState { config });
+    let firebase_repository = Arc::new(repository::FirebaseRepository::from_env()?);
+    let app = router::build_router(state::AppState {
+        config,
+        firebase_repository,
+    });
 
     tracing::info!("[api] listening on http://{addr}");
 

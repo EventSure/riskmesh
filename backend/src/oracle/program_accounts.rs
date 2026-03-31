@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use solana_sdk::pubkey::Pubkey;
 
 use crate::{
@@ -10,7 +10,7 @@ use crate::{
     solana::client::SolanaClient,
 };
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MasterParticipantInfo {
     pub insurer: String,
     pub share_bps: u16,
@@ -19,7 +19,7 @@ pub struct MasterParticipantInfo {
     pub deposit_wallet: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MasterPolicyInfo {
     pub pubkey: String,
     pub master_id: u64,
@@ -43,11 +43,11 @@ pub struct MasterPolicyInfo {
     pub leader_deposit_wallet: String,
     pub participants: Vec<MasterParticipantInfo>,
     pub status: u8,
-    pub status_label: &'static str,
+    pub status_label: String,
     pub created_at: i64,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FlightPolicyInfo {
     pub pubkey: String,
     pub child_policy_id: u64,
@@ -62,7 +62,7 @@ pub struct FlightPolicyInfo {
     pub cancelled: bool,
     pub payout_amount: u64,
     pub status: u8,
-    pub status_label: &'static str,
+    pub status_label: String,
     pub premium_distributed: bool,
     pub created_at: i64,
     pub updated_at: i64,
@@ -177,7 +177,7 @@ fn parse_master_policy(pubkey: &Pubkey, data: &[u8]) -> Result<MasterPolicyInfo>
         leader_deposit_wallet: leader_deposit_wallet.to_string(),
         participants,
         status,
-        status_label: master_policy_status_label(status),
+        status_label: master_policy_status_label(status).to_string(),
         created_at,
     })
 }
@@ -216,7 +216,7 @@ fn parse_flight_policy(pubkey: &Pubkey, data: &[u8]) -> Result<FlightPolicyInfo>
         cancelled,
         payout_amount,
         status,
-        status_label: flight_policy_status_label(status),
+        status_label: flight_policy_status_label(status).to_string(),
         premium_distributed,
         created_at,
         updated_at,

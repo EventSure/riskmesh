@@ -6,7 +6,7 @@ use std::str::FromStr;
 use crate::{
     config::Config,
     oracle::program_accounts::{
-        fetch_flight_policy, fetch_master_policy, scan_flight_policies, scan_master_policies,
+        fetch_master_policy, scan_flight_policies, scan_master_policies,
     },
     solana::client::SolanaClient,
 };
@@ -32,13 +32,11 @@ pub(super) fn health_response(config: &Config) -> HealthResponse {
     }
 }
 
-pub(super) fn list_master_policies(
-    client: &SolanaClient,
-    config: &Config,
+pub(super) async fn list_master_policies(
+    repository: &FirebaseRepository,
     query: &MasterPoliciesQuery,
 ) -> Result<MasterPoliciesResponse> {
-    let master_policies = 
-        scan_master_policies(client, &config.program_id).context("MasterPolicy 조회 실패")?;
+    let master_policies = repository.list_master_policies().await?;
     let master_policies = master_policies
         .into_iter()
         .filter(|master_policy| {
@@ -70,12 +68,14 @@ pub(super) fn list_master_policy_accounts(
     })
 }
 
-pub(super) fn get_master_policy(
-    client: &SolanaClient,
-    master_policy_pubkey: &Pubkey,
+pub(super) async fn get_master_policy(
+    repository: &FirebaseRepository,
+    master_policy_pubkey: &str,
 ) -> Result<crate::oracle::program_accounts::MasterPolicyInfo> {
-    let master_policy =
-        fetch_master_policy(client, master_policy_pubkey).context("MasterPolicy 조회 실패")?;
+    let master_policy = repository
+        .get_master_policy(master_policy_pubkey)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("account not found"))?;
 
     Ok(master_policy)
 }
@@ -95,13 +95,11 @@ pub(super) async fn create_firebase_test_document(
     })
 }
 
-pub(super) fn list_flight_policies(
-    client: &SolanaClient,
-    config: &Config,
+pub(super) async fn list_flight_policies(
+    repository: &FirebaseRepository,
     query: &FlightPoliciesQuery,
 ) -> Result<FlightPoliciesResponse> {
-    let flight_policies =
-        scan_flight_policies(client, &config.program_id).context("FlightPolicy 조회 실패")?;
+    let flight_policies = repository.list_flight_policies().await?;
     let flight_policies = flight_policies
         .into_iter()
         .filter(|flight_policy| {
@@ -121,47 +119,49 @@ pub(super) fn list_flight_policies(
     Ok(FlightPoliciesResponse { flight_policies })
 }
 
-pub(super) fn get_flight_policy(
-    client: &SolanaClient,
-    flight_policy_pubkey: &Pubkey,
+pub(super) async fn get_flight_policy(
+    repository: &FirebaseRepository,
+    flight_policy_pubkey: &str,
 ) -> Result<crate::oracle::program_accounts::FlightPolicyInfo> {
-    let flight_policy =
-        fetch_flight_policy(client, flight_policy_pubkey).context("FlightPolicy 조회 실패")?;
+    let flight_policy = repository
+        .get_flight_policy(flight_policy_pubkey)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("account not found"))?;
 
     Ok(flight_policy)
 }
 
-pub(super) fn list_flight_policies_by_master(
-    client: &SolanaClient,
+pub(super) async fn list_flight_policies_by_master(
+    repository: &FirebaseRepository,
     config: &Config,
     master_policy_pubkey: &Pubkey,
 ) -> Result<MasterFlightPoliciesResponse> {
-    let _master_policy =
-        fetch_master_policy(client, master_policy_pubkey).context("MasterPolicy 조회 실패")?;
-    let flight_policies =
-        scan_flight_policies(client, &config.program_id).context("FlightPolicy 조회 실패")?;
+    let master_policy_key = master_policy_pubkey.to_string();
+    let _master_policy = repository
+        .get_master_policy(&master_policy_key)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("account not found"))?;
+    let flight_policies = repository.list_flight_policies().await?;
 
     let flight_policies = flight_policies
         .into_iter()
-        .filter(|flight_policy| flight_policy.master == master_policy_pubkey.to_string())
+        .filter(|flight_policy| flight_policy.master == master_policy_key)
         .collect::<Vec<_>>();
 
     Ok(MasterFlightPoliciesResponse {
         program_id: config.program_id.to_string(),
-        master_policy_pubkey: master_policy_pubkey.to_string(),
+        master_policy_pubkey: master_policy_key,
         count: flight_policies.len(),
         flight_policies,
     })
 }
 
-pub(super) fn list_master_policies_tree(
-    client: &SolanaClient,
+pub(super) async fn list_master_policies_tree(
+    repository: &FirebaseRepository,
     config: &Config,
 ) -> Result<MasterPoliciesTreeResponse> {
-    let master_policies =
-        scan_master_policies(client, &config.program_id).context("MasterPolicy 조회 실패")?;
-    let flight_policies =
-        scan_flight_policies(client, &config.program_id).context("FlightPolicy 조회 실패")?;
+    let master_policies = repository.list_master_policies().await?;
+    let flight_policies = repository.list_flight_policies().await?;
 
     let master_policies = master_policies
         .into_iter()
