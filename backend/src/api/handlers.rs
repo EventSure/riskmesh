@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     Json,
 };
 
@@ -10,10 +10,10 @@ use super::{
     service,
     state::AppState,
     types::{
-        CreateFlightPolicyRequest, CreateFlightPolicyResponse, FlightPoliciesResponse,
-        FlightPolicyResponse, FirebaseTestDocumentResponse,
-        HealthResponse, MasterFlightPoliciesResponse, MasterPoliciesResponse,
-        MasterPoliciesTreeResponse, MasterPolicyAccountsResponse, MasterPolicyResponse,
+        CreateFlightPolicyRequest, CreateFlightPolicyResponse, FirebaseTestDocumentResponse,
+        FlightPoliciesQuery, FlightPoliciesResponse, HealthResponse, MasterFlightPoliciesResponse,
+        MasterPoliciesQuery, MasterPoliciesResponse, MasterPoliciesTreeResponse,
+        MasterPolicyAccountsResponse,
     },
 };
 
@@ -23,9 +23,10 @@ pub(super) async fn health(State(state): State<AppState>) -> Json<HealthResponse
 
 pub(super) async fn get_master_policies(
     State(state): State<AppState>,
+    Query(query): Query<MasterPoliciesQuery>,
 ) -> Result<Json<MasterPoliciesResponse>, ApiError> {
     let client = SolanaClient::new(&state.config.rpc_url);
-    service::list_master_policies(&client, &state.config)
+    service::list_master_policies(&client, &state.config, &query)
         .map(Json)
         .map_err(ApiError)
 }
@@ -42,13 +43,13 @@ pub(super) async fn get_master_policy_accounts(
 pub(super) async fn get_master_policy(
     State(state): State<AppState>,
     Path(master_policy_pubkey): Path<String>,
-) -> Result<Json<MasterPolicyResponse>, ApiError> {
+) -> Result<Json<crate::oracle::program_accounts::MasterPolicyInfo>, ApiError> {
     let client = SolanaClient::new(&state.config.rpc_url);
     let master_policy_pubkey = master_policy_pubkey
         .parse()
         .map_err(|e| ApiError(anyhow::anyhow!("master_policy_pubkey 주소 파싱 실패: {e}")))?;
 
-    service::get_master_policy(&client, &state.config, &master_policy_pubkey)
+    service::get_master_policy(&client, &master_policy_pubkey)
         .map(Json)
         .map_err(ApiError)
 }
@@ -64,9 +65,10 @@ pub(super) async fn post_firebase_test_document(
 
 pub(super) async fn get_flight_policies(
     State(state): State<AppState>,
+    Query(query): Query<FlightPoliciesQuery>,
 ) -> Result<Json<FlightPoliciesResponse>, ApiError> {
     let client = SolanaClient::new(&state.config.rpc_url);
-    service::list_flight_policies(&client, &state.config)
+    service::list_flight_policies(&client, &state.config, &query)
         .map(Json)
         .map_err(ApiError)
 }
@@ -74,13 +76,13 @@ pub(super) async fn get_flight_policies(
 pub(super) async fn get_flight_policy(
     State(state): State<AppState>,
     Path(flight_policy_pubkey): Path<String>,
-) -> Result<Json<FlightPolicyResponse>, ApiError> {
+) -> Result<Json<crate::oracle::program_accounts::FlightPolicyInfo>, ApiError> {
     let client = SolanaClient::new(&state.config.rpc_url);
     let flight_policy_pubkey = flight_policy_pubkey
         .parse()
         .map_err(|e| ApiError(anyhow::anyhow!("flight_policy_pubkey 주소 파싱 실패: {e}")))?;
 
-    service::get_flight_policy(&client, &state.config, &flight_policy_pubkey)
+    service::get_flight_policy(&client, &flight_policy_pubkey)
         .map(Json)
         .map_err(ApiError)
 }

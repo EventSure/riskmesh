@@ -25,6 +25,11 @@ Frontend → Backend API (REST + SSE)
 
 현재 상태 그대로 유지.
 
+**curl 예시:**
+```bash
+curl http://localhost:3000/health
+```
+
 **Response:**
 ```json
 {
@@ -49,6 +54,13 @@ Frontend → Backend API (REST + SSE)
 **Request 예시:**
 ```
 GET /api/master-policies?leader=7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU
+```
+
+**curl 예시:**
+```bash
+curl http://localhost:3000/api/master-policies
+
+curl "http://localhost:3000/api/master-policies?leader=GNPnwyRCCvo8wLEPwJEmzEjrqyhSXeyXvTbYibieHpYM"
 ```
 
 **Response:**
@@ -113,6 +125,15 @@ GET /api/flight-policies?master=3yGp...
 GET /api/flight-policies?master=3yGp...&status=1
 ```
 
+**curl 예시:**
+```bash
+curl http://localhost:3000/api/flight-policies
+
+curl "http://localhost:3000/api/flight-policies?master=c6DFe9oViEFYKPyasoCM8eiYggx9TZ2e7qH6UTr55mr"
+
+curl "http://localhost:3000/api/flight-policies?master=c6DFe9oViEFYKPyasoCM8eiYggx9TZ2e7qH6UTr55mr&status=1"
+```
+
 **Response:**
 ```json
 {
@@ -154,6 +175,11 @@ GET /api/flight-policies?master=3yGp...&status=1
 |---|---|---|
 | `pubkey` | `string (base58)` | MasterPolicy 계정 주소 |
 
+**curl 예시:**
+```bash
+curl http://localhost:3000/api/master-policies/3yGp...
+```
+
 **Response:** 위 목록 응답의 단일 `MasterPolicyInfo` 객체.
 
 **Error:**
@@ -174,6 +200,11 @@ GET /api/flight-policies?master=3yGp...&status=1
 |---|---|---|
 | `pubkey` | `string (base58)` | FlightPolicy 계정 주소 |
 
+**curl 예시:**
+```bash
+curl http://localhost:3000/api/flight-policies/9zAb...
+```
+
 **Response:** 위 목록 응답의 단일 `FlightPolicyInfo` 객체.
 
 ---
@@ -187,6 +218,13 @@ GET /api/flight-policies?master=3yGp...&status=1
 | 파라미터 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `master` | `string (base58 pubkey)` | 선택 | 이 master에 속한 FlightPolicy 변경 이벤트만 수신. 생략 시 전체 수신. |
+
+**curl 예시:**
+```bash
+curl -N http://localhost:3000/api/events
+
+curl -N "http://localhost:3000/api/events?master=3yGp..."
+```
 
 **Response Headers:**
 ```

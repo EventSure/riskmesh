@@ -4,15 +4,12 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize)]
 pub(super) struct HealthResponse {
     pub status: &'static str,
-    pub service: &'static str,
     pub rpc_url: String,
     pub leader_pubkey: String,
 }
 
 #[derive(Serialize)]
 pub(super) struct MasterPoliciesResponse {
-    pub program_id: String,
-    pub count: usize,
     pub master_policies: Vec<crate::oracle::program_accounts::MasterPolicyInfo>,
 }
 
@@ -24,24 +21,8 @@ pub(super) struct MasterPolicyAccountsResponse {
 }
 
 #[derive(Serialize)]
-pub(super) struct MasterPolicyResponse {
-    pub program_id: String,
-    pub master_policy:
-        crate::oracle::program_accounts::MasterPolicyInfo,
-}
-
-#[derive(Serialize)]
 pub(super) struct FlightPoliciesResponse {
-    pub program_id: String,
-    pub count: usize,
     pub flight_policies: Vec<crate::oracle::program_accounts::FlightPolicyInfo>,
-}
-
-#[derive(Serialize)]
-pub(super) struct FlightPolicyResponse {
-    pub program_id: String,
-    pub flight_policy:
-        crate::oracle::program_accounts::FlightPolicyInfo,
 }
 
 #[derive(Serialize)]
@@ -98,4 +79,15 @@ pub(super) struct CreateFlightPolicyParamsWire {
     pub flight_no: String,
     pub route: String,
     pub departure_ts: i64,
+}
+
+#[derive(Deserialize, Default)]
+pub(super) struct MasterPoliciesQuery {
+    pub leader: Option<String>,
+}
+
+#[derive(Deserialize, Default)]
+pub(super) struct FlightPoliciesQuery {
+    pub master: Option<String>,
+    pub status: Option<u8>,
 }

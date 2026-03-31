@@ -45,7 +45,6 @@ pub struct MasterPolicyInfo {
     pub status: u8,
     pub status_label: &'static str,
     pub created_at: i64,
-    pub bump: u8,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -67,7 +66,6 @@ pub struct FlightPolicyInfo {
     pub premium_distributed: bool,
     pub created_at: i64,
     pub updated_at: i64,
-    pub bump: u8,
 }
 
 pub fn scan_master_policies(
@@ -154,7 +152,7 @@ fn parse_master_policy(pubkey: &Pubkey, data: &[u8]) -> Result<MasterPolicyInfo>
     let participants = read_master_participants(data, &mut offset)?;
     let status = read_u8(data, &mut offset)?;
     let created_at = read_i64(data, &mut offset)?;
-    let bump = read_u8(data, &mut offset)?;
+    let _bump = read_u8(data, &mut offset)?;
 
     Ok(MasterPolicyInfo {
         pubkey: pubkey.to_string(),
@@ -181,7 +179,6 @@ fn parse_master_policy(pubkey: &Pubkey, data: &[u8]) -> Result<MasterPolicyInfo>
         status,
         status_label: master_policy_status_label(status),
         created_at,
-        bump,
     })
 }
 
@@ -203,7 +200,7 @@ fn parse_flight_policy(pubkey: &Pubkey, data: &[u8]) -> Result<FlightPolicyInfo>
     let premium_distributed = read_bool(data, &mut offset)?;
     let created_at = read_i64(data, &mut offset)?;
     let updated_at = read_i64(data, &mut offset)?;
-    let bump = read_u8(data, &mut offset)?;
+    let _bump = read_u8(data, &mut offset)?;
 
     Ok(FlightPolicyInfo {
         pubkey: pubkey.to_string(),
@@ -223,7 +220,6 @@ fn parse_flight_policy(pubkey: &Pubkey, data: &[u8]) -> Result<FlightPolicyInfo>
         premium_distributed,
         created_at,
         updated_at,
-        bump,
     })
 }
 
