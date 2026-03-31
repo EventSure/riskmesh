@@ -1,7 +1,10 @@
 use axum::{
     extract::{Path, Query, State},
+    response::sse::{Event, Sse},
     Json,
 };
+use futures_util::Stream;
+use std::convert::Infallible;
 
 use crate::solana::client::SolanaClient;
 use solana_sdk::pubkey::Pubkey;
@@ -11,10 +14,10 @@ use super::{
     service,
     state::AppState,
     types::{
-        CreateFlightPolicyRequest, CreateFlightPolicyResponse, FirebaseTestDocumentResponse,
-        FlightPoliciesQuery, FlightPoliciesResponse, HealthResponse, MasterFlightPoliciesResponse,
-        MasterPoliciesQuery, MasterPoliciesResponse, MasterPoliciesTreeResponse,
-        MasterPolicyAccountsResponse,
+        CreateFlightPolicyRequest, CreateFlightPolicyResponse, EventsQuery,
+        FirebaseTestDocumentResponse, FlightPoliciesQuery, FlightPoliciesResponse, HealthResponse,
+        MasterFlightPoliciesResponse, MasterPoliciesQuery, MasterPoliciesResponse,
+        MasterPoliciesTreeResponse, MasterPolicyAccountsResponse,
     },
 };
 
@@ -62,6 +65,13 @@ pub(super) async fn post_firebase_test_document(
         .await
         .map(Json)
         .map_err(ApiError)
+}
+
+pub(super) async fn get_events(
+    State(state): State<AppState>,
+    Query(query): Query<EventsQuery>,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    service::stream_events(state.event_bus, query)
 }
 
 pub(super) async fn get_flight_policies(

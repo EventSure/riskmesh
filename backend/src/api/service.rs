@@ -1,13 +1,16 @@
 use anyhow::{Context, Result};
+use axum::response::sse::{Event, Sse};
+use futures_util::{stream::select, Stream, StreamExt};
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Signer;
-use std::str::FromStr;
+use std::{convert::Infallible, str::FromStr, sync::Arc, time::Duration};
+use tokio::time::{interval_at, Instant};
+use tokio_stream::wrappers::{BroadcastStream, IntervalStream};
 
 use crate::{
     config::Config,
-    oracle::program_accounts::{
-        fetch_master_policy, scan_flight_policies, scan_master_policies,
-    },
+    events::{EventBus, SseMessage},
+    oracle::program_accounts::{fetch_master_policy, scan_flight_policies, scan_master_policies},
     solana::client::SolanaClient,
 };
 
@@ -16,11 +19,9 @@ use super::{
     repository::FirebaseRepository,
     types::{
         CreateFlightPolicyParamsWire, CreateFlightPolicyRequest, CreateFlightPolicyResponse,
-        FirebaseTestDocumentResponse, FlightPoliciesQuery, FlightPoliciesResponse, HealthResponse,
-        MasterPoliciesQuery,
-        MasterFlightPoliciesResponse,
-        MasterPoliciesResponse, MasterPoliciesTreeResponse, MasterPolicyAccountTree,
-        MasterPolicyAccountsResponse,
+        EventsQuery, FirebaseTestDocumentResponse, FlightPoliciesQuery, FlightPoliciesResponse,
+        HealthResponse, MasterFlightPoliciesResponse, MasterPoliciesQuery, MasterPoliciesResponse,
+        MasterPoliciesTreeResponse, MasterPolicyAccountTree, MasterPolicyAccountsResponse,
     },
 };
 
@@ -30,6 +31,41 @@ pub(super) fn health_response(config: &Config) -> HealthResponse {
         rpc_url: config.rpc_url.clone(),
         leader_pubkey: config.leader_pubkey.to_string(),
     }
+}
+
+pub(super) fn stream_events(
+    event_bus: Arc<EventBus>,
+    query: EventsQuery,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let updates = BroadcastStream::new(event_bus.subscribe()).filter_map(move |message| {
+        let master_filter = query.master.clone();
+        async move {
+            match message {
+                Ok(message) if message_matches_filter(&message, master_filter.as_deref()) => {
+                    Some(Ok(Event::default().event(message.event).data(message.data)))
+                }
+                Ok(_) => None,
+                Err(_) => None,
+            }
+        }
+    });
+
+    let heartbeats = IntervalStream::new(interval_at(
+        Instant::now() + Duration::from_secs(30),
+        Duration::from_secs(30),
+    ))
+    .map(|_| {
+        let ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+
+        Ok(Event::default()
+            .event("heartbeat")
+            .data(format!(r#"{{"ts":{ts}}}"#)))
+    });
+
+    Sse::new(select(updates, heartbeats))
 }
 
 pub(super) async fn list_master_policies(
@@ -264,4 +300,33 @@ pub(super) fn create_flight_policy(
 
 fn parse_pubkey(field_name: &str, value: &str) -> Result<Pubkey> {
     Pubkey::from_str(value).with_context(|| format!("{field_name} 주소 파싱 실패: {value}"))
+}
+
+fn message_matches_filter(message: &SseMessage, master_filter: Option<&str>) -> bool {
+    let Some(master_filter) = master_filter else {
+        return true;
+    };
+
+    let parsed = serde_json::from_str::<serde_json::Value>(&message.data);
+    let Ok(json) = parsed else {
+        tracing::warn!(
+            "[events] SSE payload 필터링 JSON 파싱 실패: {}",
+            message.event
+        );
+        return false;
+    };
+
+    match message.event.as_str() {
+        "flight_policy_updated" => json
+            .get("master")
+            .and_then(|value| value.as_str())
+            .map(|master| master == master_filter)
+            .unwrap_or(false),
+        "master_policy_updated" => json
+            .get("pubkey")
+            .and_then(|value| value.as_str())
+            .map(|pubkey| pubkey == master_filter)
+            .unwrap_or(false),
+        _ => true,
+    }
 }

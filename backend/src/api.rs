@@ -11,9 +11,9 @@ use std::{net::SocketAddr, sync::Arc};
 
 use anyhow::{Context, Result};
 
-use crate::config::Config;
+use crate::{config::Config, events::EventBus};
 
-pub async fn start(config: Arc<Config>) -> Result<()> {
+pub async fn start(config: Arc<Config>, event_bus: Arc<EventBus>) -> Result<()> {
     let addr: SocketAddr = config
         .web_bind_addr
         .parse()
@@ -23,6 +23,7 @@ pub async fn start(config: Arc<Config>) -> Result<()> {
     let app = router::build_router(state::AppState {
         config,
         firebase_repository,
+        event_bus,
     });
 
     tracing::info!("[api] listening on http://{addr}");

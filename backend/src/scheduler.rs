@@ -2,14 +2,14 @@ use anyhow::{Context, Result};
 use std::sync::Arc;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
-use crate::{api::repository::FirebaseRepository, config::Config};
+use crate::{api::repository::FirebaseRepository, config::Config, events::EventBus};
 
 /// 스케줄러를 시작하고 cron 표현식에 따라 오라클 체크 잡을 등록한다.
-pub async fn start(config: Arc<Config>) -> Result<()> {
+pub async fn start(config: Arc<Config>, event_bus: Arc<EventBus>) -> Result<()> {
     let sched = JobScheduler::new().await?;
     let repository = Arc::new(FirebaseRepository::from_env()?);
 
-    if let Err(e) = run_firebase_sync(&config, &repository).await {
+    if let Err(e) = run_firebase_sync(&config, &repository, &event_bus).await {
         tracing::error!("[scheduler] 초기 Firebase 동기화 실패: {e:#}");
     }
 
@@ -25,11 +25,13 @@ pub async fn start(config: Arc<Config>) -> Result<()> {
 
     let sync_cfg = config.clone();
     let sync_repo = repository.clone();
+    let sync_events = event_bus.clone();
     let sync_job = Job::new_async(config.firebase_sync_cron.as_str(), move |_uuid, _lock| {
         let sync_cfg = sync_cfg.clone();
         let sync_repo = sync_repo.clone();
+        let sync_events = sync_events.clone();
         Box::pin(async move {
-            if let Err(e) = run_firebase_sync(&sync_cfg, &sync_repo).await {
+            if let Err(e) = run_firebase_sync(&sync_cfg, &sync_repo, &sync_events).await {
                 tracing::error!("[scheduler] Firebase 동기화 실패: {e:#}");
             }
         })
@@ -50,7 +52,11 @@ pub async fn start(config: Arc<Config>) -> Result<()> {
     }
 }
 
-async fn run_firebase_sync(config: &Config, repository: &FirebaseRepository) -> Result<()> {
+async fn run_firebase_sync(
+    config: &Config,
+    repository: &FirebaseRepository,
+    event_bus: &EventBus,
+) -> Result<()> {
     use crate::{
         oracle::program_accounts::{scan_flight_policies, scan_master_policies},
         solana::client::SolanaClient,
@@ -61,6 +67,10 @@ async fn run_firebase_sync(config: &Config, repository: &FirebaseRepository) -> 
         .context("MasterPolicy RPC 스캔 실패")?;
     let flight_policies = scan_flight_policies(&client, &config.program_id)
         .context("FlightPolicy RPC 스캔 실패")?;
+
+    event_bus
+        .publish_policy_updates(&master_policies, &flight_policies)
+        .await;
 
     let summary = repository
         .sync_policy_snapshots(config, &master_policies, &flight_policies)

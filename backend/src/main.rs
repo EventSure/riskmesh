@@ -1,5 +1,6 @@
 mod api;
 mod config;
+mod events;
 mod firebase;
 mod flight_api;
 mod oracle;
@@ -30,9 +31,11 @@ async fn main() -> Result<()> {
         config.web_bind_addr
     );
 
+    let event_bus = Arc::new(events::EventBus::new(256));
+
     // 스케줄러와 API 서버를 함께 실행한다.
-    let _scheduler_task = tokio::spawn(scheduler::start(config.clone()));
-    api::start(config.clone()).await?;
+    let _scheduler_task = tokio::spawn(scheduler::start(config.clone(), event_bus.clone()));
+    api::start(config.clone(), event_bus).await?;
 
     Ok(())
 }

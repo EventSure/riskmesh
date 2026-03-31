@@ -91,3 +91,8 @@ pub(super) struct FlightPoliciesQuery {
     pub master: Option<String>,
     pub status: Option<u8>,
 }
+
+#[derive(Deserialize, Default, Clone)]
+pub(super) struct EventsQuery {
+    pub master: Option<String>,
+}
