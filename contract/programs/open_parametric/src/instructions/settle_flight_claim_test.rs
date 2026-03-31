@@ -8,3 +8,30 @@ fn claim_split_matches_example_with_commission() {
     assert_eq!(reinsurer, 36_000_000);
     assert_eq!(insurers, vec![22_000_000, 13_200_000, 8_800_000]);
 }
+
+#[test]
+fn claim_split_with_zero_ceded_all_from_insurers() {
+    // ceded=0 → 재보험사 부담 없음, 전액 참여사 pool에서 지급.
+    let payout = 6_000_000u64; // 6 USDC
+    let (reinsurer, insurers) = calc_claim_split(payout, 0, &[5_000, 3_000, 2_000]).unwrap();
+    assert_eq!(reinsurer, 0);
+    assert_eq!(insurers, vec![3_000_000, 1_800_000, 1_200_000]);
+}
+
+#[test]
+fn claim_split_with_full_cession_all_from_reinsurer() {
+    // ceded=100%, commission=0 → effective=100% → 재보험사가 전액 부담.
+    let payout = 10_000_000u64; // 10 USDC
+    let (reinsurer, insurers) = calc_claim_split(payout, 10_000, &[5_000, 5_000]).unwrap();
+    assert_eq!(reinsurer, 10_000_000);
+    assert_eq!(insurers, vec![0, 0]);
+}
+
+#[test]
+fn claim_split_total_preserved_with_rounding() {
+    // 나눗셈 나머지가 첫 참여사에게 귀속되어 총합이 보존되는지 검증.
+    let payout = 7u64; // 나머지 강제 발생
+    let (reinsurer, insurers) = calc_claim_split(payout, 4_500, &[5_000, 3_000, 2_000]).unwrap();
+    let total: u64 = reinsurer + insurers.iter().sum::<u64>();
+    assert_eq!(total, payout);
+}
