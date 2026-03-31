@@ -203,9 +203,23 @@ pub(super) fn create_flight_policy(
         anyhow::bail!("subscriber_ref, flight_no, route는 비어 있을 수 없습니다");
     }
 
+    let child_policy_id = scan_flight_policies(client, &config.program_id)
+        .context("FlightPolicy 조회 실패")?
+        .into_iter()
+        .filter(|flight_policy| flight_policy.master == master_policy_pubkey.to_string())
+        .map(|flight_policy| flight_policy.child_policy_id)
+        .max()
+        .map(|max_id| {
+            max_id
+                .checked_add(1)
+                .ok_or_else(|| anyhow::anyhow!("child_policy_id가 u64 범위를 초과했습니다"))
+        })
+        .transpose()?
+        .unwrap_or(1);
+
     let leader = program_client.load_leader_signer()?;
     let flight_policy_pubkey =
-        program_client.derive_flight_policy_pubkey(master_policy_pubkey, req.child_policy_id);
+        program_client.derive_flight_policy_pubkey(master_policy_pubkey, child_policy_id);
     let currency_mint = parse_pubkey("currency_mint", &master_policy.currency_mint)
         .context("currency_mint 파싱 실패")?;
     let payer_token_pubkey =
@@ -220,7 +234,7 @@ pub(super) fn create_flight_policy(
         &payer_token_pubkey,
         &leader_deposit_token,
         CreateFlightPolicyParamsWire {
-            child_policy_id: req.child_policy_id,
+            child_policy_id,
             subscriber_ref: req.subscriber_ref,
             flight_no: req.flight_no,
             route: req.route,
@@ -231,6 +245,7 @@ pub(super) fn create_flight_policy(
     Ok(CreateFlightPolicyResponse {
         program_id: config.program_id.to_string(),
         master_policy_pubkey: master_policy_pubkey.to_string(),
+        child_policy_id,
         flight_policy_pubkey: flight_policy_pubkey.to_string(),
         tx_signature,
     })

@@ -67,7 +67,6 @@ pub(super) struct MasterPolicyAccountTree {
 
 #[derive(Deserialize)]
 pub(super) struct CreateFlightPolicyRequest {
-    pub child_policy_id: u64,
     pub subscriber_ref: String,
     pub flight_no: String,
     pub route: String,
@@ -78,6 +77,7 @@ pub(super) struct CreateFlightPolicyRequest {
 pub(super) struct CreateFlightPolicyResponse {
     pub program_id: String,
     pub master_policy_pubkey: String,
+    pub child_policy_id: u64,
     pub flight_policy_pubkey: String,
     pub tx_signature: String,
 }
