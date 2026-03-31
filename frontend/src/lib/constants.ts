@@ -1,5 +1,7 @@
 import { PublicKey } from '@solana/web3.js';
 
+export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:3000';
+
 export const RPC_ENDPOINT = 'https://api.devnet.solana.com';
 
 export const PROGRAM_ID = new PublicKey('ETEEEssGKAAQEGwz3ggDcy9vzPAPtBjtb2KocdyLBMjh');

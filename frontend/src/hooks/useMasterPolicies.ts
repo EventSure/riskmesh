@@ -1,45 +1,40 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useProgram } from './useProgram';
+import { useWallet } from '@solana/wallet-adapter-react';
 import type { MasterPolicySummary } from '@/store/useProtocolStore';
+import { BACKEND_URL } from '@/lib/constants';
 
-/**
- * Fetch all MasterPolicy accounts where the connected wallet is the leader.
- * Uses getProgramAccounts with a memcmp filter on the leader field.
- * MasterPolicy layout: discriminator(8) + master_id(8) = offset 16 for leader field.
- */
+interface BackendMasterPolicyItem {
+  pubkey: string;
+  master_id: number;
+  status: number;
+  coverage_end_ts: number;
+}
+
 export function useMasterPolicies() {
-  const { program, wallet } = useProgram();
+  const { publicKey } = useWallet();
   const [policies, setPolicies] = useState<MasterPolicySummary[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchPolicies = useCallback(async () => {
-    if (!program || !wallet) {
+    if (!publicKey) {
       setPolicies([]);
       return;
     }
 
     setLoading(true);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const prog = program as any;
-      const accounts = await prog.account.masterPolicy.all([
-        {
-          memcmp: {
-            offset: 16, // discriminator(8) + master_id u64(8)
-            bytes: wallet.publicKey.toBase58(),
-          },
-        },
-      ]);
+      const url = `${BACKEND_URL}/api/master-policies?leader=${publicKey.toBase58()}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json: { master_policies: BackendMasterPolicyItem[] } = await res.json();
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mapped: MasterPolicySummary[] = accounts.map((a: any) => ({
-        pda: a.publicKey.toBase58(),
-        masterId: a.account.masterId.toString(),
-        status: a.account.status,
-        coverageEndTs: a.account.coverageEndTs.toNumber(),
+      const mapped: MasterPolicySummary[] = json.master_policies.map((m) => ({
+        pda: m.pubkey,
+        masterId: String(m.master_id),
+        status: m.status,
+        coverageEndTs: m.coverage_end_ts,
       }));
 
-      // Most recently created first (masterId is a sequential counter)
       mapped.sort((a, b) => Number(b.masterId) - Number(a.masterId));
       setPolicies(mapped);
     } catch {
@@ -47,7 +42,7 @@ export function useMasterPolicies() {
     } finally {
       setLoading(false);
     }
-  }, [program, wallet]);
+  }, [publicKey]);
 
   useEffect(() => {
     fetchPolicies();

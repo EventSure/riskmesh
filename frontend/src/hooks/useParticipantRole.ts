@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { PublicKey } from '@solana/web3.js';
-import { useProgram } from './useProgram';
-import type { MasterPolicyAccount, MasterParticipant } from '@/lib/idl/open_parametric';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { BACKEND_URL } from '@/lib/constants';
 
 export type ParticipantRole = 'leader' | 'partA' | 'partB' | 'rein' | null;
 
@@ -12,19 +12,29 @@ export interface ParticipantInfo {
   participantIndex: number;
 }
 
+interface BackendMasterPolicy {
+  leader: string;
+  reinsurer: string;
+  reinsurer_effective_bps: number;
+  reinsurer_confirmed: boolean;
+  participants: Array<{ insurer: string; share_bps: number; confirmed: boolean }>;
+}
+
 /**
  * Detect all roles the connected wallet holds in a MasterPolicy.
- * A wallet may be leader + reinsurer, leader + participant, etc.
- * Returns an array of all matching roles.
+ * Uses backend API instead of direct RPC.
  */
 export function useParticipantRole(masterPolicyPDA: PublicKey | null) {
-  const { program, wallet } = useProgram();
+  const { publicKey } = useWallet();
   const [roles, setRoles] = useState<ParticipantInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const pda = masterPolicyPDA?.toBase58() ?? null;
+  const walletKey = publicKey?.toBase58() ?? null;
+
   useEffect(() => {
-    if (!program || !masterPolicyPDA || !wallet?.publicKey) {
+    if (!pda || !walletKey) {
       setRoles([]);
       return;
     }
@@ -35,49 +45,35 @@ export function useParticipantRole(masterPolicyPDA: PublicKey | null) {
       setLoading(true);
       setError(null);
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const prog = program as any;
-        const account: MasterPolicyAccount = await prog.account.masterPolicy.fetch(masterPolicyPDA);
-        const walletKey = wallet!.publicKey!;
+        const res = await fetch(`${BACKEND_URL}/api/master-policies/${pda}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const account: BackendMasterPolicy = await res.json();
         const found: ParticipantInfo[] = [];
 
-        // Check leader
-        if (account.leader.equals(walletKey)) {
-          found.push({
-            role: 'leader',
-            shareBps: 10000,
-            confirmed: true,
-            participantIndex: -1,
-          });
+        if (account.leader === walletKey) {
+          found.push({ role: 'leader', shareBps: 10000, confirmed: true, participantIndex: -1 });
         }
-
-        // Check reinsurer
-        if (account.reinsurer.equals(walletKey)) {
+        if (account.reinsurer === walletKey) {
           found.push({
             role: 'rein',
-            shareBps: account.reinsurerEffectiveBps,
-            confirmed: account.reinsurerConfirmed,
+            shareBps: account.reinsurer_effective_bps,
+            confirmed: account.reinsurer_confirmed,
             participantIndex: -1,
           });
         }
-
-        // Check participants array
-        const participants: MasterParticipant[] = account.participants || [];
-        for (let i = 0; i < participants.length; i++) {
-          const p = participants[i];
-          if (p && p.insurer.equals(walletKey)) {
+        for (let i = 0; i < account.participants.length; i++) {
+          const p = account.participants[i]!;
+          if (p.insurer === walletKey) {
             found.push({
               role: i === 0 ? 'partA' : 'partB',
-              shareBps: p.shareBps,
+              shareBps: p.share_bps,
               confirmed: p.confirmed,
               participantIndex: i,
             });
           }
         }
 
-        if (!cancelled) {
-          setRoles(found);
-        }
+        if (!cancelled) setRoles(found);
       } catch (err: unknown) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : String(err));
@@ -90,7 +86,7 @@ export function useParticipantRole(masterPolicyPDA: PublicKey | null) {
 
     detect();
     return () => { cancelled = true; };
-  }, [program, masterPolicyPDA, wallet]);
+  }, [pda, walletKey]);
 
   // Backward-compatible: primary role = first found (leader > rein > participant)
   const info = roles.length > 0 ? roles[0] : null;

@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import { Card, CardHeader, CardTitle, CardBody, SummaryRow } from '@/components/common';
 import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
 import { useProgram } from '@/hooks/useProgram';
+import { useMasterPolicyAccount } from '@/hooks/useMasterPolicyAccount';
 import { Chart, registerables } from 'chart.js';
 import { useTranslation } from 'react-i18next';
 
@@ -10,22 +11,24 @@ Chart.register(...registerables);
 
 export function PoolStatus() {
   const { mode, masterPolicyPDA, poolBalance, totalClaim, poolHist, poolRefreshKey, setPoolBalance } = useProtocolStore();
-  const { program, connection } = useProgram();
+  const { connection } = useProgram();
   const { t, i18n: { language } } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
   const [onChainBalance, setOnChainBalance] = useState<number | null>(null);
 
+  const pdaKey = useMemo(
+    () => mode === 'onchain' && masterPolicyPDA ? new PublicKey(masterPolicyPDA) : null,
+    [mode, masterPolicyPDA],
+  );
+  const { account: masterData } = useMasterPolicyAccount(pdaKey);
+
   const fetchOnChainBalance = useCallback(async () => {
-    if (mode !== 'onchain' || !masterPolicyPDA || !program || !connection) {
+    if (mode !== 'onchain' || !masterData || !connection) {
       setOnChainBalance(null);
       return;
     }
     try {
-      const masterPK = new PublicKey(masterPolicyPDA);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const masterData = await (program as any).account.masterPolicy.fetch(masterPK);
-
       let total = 0;
       // reinsurer pool 잔액
       try {
@@ -47,7 +50,7 @@ export function PoolStatus() {
     } catch {
       setOnChainBalance(null);
     }
-  }, [mode, masterPolicyPDA, program, connection, poolRefreshKey, setPoolBalance]);
+  }, [mode, masterData, connection, poolRefreshKey, setPoolBalance]);
 
   useEffect(() => { fetchOnChainBalance(); }, [fetchOnChainBalance]);
 
