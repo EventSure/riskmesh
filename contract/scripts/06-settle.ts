@@ -1,5 +1,5 @@
 /**
- * yarn demo:settle
+ * yarn demo:6-settle
  *
  * FlightPolicy 상태에 따라 정산 실행:
  *   Claimable(2) → settle_flight_claim    → leaderPool → leaderDeposit
@@ -18,7 +18,10 @@ async function main() {
     throw new Error("masterId / flightPolicies 없음. 이전 단계를 먼저 실행하세요.");
   }
   if (!s.leaderDepositWallet || !s.reinsurerPoolWallet || !s.leaderPoolWallet || !s.leaderAta) {
-    throw new Error("토큰 계정 정보 없음. yarn demo:master-setup 먼저 실행하세요.");
+    throw new Error("토큰 계정 정보 없음. yarn demo:3-master-setup 먼저 실행하세요.");
+  }
+  if (!s.participantAPoolWallet || !s.participantBPoolWallet) {
+    throw new Error("참여사 pool wallet 없음. yarn demo:3-master-setup 먼저 실행하세요.");
   }
 
   const leader    = kp(s.leaderKey);
@@ -60,8 +63,10 @@ async function main() {
         tokenProgram:        TOKEN_PROGRAM_ID,
       })
       .remainingAccounts([
-        // participants[0].pool_wallet = leaderPoolWallet (PDA 소유)
-        { pubkey: new PublicKey(s.leaderPoolWallet), isWritable: true, isSigner: false },
+        // participants 순서대로: leader(0), A(1), B(2) 각 pool_wallet
+        { pubkey: new PublicKey(s.leaderPoolWallet),       isWritable: true, isSigner: false },
+        { pubkey: new PublicKey(s.participantAPoolWallet!), isWritable: true, isSigner: false },
+        { pubkey: new PublicKey(s.participantBPoolWallet!), isWritable: true, isSigner: false },
       ])
       .signers([leader])
       .rpc();
@@ -83,12 +88,14 @@ async function main() {
         masterPolicy:           masterPda,
         flightPolicy:           flightPda,
         leaderDepositToken:     new PublicKey(s.leaderDepositWallet),
-        reinsurerDepositToken:  new PublicKey(s.leaderAta),  // ceded=0, 실제 이체 없음
+        reinsurerDepositToken:  new PublicKey(s.reinsurerDepositWallet ?? s.leaderAta),
         tokenProgram:           TOKEN_PROGRAM_ID,
       })
       .remainingAccounts([
-        // participants[0].deposit_wallet = leaderAta
-        { pubkey: new PublicKey(s.leaderAta), isWritable: true, isSigner: false },
+        // participants 순서대로: leader(0), A(1), B(2) 각 deposit_wallet
+        { pubkey: new PublicKey(s.leaderAta),                       isWritable: true, isSigner: false },
+        { pubkey: new PublicKey(s.participantADepositWallet!),       isWritable: true, isSigner: false },
+        { pubkey: new PublicKey(s.participantBDepositWallet!),       isWritable: true, isSigner: false },
       ])
       .signers([leader])
       .rpc();

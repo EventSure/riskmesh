@@ -77,11 +77,27 @@ pub fn scan_master_policies(
     scan_accounts(client, program_id, "MasterPolicy", parse_master_policy)
 }
 
+pub fn fetch_master_policy(
+    client: &SolanaClient,
+    master_policy_pubkey: &Pubkey,
+) -> Result<MasterPolicyInfo> {
+    let account = client.get_account(master_policy_pubkey)?;
+    parse_master_policy(master_policy_pubkey, &account.data)
+}
+
 pub fn scan_flight_policies(
     client: &SolanaClient,
     program_id: &Pubkey,
 ) -> Result<Vec<FlightPolicyInfo>> {
     scan_accounts(client, program_id, "FlightPolicy", parse_flight_policy)
+}
+
+pub fn fetch_flight_policy(
+    client: &SolanaClient,
+    flight_policy_pubkey: &Pubkey,
+) -> Result<FlightPolicyInfo> {
+    let account = client.get_account(flight_policy_pubkey)?;
+    parse_flight_policy(flight_policy_pubkey, &account.data)
 }
 
 fn scan_accounts<T>(

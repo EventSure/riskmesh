@@ -98,7 +98,7 @@ export function requireApiKey(): string {
     throw new Error(
       "AVIATIONSTACK_API_KEY 환경변수를 설정하세요.\n" +
         "  무료 가입: https://aviationstack.com\n" +
-        "  실행 예시: AVIATIONSTACK_API_KEY=xxx yarn demo:oracle-resolve"
+        "  실행 예시: AVIATIONSTACK_API_KEY=xxx yarn demo:5a-resolve"
     );
   }
   return key;

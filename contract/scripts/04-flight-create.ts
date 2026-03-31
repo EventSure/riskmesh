@@ -1,5 +1,5 @@
 /**
- * yarn demo:flight-create
+ * yarn demo:4-flight-create
  *
  * FlightPolicy 생성 (create_flight_policy_from_master)
  * 프리미엄(1 USDC)이 리더 ATA → leaderDepositWallet(PDA 소유)으로 이체됩니다.
@@ -17,7 +17,7 @@ import { kp, loadState, makeProgram, flightPolicyPub, saveState } from "./common
 async function main() {
   const s = loadState() as any;
   if (!s.masterId || !s.masterPda || !s.leaderAta || !s.leaderDepositWallet) {
-    throw new Error("master-setup 데이터 없음. yarn demo:master-setup 먼저 실행하세요.");
+    throw new Error("master-setup 데이터 없음. yarn demo:3-master-setup 먼저 실행하세요.");
   }
 
   const leader = kp(s.leaderKey);
@@ -73,7 +73,7 @@ async function main() {
   const updated = [...existing, { childId, pda: flightPda.toBase58(), flightNo, departureTs }];
   saveState({ ...s, flightPolicies: updated });
   console.log("✓ .state.json 업데이트 완료");
-  console.log("\n다음 단계: 백엔드 데몬 실행 또는 yarn demo:oracle-resolve");
+  console.log("\n다음 단계: 백엔드 데몬 실행 또는 yarn demo:5a-resolve");
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
