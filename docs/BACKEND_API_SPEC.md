@@ -209,6 +209,112 @@ curl http://localhost:3000/api/flight-policies/9zAb...
 
 ---
 
+### `GET /api/master-policies/:master_policy_pubkey/flight-policies`
+
+특정 MasterPolicy에 속한 FlightPolicy 목록 조회.
+
+**Path Parameters:**
+
+| 파라미터 | 타입 | 설명 |
+|---|---|---|
+| `master_policy_pubkey` | `string (base58)` | MasterPolicy 계정 주소 |
+
+**curl 예시:**
+```bash
+curl "http://localhost:3000/api/master-policies/3yGp.../flight-policies"
+```
+
+**Response:**
+```json
+{
+  "program_id": "ETEEEssGKAAQEGwz3ggDcy9vzPAPtBjtb2KocdyLBMjh",
+  "master_policy_pubkey": "3yGp...",
+  "count": 2,
+  "flight_policies": [
+    {
+      "pubkey": "9zAb...",
+      "child_policy_id": 1,
+      "master": "3yGp...",
+      "creator": "7xKX...",
+      "subscriber_ref": "USR-001",
+      "flight_no": "KE001",
+      "route": "ICN-NRT",
+      "departure_ts": 1710500000,
+      "premium_paid": 5000000,
+      "delay_minutes": 0,
+      "cancelled": false,
+      "payout_amount": 0,
+      "status": 1,
+      "status_label": "AwaitingOracle",
+      "premium_distributed": false,
+      "created_at": 1710000000,
+      "updated_at": 1710100000
+    }
+  ]
+}
+```
+
+**Error:**
+```json
+{ "error": "account not found" }   // 404
+{ "error": "failed to fetch: ..." } // 500
+```
+
+---
+
+### `POST /api/master-policies/:master_policy_pubkey/flight-policies`
+
+특정 MasterPolicy 아래에 새로운 FlightPolicy를 생성.
+
+**Path Parameters:**
+
+| 파라미터 | 타입 | 설명 |
+|---|---|---|
+| `master_policy_pubkey` | `string (base58)` | FlightPolicy를 생성할 대상 MasterPolicy 계정 주소 |
+
+**Request Body:**
+```json
+{
+  "subscriber_ref": "USR-001",
+  "flight_no": "KE001",
+  "route": "ICN-NRT",
+  "departure_ts": 1710500000
+}
+```
+
+**curl 예시:**
+```bash
+curl -X POST "http://localhost:3000/api/master-policies/3yGp.../flight-policies" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subscriber_ref": "USR-001",
+    "flight_no": "KE001",
+    "route": "ICN-NRT",
+    "departure_ts": 1710500000
+  }'
+```
+
+**Response:**
+```json
+{
+  "program_id": "ETEEEssGKAAQEGwz3ggDcy9vzPAPtBjtb2KocdyLBMjh",
+  "master_policy_pubkey": "3yGp...",
+  "child_policy_id": 1,
+  "flight_policy_pubkey": "9zAb...",
+  "tx_signature": "5YkK..."
+}
+```
+
+**Error:**
+```json
+{ "error": "master_policy_pubkey 주소 파싱 실패: ..." } // 400
+{ "error": "MasterPolicy가 Active 상태가 아닙니다: status=..." } // 500
+{ "error": "현재 서버 키는 이 MasterPolicy의 leader/operator 권한이 없습니다" } // 500
+{ "error": "subscriber_ref, flight_no, route는 비어 있을 수 없습니다" } // 500
+```
+
+---
+
 ### `GET /api/events` ⭐ (핵심 신규 엔드포인트)
 
 **Server-Sent Events** 스트림. 백엔드가 Solana 계정 변경을 감지하면 연결된 프론트에 즉시 푸시.
