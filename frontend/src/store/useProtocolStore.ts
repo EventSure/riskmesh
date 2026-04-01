@@ -74,6 +74,7 @@ export interface MasterPolicySummary {
   pda: string;
   masterId: string;
   status: number;
+  statusLabel: string;
   coverageEndTs: number;
 }
 

@@ -30,7 +30,7 @@ interface BackendFlightPolicy {
   premium_distributed: boolean;
   created_at: number;
   updated_at: number;
-  bump: number;
+  status_label: string;
 }
 
 function toFlightPolicyWithKey(data: BackendFlightPolicy): FlightPolicyWithKey {
@@ -56,7 +56,7 @@ function toFlightPolicyWithKey(data: BackendFlightPolicy): FlightPolicyWithKey {
       premiumDistributed: data.premium_distributed,
       createdAt: fakeBN(data.created_at) as unknown as import('@coral-xyz/anchor').BN,
       updatedAt: fakeBN(data.updated_at) as unknown as import('@coral-xyz/anchor').BN,
-      bump: data.bump,
+      bump: 0,
     } as unknown as FlightPolicyAccount,
   };
 }
