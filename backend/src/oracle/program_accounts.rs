@@ -42,6 +42,7 @@ pub struct MasterPolicyInfo {
     pub reinsurer_deposit_wallet: String,
     pub leader_deposit_wallet: String,
     pub participants: Vec<MasterParticipantInfo>,
+    pub oracle_feed: String,
     pub status: u8,
     pub status_label: String,
     pub created_at: i64,
@@ -150,6 +151,7 @@ fn parse_master_policy(pubkey: &Pubkey, data: &[u8]) -> Result<MasterPolicyInfo>
     let reinsurer_deposit_wallet = read_pubkey(data, &mut offset)?;
     let leader_deposit_wallet = read_pubkey(data, &mut offset)?;
     let participants = read_master_participants(data, &mut offset)?;
+    let oracle_feed = read_pubkey(data, &mut offset)?;
     let status = read_u8(data, &mut offset)?;
     let created_at = read_i64(data, &mut offset)?;
     let _bump = read_u8(data, &mut offset)?;
@@ -176,6 +178,7 @@ fn parse_master_policy(pubkey: &Pubkey, data: &[u8]) -> Result<MasterPolicyInfo>
         reinsurer_deposit_wallet: reinsurer_deposit_wallet.to_string(),
         leader_deposit_wallet: leader_deposit_wallet.to_string(),
         participants,
+        oracle_feed: oracle_feed.to_string(),
         status,
         status_label: master_policy_status_label(status).to_string(),
         created_at,
