@@ -132,8 +132,10 @@ export function useFlightPolicies(
     if (!masterKey) return;
 
     const es = new EventSource(`${BACKEND_URL}/api/events?master=${masterKey}`);
+    console.log('[SSE] connected:', `${BACKEND_URL}/api/events?master=${masterKey}`);
 
     es.addEventListener('flight_policy_updated', (e: MessageEvent) => {
+      console.log('[SSE] flight_policy_updated', JSON.parse(e.data));
       try {
         const data: BackendFlightPolicy = JSON.parse(e.data);
         if (data.master !== masterKey) return;
@@ -143,17 +145,15 @@ export function useFlightPolicies(
 
         setPolicies((prev) => {
           const idx = prev.findIndex((p) => p.account.childPolicyId.toNumber() === id);
-
-          // Status change detection
-          const cb = onStatusChangeRef.current;
           const existing = idx >= 0 ? prev[idx]! : undefined;
-          if (existing && cb) {
-            const prevStatus = existing.account.status;
-            if (prevStatus !== updated.account.status) {
-              cb(updated, prevStatus, updated.account.status);
-            }
+
+          const prevStatus = existing?.account.status;
+          const nextStatus = updated.account.status;
+          if (prevStatus !== undefined && prevStatus !== nextStatus) {
+            const cb = onStatusChangeRef.current;
+            if (cb) setTimeout(() => cb(updated, prevStatus, nextStatus), 0);
           }
-          prevStatusRef.current.set(id, updated.account.status);
+          prevStatusRef.current.set(id, nextStatus);
 
           if (idx >= 0) {
             const next = [...prev];
