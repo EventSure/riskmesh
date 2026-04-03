@@ -17,8 +17,6 @@ import { PublicKey } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useMasterPolicyAccount } from '@/hooks/useMasterPolicyAccount';
 import { useFlightPolicies, type FlightPolicyWithKey } from '@/hooks/useFlightPolicies';
-import { usePolicies } from '@/hooks/usePolicies';
-import type { PolicyWithKey } from '@/store/useProtocolStore';
 import { useToast } from '@/components/common';
 
 const STATUS_NAMES: Record<number, string> = {
@@ -36,7 +34,6 @@ function ChainSyncer() {
   const masterPolicyPDA = useProtocolStore(s => s.masterPolicyPDA);
   const syncMasterFromChain = useProtocolStore(s => s.syncMasterFromChain);
   const syncFlightPoliciesFromChain = useProtocolStore(s => s.syncFlightPoliciesFromChain);
-  const syncTrackBPoliciesFromChain = useProtocolStore(s => s.syncTrackBPoliciesFromChain);
   const addLog = useProtocolStore(s => s.addLog);
 
   const pdaKey = useMemo(
@@ -57,18 +54,8 @@ function ChainSyncer() {
     );
   }, [t, toast, addLog]);
 
-  const handleTrackBStatusChange = useCallback((p: PolicyWithKey, prev: number, next: number) => {
-    const name = `Policy #${p.account.policyId.toNumber()} ${p.account.flightNo}`;
-    toast(t('oracle.statusChanged', { flight: name, from: String(prev), to: String(next) }), 'w');
-    addLog(`${name}: state ${prev} → ${next}`, '#9945FF', 'trackb_state_change');
-  }, [t, toast, addLog]);
-
   const { account } = useMasterPolicyAccount(pdaKey);
   const { policies } = useFlightPolicies(pdaKey, { onStatusChange: handleStatusChange });
-  const { policies: trackBPolicies, claims: trackBClaims } = usePolicies(
-    mode === 'onchain' && publicKey ? publicKey : null,
-    { onStatusChange: handleTrackBStatusChange },
-  );
 
   useEffect(() => {
     if (account) syncMasterFromChain(account);
@@ -77,10 +64,6 @@ function ChainSyncer() {
   useEffect(() => {
     if (pdaKey) syncFlightPoliciesFromChain(policies);
   }, [policies]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (mode === 'onchain') syncTrackBPoliciesFromChain(trackBPolicies, trackBClaims);
-  }, [trackBPolicies, trackBClaims]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return null;
 }

@@ -1,5 +1,5 @@
 import styled from '@emotion/styled';
-import { keyframes } from '@emotion/react';
+import { keyframes, css } from '@emotion/react';
 import { Card, CardHeader, CardTitle } from '@/components/common';
 import { useProtocolStore, POLICY_STATES, POLICY_STATE_ICONS } from '@/store/useProtocolStore';
 
@@ -45,8 +45,8 @@ const StateCircle = styled.div<{ state?: CircleState }>`
   transition: all 0.5s;
 
   ${p => p.state === 'done' && `border-color:var(--success);background:rgba(34,197,94,.1);color:var(--success);box-shadow:0 0 10px rgba(34,197,94,.3);`}
-  ${p => p.state === 'cur' && `border-color:var(--primary);background:rgba(153,69,255,.15);color:var(--primary);box-shadow:0 0 16px rgba(153,69,255,.22);animation:${pulsePrimary} 2s infinite;`}
-  ${p => p.state === 'claimable' && `border-color:var(--warning);background:rgba(245,158,11,.15);color:var(--warning);animation:${pulseWarning} 1.5s infinite;`}
+  ${p => p.state === 'cur' && css`border-color:var(--primary);background:rgba(153,69,255,.15);color:var(--primary);box-shadow:0 0 16px rgba(153,69,255,.22);animation:${pulsePrimary} 2s infinite;`}
+  ${p => p.state === 'claimable' && css`border-color:var(--warning);background:rgba(245,158,11,.15);color:var(--warning);animation:${pulseWarning} 1.5s infinite;`}
   ${p => p.state === 'settled' && `border-color:var(--accent);background:rgba(20,241,149,.1);color:var(--accent);box-shadow:0 0 14px rgba(20,241,149,.22);`}
 `;
 

@@ -12,6 +12,9 @@ pub struct FirebaseConfig {
     pub project_id: String,
     pub firestore_database: String,
     pub test_collection: String,
+    pub master_policies_collection: String,
+    pub flight_policies_collection: String,
+    pub sync_metadata_collection: String,
     service_account: GoogleServiceAccount,
 }
 
@@ -26,6 +29,18 @@ impl FirebaseConfig {
                 .unwrap_or_else(|| service_account.project_id.clone()),
             firestore_database: optional_env("FIREBASE_DATABASE", "(default)"),
             test_collection: optional_env("FIREBASE_TEST_COLLECTION", "riskmesh_test"),
+            master_policies_collection: optional_env(
+                "FIREBASE_MASTER_POLICIES_COLLECTION",
+                "master_policies",
+            ),
+            flight_policies_collection: optional_env(
+                "FIREBASE_FLIGHT_POLICIES_COLLECTION",
+                "flight_policies",
+            ),
+            sync_metadata_collection: optional_env(
+                "FIREBASE_SYNC_METADATA_COLLECTION",
+                "sync_metadata",
+            ),
             service_account,
         })
     }
@@ -42,6 +57,7 @@ impl FirebaseConfig {
     }
 }
 
+#[derive(Clone)]
 pub struct FirebaseClient {
     http: reqwest::Client,
     config: FirebaseConfig,
@@ -107,6 +123,136 @@ impl FirebaseClient {
             .json::<FirestoreDocument>()
             .await
             .context("Firestore 문서 생성 응답 파싱 실패")
+    }
+
+    pub(crate) async fn upsert_document(
+        &self,
+        access_token: &str,
+        document_path: &str,
+        fields: Value,
+    ) -> Result<FirestoreDocument> {
+        let url = format!(
+            "{}/{}",
+            self.config.firestore_documents_base_url(),
+            document_path
+        );
+
+        let response = self
+            .http
+            .patch(url)
+            .bearer_auth(access_token)
+            .json(&json!({ "fields": fields }))
+            .send()
+            .await
+            .context("Firestore 문서 upsert 요청 실패")?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            bail!(
+                "Firestore 문서 upsert 실패: status={} body={}",
+                status,
+                body
+            );
+        }
+
+        response
+            .json::<FirestoreDocument>()
+            .await
+            .context("Firestore 문서 upsert 응답 파싱 실패")
+    }
+
+    pub(crate) async fn get_document(
+        &self,
+        access_token: &str,
+        document_path: &str,
+    ) -> Result<Option<FirestoreDocument>> {
+        let url = format!(
+            "{}/{}",
+            self.config.firestore_documents_base_url(),
+            document_path
+        );
+
+        let response = self
+            .http
+            .get(url)
+            .bearer_auth(access_token)
+            .send()
+            .await
+            .context("Firestore 문서 조회 요청 실패")?;
+
+        if response.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok(None);
+        }
+
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            bail!(
+                "Firestore 문서 조회 실패: status={} body={}",
+                status,
+                body
+            );
+        }
+
+        response
+            .json::<FirestoreDocument>()
+            .await
+            .map(Some)
+            .context("Firestore 문서 조회 응답 파싱 실패")
+    }
+
+    pub(crate) async fn list_documents(
+        &self,
+        access_token: &str,
+        collection_id: &str,
+    ) -> Result<Vec<FirestoreDocument>> {
+        let mut documents = Vec::new();
+        let mut page_token: Option<String> = None;
+
+        loop {
+            let mut url = format!(
+                "{}/{}?pageSize=500",
+                self.config.firestore_documents_base_url(),
+                collection_id
+            );
+            if let Some(token) = &page_token {
+                url.push_str("&pageToken=");
+                url.push_str(token);
+            }
+
+            let response = self
+                .http
+                .get(&url)
+                .bearer_auth(access_token)
+                .send()
+                .await
+                .context("Firestore 목록 조회 요청 실패")?;
+
+            let status = response.status();
+            if !status.is_success() {
+                let body = response.text().await.unwrap_or_default();
+                bail!(
+                    "Firestore 목록 조회 실패: status={} body={}",
+                    status,
+                    body
+                );
+            }
+
+            let payload = response
+                .json::<FirestoreListDocumentsResponse>()
+                .await
+                .context("Firestore 목록 조회 응답 파싱 실패")?;
+
+            documents.extend(payload.documents);
+
+            match payload.next_page_token {
+                Some(token) if !token.is_empty() => page_token = Some(token),
+                _ => break,
+            }
+        }
+
+        Ok(documents)
     }
 
     async fn fetch_access_token(&self) -> Result<String> {
@@ -190,6 +336,14 @@ pub struct FirestoreDocument {
     pub create_time: Option<String>,
     #[serde(rename = "updateTime")]
     pub update_time: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct FirestoreListDocumentsResponse {
+    #[serde(default)]
+    documents: Vec<FirestoreDocument>,
+    #[serde(rename = "nextPageToken")]
+    next_page_token: Option<String>,
 }
 
 pub(crate) struct FirebaseWriteAuth {

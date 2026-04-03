@@ -1,7 +1,17 @@
 use anyhow::Result;
 
+#[path = "../config.rs"]
+mod config;
 #[path = "../firebase/mod.rs"]
 mod firebase;
+#[path = "../flight_api.rs"]
+mod flight_api;
+#[path = "../oracle/mod.rs"]
+mod oracle;
+#[path = "../solana/mod.rs"]
+mod solana;
+#[path = "../switchboard.rs"]
+mod switchboard;
 #[path = "../api/repository.rs"]
 mod repository;
 
