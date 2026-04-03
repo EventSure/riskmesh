@@ -39,7 +39,7 @@ interface BackendMasterPolicy {
   reinsurer_deposit_wallet: string;
   leader_deposit_wallet: string;
   created_at: number;
-  bump: number;
+  status_label: string;
 }
 
 function toMasterPolicyAccount(data: BackendMasterPolicy): MasterPolicyAccount {
@@ -78,7 +78,7 @@ function toMasterPolicyAccount(data: BackendMasterPolicy): MasterPolicyAccount {
     })),
     status: data.status,
     createdAt: fakeBN(data.created_at) as unknown as import('@coral-xyz/anchor').BN,
-    bump: data.bump,
+    bump: 0,
   } as unknown as MasterPolicyAccount;
 }
 

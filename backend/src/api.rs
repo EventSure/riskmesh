@@ -10,6 +10,7 @@ mod types;
 use std::{net::SocketAddr, sync::Arc};
 
 use anyhow::{Context, Result};
+use tower_http::cors::{Any, CorsLayer};
 
 use crate::{config::Config, events::EventBus};
 
@@ -20,11 +21,17 @@ pub async fn start(config: Arc<Config>, event_bus: Arc<EventBus>) -> Result<()> 
         .with_context(|| format!("WEB_BIND_ADDR 파싱 실패: {}", config.web_bind_addr))?;
 
     let firebase_repository = Arc::new(repository::FirebaseRepository::from_env()?);
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+
     let app = router::build_router(state::AppState {
         config,
         firebase_repository,
         event_bus,
-    });
+    })
+    .layer(cors);
 
     tracing::info!("[api] listening on http://{addr}");
 

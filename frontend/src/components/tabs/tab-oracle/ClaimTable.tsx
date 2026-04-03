@@ -24,7 +24,13 @@ export function ClaimTable() {
           </thead>
           <tbody>
             {[...claims].reverse().map(c => {
-              const statusColor = c.status === 'settled' ? 'accent' : c.status === 'approved' ? 'warning' : c.status === 'claimable' ? 'danger' : 'danger';
+              const CLAIM_COLOR: Record<string, string> = {
+                claimable: '#F59E0B',
+                approved:  '#14F195',
+                settled:   '#9945FF',
+                pending:   '#94A3B8',
+              };
+              const clr = CLAIM_COLOR[c.status] ?? '#94A3B8';
               const statusLabel = c.status === 'settled' ? t('claim.status.settled') : c.status === 'approved' ? t('claim.status.approved') : c.status === 'claimable' ? t('claim.status.claimable') : t('claim.status.pending');
               return (
                 <tr key={c.id} className="nr">
@@ -44,9 +50,9 @@ export function ClaimTable() {
                   <td style={{ color: '#38BDF8' }}>{formatNum(c.totRC, 2)}</td>
                   <td>
                     <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 6px', borderRadius: 4, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', fontFamily: "'DM Mono', monospace",
-                      background: statusColor === 'accent' ? 'rgba(20,241,149,.12)' : statusColor === 'warning' ? 'rgba(245,158,11,.12)' : 'rgba(239,68,68,.12)',
-                      color: `var(--${statusColor})`,
-                      border: `1px solid ${statusColor === 'accent' ? 'rgba(20,241,149,.3)' : statusColor === 'warning' ? 'rgba(245,158,11,.3)' : 'rgba(239,68,68,.3)'}`,
+                      background: `${clr}1a`,
+                      color: clr,
+                      border: `1px solid ${clr}44`,
                     }}>{statusLabel}</span>
                   </td>
                   <td style={{ fontSize: 9, color: 'var(--sub)' }}>{c.ts}</td>

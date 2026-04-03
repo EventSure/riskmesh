@@ -81,7 +81,8 @@ const SettleBtn = styled.button`
 
 const STATUS_COLOR: Record<string, string> = {
   active: '#14F195',
-  claimed: '#9945FF',
+  claimed: '#F59E0B',
+  paid: '#9945FF',
   noClaim: '#94A3B8',
   expired: '#64748B',
   settled: '#22C55E',
@@ -89,7 +90,8 @@ const STATUS_COLOR: Record<string, string> = {
 
 const STATUS_ICON: Record<string, string> = {
   active: '⏳',
-  claimed: '✅',
+  claimed: '⚠',
+  paid: '✅',
   noClaim: '──',
   expired: '⏰',
   settled: '💸',

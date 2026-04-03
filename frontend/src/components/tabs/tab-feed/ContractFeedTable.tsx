@@ -41,7 +41,7 @@ export function ContractFeedTable() {
                 <td style={{ color: '#F59E0B' }}>{formatNum(c.bNet, 4)}</td>
                 <td style={{ color: '#38BDF8' }}>{formatNum(c.rNet, 4)}</td>
                 <td style={{ fontSize: 9, color: 'var(--sub)' }}>{c.ts}</td>
-                <td><Tag variant={c.status === 'active' ? 'accent' : c.status === 'claimed' ? 'warning' : 'subtle'}>{t(`common.${c.status}`)}</Tag></td>
+                <td><Tag variant={c.status === 'active' ? 'accent' : c.status === 'claimed' ? 'warning' : c.status === 'paid' ? 'primary' : 'subtle'}>{t(`common.${c.status}`)}</Tag></td>
               </tr>
             ))}
           </tbody>

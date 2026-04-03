@@ -9,13 +9,8 @@ import { useToast } from '@/components/common';
 import { useResolveFlightDelay } from '@/hooks/useResolveFlightDelay';
 import { useProgram } from '@/hooks/useProgram';
 import { getFlightPolicyPDA } from '@/lib/pda';
-import { TrackBPanel } from './TrackBPanel';
 
-/* ── Types ── */
-
-type OracleControlMode = 'manual' | 'trackA' | 'trackB';
-
-/* ── Segmented Control ── */
+/* ── Segmented Control (resolve type) ── */
 
 const SegmentWrap = styled.div`
   display: flex;
@@ -75,30 +70,6 @@ const MsgText = styled.div<{ variant: 'error' | 'ok' }>`
   font-weight: ${p => p.variant === 'ok' ? 700 : 400};
 `;
 
-/* ── Daemon badge ── */
-
-const DaemonBadge = styled.div<{ active: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  margin-bottom: 14px;
-  border: 1px solid ${p => p.active ? 'var(--success)' : 'var(--warning, #F59E0B)'};
-  background: ${p => p.active ? 'rgba(34,197,94,.06)' : 'rgba(245,158,11,.06)'};
-  color: ${p => p.active ? 'var(--success)' : 'var(--warning, #F59E0B)'};
-`;
-
-const DaemonDot = styled.span<{ active: boolean }>`
-  width: 8px;
-  height: 8px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: ${p => p.active ? 'var(--success)' : 'var(--warning, #F59E0B)'};
-  box-shadow: ${p => p.active ? '0 0 6px rgba(34,197,94,0.6)' : 'none'};
-`;
 
 /* ── Policy monitor ── */
 
@@ -112,34 +83,29 @@ const SectionLabel = styled.div`
   margin-top: 4px;
 `;
 
-/* ── Coming Soon placeholder ── */
+/* ── Info note ── */
 
-const ComingSoonWrap = styled.div`
+const InfoNote = styled.div`
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-  gap: 12px;
-  text-align: center;
-`;
-
-const ComingSoonIcon = styled.div`
-  font-size: 32px;
-`;
-
-const ComingSoonTitle = styled.div`
-  font-size: 14px;
-  font-weight: 700;
-  color: ${p => p.theme.colors.text};
-`;
-
-const ComingSoonSub = styled.div`
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
   font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  border: 1px solid rgba(99,179,237,0.3);
+  background: rgba(99,179,237,0.06);
   color: ${p => p.theme.colors.sub};
-  line-height: 1.5;
 `;
 
+const InfoDot = styled.span`
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(99,179,237,0.6);
+`;
 
 /* ── OracleConsole ── */
 
@@ -153,7 +119,6 @@ export function OracleConsole() {
   const { resolveFlightDelay, loading } = useResolveFlightDelay();
   const { wallet } = useProgram();
 
-  const [oracleMode, setOracleMode] = useState<OracleControlMode>('manual');
   const [contractId, setContractId] = useState<number>(0);
   const [resolveType, setResolveType] = useState<'delay' | 'noDelay'>('delay');
   const [delay, setDelay] = useState(130);
@@ -161,13 +126,13 @@ export function OracleConsole() {
   const [cancelled, setCancelled] = useState(false);
   const [result, setResult] = useState<{ type: 'error' | 'ok'; msg: string; code?: string } | null>(null);
 
-  const daemonStatus = useMemo(() => {
-    if (lastDaemonActivityTs == null) return { active: false, label: t('oracle.daemonNoData') };
+  const SCHEDULER_INTERVAL_MIN = 15;
+  const nextRunLabel = useMemo(() => {
+    if (lastDaemonActivityTs == null) return null;
     const nowSec = Math.floor(Date.now() / 1000);
-    const diffMin = Math.floor((nowSec - lastDaemonActivityTs) / 60);
-    if (diffMin > 30) return { active: false, label: t('oracle.daemonInactive') };
-    return { active: true, label: t('oracle.daemonLastActive', { minutes: diffMin }) };
-  }, [lastDaemonActivityTs, t]);
+    const minsLeft = Math.ceil((lastDaemonActivityTs + SCHEDULER_INTERVAL_MIN * 60 - nowSec) / 60);
+    return minsLeft > 0 ? `(${minsLeft}분 후)` : '(잠시 후)';
+  }, [lastDaemonActivityTs]);
 
   const handleRun = async () => {
     if (contractId === 0) { toast(t('toast.selectContract'), 'w'); return; }
@@ -208,41 +173,18 @@ export function OracleConsole() {
     <Card>
       <CardHeader>
         <CardTitle>{t('oracle.title')}</CardTitle>
-        <Tag variant="subtle">{mode === 'onchain' ? t('oracle.modeOnchain') : t('oracle.modeSwitchboard')}</Tag>
+        <Tag variant="subtle">{t('oracle.tagManual')}</Tag>
       </CardHeader>
       <CardBody>
-        {/* Oracle control mode selector */}
-        <SegmentWrap role="tablist" aria-label="Oracle control mode">
-          <Segment
-            role="tab"
-            aria-selected={oracleMode === 'manual'}
-            active={oracleMode === 'manual'}
-            onClick={() => setOracleMode('manual')}
-          >
-            {t('oracle.tabManual')}
-          </Segment>
-          <Segment
-            role="tab"
-            aria-selected={oracleMode === 'trackA'}
-            active={oracleMode === 'trackA'}
-            onClick={() => setOracleMode('trackA')}
-          >
-            {t('oracle.tabTrackA')}
-          </Segment>
-          <Segment
-            role="tab"
-            aria-selected={oracleMode === 'trackB'}
-            active={oracleMode === 'trackB'}
-            onClick={() => setOracleMode('trackB')}
-          >
-            {t('oracle.tabTrackB')}
-          </Segment>
-        </SegmentWrap>
+        <InfoNote>
+          <InfoDot />
+          <span>
+            {t('oracle.manualNote')}
+            {mode === 'onchain' && nextRunLabel && <> <span style={{ opacity: 0.6 }}>{nextRunLabel}</span></>}
+          </span>
+        </InfoNote>
 
-        {/* ── Manual ── */}
-        {oracleMode === 'manual' && (
-          <>
-            <FormGroup>
+        <FormGroup>
               <FormLabel>{t('oracle.targetContract')}</FormLabel>
               <FormSelect
                 value={contractId}
@@ -355,38 +297,6 @@ export function OracleConsole() {
                   ? (mode === 'onchain' ? t('oracle.runBtnNoDelayOnchain') : t('oracle.runBtnNoDelay'))
                   : (mode === 'onchain' ? t('oracle.runBtnOnchain') : t('oracle.runBtn'))}
             </Button>
-          </>
-        )}
-
-        {/* ── Track A ── */}
-        {oracleMode === 'trackA' && (
-          <>
-            {mode === 'onchain' ? (
-              <>
-                <DaemonBadge active={daemonStatus.active}>
-                  <DaemonDot active={daemonStatus.active} />
-                  <span>
-                    <strong>{t('oracle.daemonBadge')}</strong>
-                    &nbsp;·&nbsp;
-                    {daemonStatus.label}
-                  </span>
-                </DaemonBadge>
-                <ComingSoonSub style={{ textAlign: 'center', padding: '8px 0' }}>
-                  {t('oracle.trackAMonitorHintPlain')}
-                </ComingSoonSub>
-              </>
-            ) : (
-              <ComingSoonWrap>
-                <ComingSoonIcon>🤖</ComingSoonIcon>
-                <ComingSoonTitle>{t('oracle.trackASimTitle')}</ComingSoonTitle>
-                <ComingSoonSub style={{ whiteSpace: 'pre-line' }}>{t('oracle.trackASimDesc')}</ComingSoonSub>
-              </ComingSoonWrap>
-            )}
-          </>
-        )}
-
-        {/* ── Track B ── */}
-        {oracleMode === 'trackB' && <TrackBPanel />}
       </CardBody>
     </Card>
   );

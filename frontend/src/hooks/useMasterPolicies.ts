@@ -7,6 +7,7 @@ interface BackendMasterPolicyItem {
   pubkey: string;
   master_id: number;
   status: number;
+  status_label: string;
   coverage_end_ts: number;
 }
 
@@ -32,6 +33,7 @@ export function useMasterPolicies() {
         pda: m.pubkey,
         masterId: String(m.master_id),
         status: m.status,
+        statusLabel: m.status_label,
         coverageEndTs: m.coverage_end_ts,
       }));
 

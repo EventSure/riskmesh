@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { MasterPolicyStatus, FlightPolicyStatus, type MasterPolicyAccount, type PolicyAccount, type ClaimAccount } from '@/lib/idl/open_parametric';
-import type { PublicKey } from '@solana/web3.js';
+import { MasterPolicyStatus, FlightPolicyStatus, type MasterPolicyAccount } from '@/lib/idl/open_parametric';
 import type { FlightPolicyWithKey } from '@/hooks/useFlightPolicies';
 import i18n from '@/i18n';
 
@@ -23,7 +22,7 @@ export interface Contract {
   aNet: number;
   bNet: number;
   rNet: number;
-  status: 'active' | 'claimed' | 'noClaim' | 'expired' | 'settled';
+  status: 'active' | 'claimed' | 'paid' | 'noClaim' | 'expired' | 'settled';
   ts: string;
 }
 
@@ -74,6 +73,7 @@ export interface MasterPolicySummary {
   pda: string;
   masterId: string;
   status: number;
+  statusLabel: string;
   coverageEndTs: number;
 }
 
@@ -163,18 +163,6 @@ const nowDate = () =>
     hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
   });
 
-/* ── Track B Types ── */
-
-export interface PolicyWithKey {
-  publicKey: PublicKey;
-  account: PolicyAccount;
-}
-
-export interface ClaimWithKey {
-  publicKey: PublicKey;
-  account: ClaimAccount;
-}
-
 /* ── Store ── */
 interface ProtocolState {
   mode: ProtocolMode;
@@ -240,10 +228,6 @@ interface ProtocolState {
   syncMasterFromChain: (data: MasterPolicyAccount) => void;
   syncFlightPoliciesFromChain: (policies: FlightPolicyWithKey[]) => void;
 
-  // Track B on-chain state
-  trackBPolicies: PolicyWithKey[];
-  trackBClaims: ClaimWithKey[];
-  syncTrackBPoliciesFromChain: (policies: PolicyWithKey[], claims: ClaimWithKey[]) => void;
 }
 
 const INITIAL_ACC: Acc = { leaderPrem: 0, partAPrem: 0, partBPrem: 0, reinPrem: 0, leaderClaim: 0, partAClaim: 0, partBClaim: 0, reinClaim: 0 };
@@ -283,8 +267,6 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
   lastTxSignature: null,
   masterPolicies: [],
   lastDaemonActivityTs: null,
-  trackBPolicies: [],
-  trackBClaims: [],
 
   setMode: (m) => {
     set({ mode: m });
@@ -766,7 +748,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       } else if (a.status === FlightPolicyStatus.Expired) {
         contractStatus = 'expired';
       } else if (a.status === FlightPolicyStatus.Paid) {
-        contractStatus = 'settled';
+        contractStatus = 'paid';
       } else {
         contractStatus = 'claimed'; // Claimable (2) only
       }
@@ -865,9 +847,6 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     });
   },
 
-  syncTrackBPoliciesFromChain: (policies, claims) => {
-    set({ trackBPolicies: policies, trackBClaims: claims });
-  },
 }), {
   name: 'riskmesh-protocol',
   partialize: (state) => {
