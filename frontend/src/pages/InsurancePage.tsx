@@ -64,8 +64,10 @@ export function InsurancePage() {
           premium: result.premium,
         });
         setPageState('complete');
-      } else {
+      } else if (result.error === 'no_master_policy') {
         alert(t('insurance.error.inactive'));
+      } else {
+        alert(t('insurance.error.apiFailed'));
       }
     } finally {
       setLoading(false);
