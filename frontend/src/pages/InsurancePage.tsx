@@ -1,8 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FormGroup, FormLabel, FormInput, FormSelect } from '@/components/common';
 import { FLIGHTS, FLIGHT_ROUTES, useProtocolStore } from '@/store/useProtocolStore';
 import { enrollPolicy, fetchActiveMasterPolicies, type EnrollmentResult, type MasterPolicyInfo } from '@/services/insurerApi';
+import { LightFormGroup as FormGroup, LightFormLabel as FormLabel, LightFormInput as FormInput, LightFormSelect as FormSelect } from '@/components/insurance/InsuranceStyles';
 import {
   PageWrap, Header, BrandWrap, BrandIcon, BrandName, BrandSub,
   HeroWrap, HeroContent, HeroTag, HeroTitle, HeroSubtitle, HeroCTA,
@@ -31,7 +31,7 @@ export function InsurancePage() {
 
   useEffect(() => {
     const prev = document.body.style.background;
-    document.body.style.background = '#1E293B';
+    document.body.style.background = '#F8FAFC';
     return () => { document.body.style.background = prev; };
   }, []);
 
