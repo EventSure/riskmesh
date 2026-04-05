@@ -575,6 +575,7 @@ const en = {
   'insurance.form.name': 'Subscriber Name',
   'insurance.form.namePlaceholder': 'Enter your name',
   'insurance.form.flight': 'Flight',
+  'insurance.form.route': 'Route (e.g. ICN-NRT)',
   'insurance.form.masterPolicy': 'Master Policy',
   'insurance.form.masterPolicyLoading': 'No active policies',
   'insurance.form.date': 'Departure Date',

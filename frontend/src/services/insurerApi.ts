@@ -6,6 +6,7 @@ import { BACKEND_URL } from '@/lib/constants';
 export interface EnrollmentData {
   subscriberName: string;
   flightNo: string;
+  route: string;
   departureDate: string;
   masterPolicyPDA?: string;
 }
@@ -96,7 +97,7 @@ export async function enrollPolicy(data: EnrollmentData): Promise<EnrollmentResu
         body: JSON.stringify({
           subscriber_ref: data.subscriberName,
           flight_no: data.flightNo,
-          route: FLIGHT_ROUTES[data.flightNo] ?? '',
+          route: data.route || FLIGHT_ROUTES[data.flightNo] || '',
           departure_ts: departureTs,
         }),
       },

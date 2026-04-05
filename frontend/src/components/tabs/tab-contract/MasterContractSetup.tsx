@@ -124,7 +124,7 @@ export function MasterContractSetup() {
           reinsurer: reinsurerKey,
           currencyMint: CURRENCY_MINT,
           masterPolicy: masterPolicyPDA,
-          leaderDepositWallet: leaderATA,
+          leaderDepositWallet: leaderPoolKp.publicKey, // PDA-owned: settle 시 MasterPolicy PDA가 서명
           reinsurerPoolWallet: reinsurerPoolKp.publicKey, // PDA-owned
           reinsurerDepositWallet: await getAssociatedTokenAddress(CURRENCY_MINT, reinsurerPubkey),
           tokenProgram: TOKEN_PROGRAM_ID,
