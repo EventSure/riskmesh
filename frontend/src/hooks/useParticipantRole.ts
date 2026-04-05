@@ -29,6 +29,7 @@ export function useParticipantRole(masterPolicyPDA: PublicKey | null) {
   const [roles, setRoles] = useState<ParticipantInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const pda = masterPolicyPDA?.toBase58() ?? null;
   const walletKey = publicKey?.toBase58() ?? null;
@@ -61,14 +62,19 @@ export function useParticipantRole(masterPolicyPDA: PublicKey | null) {
             participantIndex: -1,
           });
         }
-        for (let i = 0; i < account.participants.length; i++) {
-          const p = account.participants[i]!;
+        // participants[0] = leader (already handled above), [1] = partA, [2] = partB
+        // non-leader 참여자만 순서대로 partA/partB 역할 부여
+        const nonLeaders = account.participants
+          .map((p, i) => ({ ...p, originalIndex: i }))
+          .filter(p => p.insurer !== account.leader);
+        for (let j = 0; j < nonLeaders.length; j++) {
+          const p = nonLeaders[j]!;
           if (p.insurer === walletKey) {
             found.push({
-              role: i === 0 ? 'partA' : 'partB',
+              role: j === 0 ? 'partA' : 'partB',
               shareBps: p.share_bps,
               confirmed: p.confirmed,
-              participantIndex: i,
+              participantIndex: p.originalIndex,
             });
           }
         }
@@ -86,10 +92,12 @@ export function useParticipantRole(masterPolicyPDA: PublicKey | null) {
 
     detect();
     return () => { cancelled = true; };
-  }, [pda, walletKey]);
+  }, [pda, walletKey, refreshKey]);
+
+  const refresh = () => setRefreshKey(k => k + 1);
 
   // Backward-compatible: primary role = first found (leader > rein > participant)
   const info = roles.length > 0 ? roles[0] : null;
 
-  return { info, roles, loading, error };
+  return { info, roles, loading, error, refresh };
 }

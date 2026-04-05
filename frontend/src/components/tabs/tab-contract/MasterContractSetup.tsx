@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import BN from 'bn.js';
 import { Transaction, TransactionInstruction, SystemProgram, Keypair, PublicKey } from '@solana/web3.js';
-import { getAssociatedTokenAddress, createInitializeAccount3Instruction, createTransferInstruction, ACCOUNT_SIZE, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { getAssociatedTokenAddress, createInitializeAccount3Instruction, createTransferInstruction, createAssociatedTokenAccountIdempotentInstruction, ACCOUNT_SIZE, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { Card, CardHeader, CardTitle, CardBody, Button, FormGroup, FormLabel, FormInput, Divider, Tag } from '@/components/common';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { useToast } from '@/components/common';
@@ -148,8 +148,21 @@ export function MasterContractSetup() {
         .accounts({ actor: leaderKey, masterPolicy: masterPolicyPDA })
         .instruction();
 
-      // ── TX1: pool 계정 생성 ──
+      // leader/reinsurer ATA가 없을 경우 idempotent하게 생성 (이미 있으면 no-op)
+      const createLeaderATAIx = createAssociatedTokenAccountIdempotentInstruction(
+        leaderKey, leaderATA, leaderKey, CURRENCY_MINT,
+        TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID,
+      );
+      const reinsurerATA = await getAssociatedTokenAddress(CURRENCY_MINT, reinsurerPubkey);
+      const createReinsurerATAIx = createAssociatedTokenAccountIdempotentInstruction(
+        leaderKey, reinsurerATA, reinsurerPubkey, CURRENCY_MINT,
+        TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID,
+      );
+
+      // ── TX1: ATA 생성 + pool 계정 생성 ──
       const tx1 = new Transaction().add(
+        createLeaderATAIx,
+        createReinsurerATAIx,
         createLeaderPoolIx, initLeaderPoolIx,
         createPartAPoolIx, initPartAPoolIx,
         createPartBPoolIx, initPartBPoolIx,

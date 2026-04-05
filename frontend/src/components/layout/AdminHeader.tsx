@@ -1,7 +1,7 @@
 import styled from '@emotion/styled';
 import { keyframes } from '@emotion/react';
 import { Mono } from '@/components/common';
-import { useProtocolStore, formatNum, type Role } from '@/store/useProtocolStore';
+import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
 import { useShallow } from 'zustand/shallow';
 import { useToast } from '@/components/common';
 import { useTranslation } from 'react-i18next';
@@ -80,6 +80,43 @@ const SelectBase = styled.select`
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394A3B8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 8px center;
+`;
+
+const ROLE_COLOR_DEFAULT = { bg: 'rgba(148,163,184,.1)', border: 'rgba(148,163,184,.4)', color: '#94A3B8' };
+const ROLE_COLORS: Record<string, { bg: string; border: string; color: string }> = {
+  leader:   { bg: 'rgba(153,69,255,.15)',  border: 'rgba(153,69,255,.5)',  color: '#9945FF' },
+  partA:    { bg: 'rgba(59,130,246,.13)',  border: 'rgba(59,130,246,.45)', color: '#60A5FA' },
+  partB:    { bg: 'rgba(20,184,166,.13)',  border: 'rgba(20,184,166,.45)', color: '#2DD4BF' },
+  rein:     { bg: 'rgba(249,115,22,.13)',  border: 'rgba(249,115,22,.45)', color: '#FB923C' },
+  operator: ROLE_COLOR_DEFAULT,
+};
+function getRoleStyle(role: string) {
+  const c = ROLE_COLORS[role];
+  return c !== undefined ? c : ROLE_COLOR_DEFAULT;
+}
+
+const RoleBadge = styled.div<{ role: string }>`
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 7px;
+  border: 1px solid ${p => getRoleStyle(p.role).border};
+  background: ${p => getRoleStyle(p.role).bg};
+  color: ${p => getRoleStyle(p.role).color};
+  font-family: ${p => p.theme.fonts.mono};
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+
+  &::before {
+    content: '';
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+  }
 `;
 
 /* ── Wallet Button Override ── */
@@ -185,27 +222,13 @@ const KpiValue = styled(Mono)`
 `;
 
 export function AdminHeader() {
-  const { mode, setMode, role, setRole, masterActive, contracts, totalPremium, totalClaim, poolBalance } = useProtocolStore(
-    useShallow(s => ({ mode: s.mode, setMode: s.setMode, role: s.role, setRole: s.setRole, masterActive: s.masterActive, contracts: s.contracts, totalPremium: s.totalPremium, totalClaim: s.totalClaim, poolBalance: s.poolBalance })),
+  const { mode, setMode, role, masterPolicyPDA, masterActive, contracts, totalPremium, totalClaim, poolBalance } = useProtocolStore(
+    useShallow(s => ({ mode: s.mode, setMode: s.setMode, role: s.role, masterPolicyPDA: s.masterPolicyPDA, masterActive: s.masterActive, contracts: s.contracts, totalPremium: s.totalPremium, totalClaim: s.totalClaim, poolBalance: s.poolBalance })),
   );
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
   const { connected } = useProgram();
   const { startTour } = useGuideTour();
-
-  const ROLE_OPTIONS: { value: Role; label: string }[] = [
-    { value: 'leader', label: t('role.leader') },
-    { value: 'partA', label: t('role.partA') },
-    { value: 'partB', label: t('role.partB') },
-    { value: 'rein', label: t('role.rein') },
-    { value: 'operator', label: t('role.operator') },
-  ];
-
-  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const r = e.target.value as Role;
-    setRole(r);
-    toast(t('toast.roleChange', { role: t(`role.${r}Short`) }), 'i');
-  };
 
   const handleModeSwitch = (m: 'simulation' | 'onchain') => {
     if (m === 'onchain' && !connected) {
@@ -243,11 +266,11 @@ export function AdminHeader() {
 
   const actions = (
     <>
-      <SelectBase value={role} onChange={handleRoleChange} data-guide="role-select">
-        {ROLE_OPTIONS.map(o => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </SelectBase>
+      {mode === 'onchain' && connected && masterPolicyPDA && (
+        <RoleBadge role={role} data-guide="role-select">
+          {t(`role.${role}`)}
+        </RoleBadge>
+      )}
       <SelectBase value={i18n.language} onChange={(e) => i18n.changeLanguage(e.target.value)}>
         <option value="en">English</option>
         <option value="ko">한국어</option>

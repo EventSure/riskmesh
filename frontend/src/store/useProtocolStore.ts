@@ -75,6 +75,7 @@ export interface MasterPolicySummary {
   status: number;
   statusLabel: string;
   coverageEndTs: number;
+  myRole?: 'leader' | 'partA' | 'partB' | 'rein';
 }
 
 export interface PoolHistEntry {
