@@ -11,7 +11,8 @@ MVP는 **항공편 지연 보험** (주요 공항 30% 지연율의 $10B+ 시장)
 ## 구성
 
 - `contract/` — Anchor 기반 온체인 프로그램 (Rust)
-- `frontend/` — 운영용 대시보드 (React + Vite + Emotion)
+- `backend/` — 오라클 데몬 + REST API 서버 (Rust, Axum)
+- `frontend/` — 운영 대시보드 & 보험 포털 (React + Vite + Emotion)
 - `docs/` — 컨트랙트 가이드, 테스트 가이드, 설계 문서
 - `OpenParametric.md` — MVP / 설계 초안
 
@@ -21,11 +22,23 @@ MVP는 **항공편 지연 보험** (주요 공항 30% 지연율의 $10B+ 시장)
 - 보험상품 생성 및 공동 인수 (리더/참여사 비율 관리)
 - 온체인 자본 관리가 포함된 예치 리스크 풀
 - 모듈식 오라클 연동 — 중앙화 (항공 API) 또는 탈중앙화 (Switchboard)
+- REST API 서버 + 온체인 데이터 동기화 (SQLite / Firebase Firestore)
+- SSE(Server-Sent Events) 기반 실시간 이벤트 스트리밍
 - 대시보드 탭 기반 운영 UI (Contract / Feed / Oracle / Settlement / Inspector)
+- 보험 가입자/보험사 관리를 위한 보험 포털
+
+## 프런트엔드 페이지
+
+| 라우트 | 페이지 | 설명 |
+|--------|--------|------|
+| `/` | LandingPage | 프로젝트 소개 및 진입점 |
+| `/demo` | Dashboard | 탭 기반 운영 대시보드 (Contract / Feed / Oracle / Settlement / Inspector) |
+| `/portal` | PortalPage | 참여사용 마스터 계약 포털 |
+| `/insurance` | InsurancePage | 보험 가입 및 보험사 관리 |
 
 ## 데모 모드
 
-프런트엔드 대시보드는 헤더에서 전환할 수 있는 두 가지 운영 모드를 지원합니다:
+`/demo` 대시보드는 헤더에서 전환할 수 있는 두 가지 운영 모드를 지원합니다:
 
 | 모드 | 설명 | 지갑 필요 |
 |------|------|-----------|
@@ -80,7 +93,19 @@ npm run dev
 - 배포 프리뷰: `npm run preview`
 - 이 앱은 `BrowserRouter`의 `basename`이 `/riskmesh`로 설정되어 있습니다. 정적 호스팅 시 서브경로 배포에 맞춰 설정하세요.
 
-### 2) 컨트랙트 빌드/테스트
+### 2) 백엔드 실행
+
+```bash
+cd backend
+cp .env.example .env   # PROGRAM_ID, LEADER_PUBKEY, SWITCHBOARD_QUEUE 입력
+cargo run --bin oracle-daemon
+```
+
+- 헬스 체크: `curl http://localhost:3000/health`
+- API 문서: [`backend/docs/backend-overview.md`](backend/docs/backend-overview.md) 참조
+- DB 백엔드: SQLite (기본값) 또는 Firebase Firestore (`DB_BACKEND=firebase`)
+
+### 3) 컨트랙트 빌드/테스트
 
 ```bash
 cd contract
@@ -173,9 +198,7 @@ npm run test:coverage
 | [`CONTRACT_TESTING_GUIDE_KO.md`](docs/CONTRACT_TESTING_GUIDE_KO.md) | 컨트랙트 테스트 가이드 — 단위, 통합, 정산 테스트 |
 | [`FRONTEND_TESTING_GUIDE_KO.md`](docs/FRONTEND_TESTING_GUIDE_KO.md) | 프런트엔드 단위 테스트 가이드 — 비즈니스 로직 테스트 |
 | [`FILE_STATE_LOGIC_FULL_KO.md`](docs/FILE_STATE_LOGIC_FULL_KO.md) | 전체 파일별 상태/로직 설명서 |
-| [`MASTER_POLICY_REDESIGN_PLAN_KO.md`](docs/MASTER_POLICY_REDESIGN_PLAN_KO.md) | 마스터 계약 + 개별 항공 보험 구조 개편 계획 |
 | [`feature/settle_flight_settlement.md`](docs/feature/settle_flight_settlement.md) | 항공 보험 정산 로직 — 클레임/무클레임 흐름 |
-| [`emotion-migration-handoff.md`](docs/emotion-migration-handoff.md) | Emotion CSS-in-JS 마이그레이션 핸드오프 |
 
 ### `contract/docs/`
 
@@ -190,9 +213,32 @@ npm run test:coverage
 |------|------|
 | [`README.md`](contract/README.md) | 컨트랙트 셋업 노트 — 프로그램 ID, 빌드/테스트, CI 트리거 |
 
+### `backend/docs/`
+
+| 파일 | 설명 |
+|------|------|
+| [`backend-overview.md`](backend/docs/backend-overview.md) | 백엔드 구조 — 모듈, 설정, 오라클 파이프라인 |
+| [`e2e-workflow.md`](backend/docs/e2e-workflow.md) | E2E 운영 가이드 — 셋업, 데몬, 정산 |
+| [`local-run.md`](backend/docs/local-run.md) | 로컬 개발 빠른 시작 가이드 |
+| [`master-flight-policy-explained.md`](backend/docs/master-flight-policy-explained.md) | Master/Flight 정책 도메인 모델 설명 |
+| [`flight-policies-api-response-explained.md`](backend/docs/flight-policies-api-response-explained.md) | `/api/flight-policies` 응답 키 레퍼런스 |
+| [`leader-flight-policy-ingestion-plan.md`](backend/docs/leader-flight-policy-ingestion-plan.md) | 리더사 가입 연동 API 설계 계획 |
+| [`track-b-explained.md`](backend/docs/track-b-explained.md) | Track B (Switchboard On-Demand) 상세 설명 |
+
+### `frontend/docs/`
+
+| 파일 | 설명 |
+|------|------|
+| [`demo_code_refactor.md`](frontend/docs/demo_code_refactor.md) | 프로덕션 전환 시 데모 코드 제거 가이드 |
+| [`deployment-guide.md`](frontend/docs/deployment-guide.md) | 프런트엔드 + 컨트랙트 배포 체크리스트 (IDL, PROGRAM_ID, CURRENCY_MINT) |
+
 ## 아키텍처
 
-온체인 프로그램은 보험상품(Policy)과 공동 인수(Underwriting), 리스크 풀(RiskPool), 청구(Claim), 계약자 등록부(PolicyholderRegistry)를 PDA로 관리합니다. 리스크 풀은 SPL 토큰 Vault(ATA)를 소유하며, 오라클 검증으로 지연 조건이 충족되면 청구가 생성됩니다.
+### 온체인 계정
+
+프로그램은 두 가지 보험 설계를 지원합니다:
+
+**레거시 (공동 보험 풀 + Switchboard 오라클):**
 
 ```
 Policy
@@ -202,12 +248,45 @@ Policy
   └─ PolicyholderRegistry (옵션)
 ```
 
-각 요소 의미:
+**Master/Flight (신뢰 기반 리졸버 + 단계별 지급):**
+
+```
+MasterPolicy (공동 인수 계약 + 재보험 조건)
+  └─ FlightPolicy (마스터 아래 개별 항공편)
+```
+
+- `MasterPolicy`: 단계별 지급액, 출재/재보험 비율, 참여사 지갑 설정. 상태: `Draft → PendingConfirm → Active → Closed/Cancelled`
+- `FlightPolicy`: 개별 항공편 지연 보험. 상태: `Issued → AwaitingOracle → Claimable/NoClaim → Paid/Expired`
+
+**레거시 계정:**
 - `Policy`: 보험상품 자체. 노선/항공편/출발시각, 지연 임계값, 지급액, 오라클 피드, 상태 등을 보관합니다.
 - `Underwriting`: 공동 인수 구조. 리더/참여사 비율, 수락/거절 상태, 예치(escrow) 정보를 추적합니다.
 - `RiskPool`: 예치 자금을 보관하는 풀. SPL 토큰 Vault와 가용 잔액/총 예치액을 관리합니다.
 - `Claim`: 오라클 라운드별 청구 기록. 지연값, 검증 시각, 승인 상태, 지급액을 담습니다.
 - `PolicyholderRegistry`: (옵션) 계약자 최소 정보 등록부. PII 없이 외부 참조와 보장 정보만 저장합니다.
+
+### 백엔드
+
+백엔드는 하나의 프로세스에서 세 가지 역할을 수행합니다:
+
+1. **오라클 스케줄러** — 크론 기반 (`ORACLE_CHECK_CRON`, 기본: 15분) 파이프라인. 온체인 정책을 스캔하고 항공 데이터를 조회하여 resolve/settle 트랜잭션 전송
+2. **DB 동기화 스케줄러** — 크론 기반 (`DB_SYNC_CRON`, 기본: 1분) 파이프라인. 온체인 MasterPolicy/FlightPolicy 계정을 읽어 SQLite 또는 Firebase Firestore에 저장
+3. **REST API 서버** — Axum 기반 HTTP 서버. 정책 데이터 조회 및 실시간 이벤트 제공
+
+**API 엔드포인트:**
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | `/health` | 헬스 체크 |
+| GET | `/api/master-policies` | 마스터 정책 목록 |
+| GET | `/api/master-policies/accounts` | 마스터 정책 온체인 계정 |
+| GET | `/api/master-policies/:pubkey` | 마스터 정책 상세 |
+| GET | `/api/master-policies/tree` | 마스터 정책 + 하위 FlightPolicy 트리 |
+| GET | `/api/master-policies/:pubkey/flight-policies` | 마스터 아래 FlightPolicy 목록 |
+| POST | `/api/master-policies/:pubkey/flight-policies` | FlightPolicy 생성 |
+| GET | `/api/flight-policies` | 전체 FlightPolicy 목록 |
+| GET | `/api/flight-policies/:pubkey` | FlightPolicy 상세 |
+| GET | `/api/events` | SSE 이벤트 스트림 |
 
 ## 상태 머신
 

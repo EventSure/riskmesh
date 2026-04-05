@@ -13,7 +13,8 @@ The MVP targets **flight delay insurance** (a $10B+ market with 30% of flights d
 ## Structure
 
 - `contract/` — Anchor-based on-chain program (Rust)
-- `frontend/` — Operator dashboard (React + Vite + Emotion)
+- `backend/` — Oracle daemon + REST API server (Rust, Axum)
+- `frontend/` — Operator dashboard & insurance portal (React + Vite + Emotion)
 - `docs/` — Contract guide, testing guides, and design documents
 - `OpenParametric.md` — MVP / design draft (Korean)
 
@@ -23,11 +24,23 @@ The MVP targets **flight delay insurance** (a $10B+ market with 30% of flights d
 - Policy creation and co-underwriting (leader/participant ratio management)
 - Escrowed risk pool with on-chain capital management
 - Modular oracle integration — centralized (flight API) or decentralized (Switchboard)
+- REST API server with on-chain data sync (SQLite / Firebase Firestore)
+- Real-time event streaming via SSE (Server-Sent Events)
 - Tab-based operator UI (Contract / Feed / Oracle / Settlement / Inspector)
+- Insurance portal for policy subscribers and insurer management
+
+## Frontend Pages
+
+| Route | Page | Description |
+|-------|------|-------------|
+| `/` | LandingPage | Project introduction and entry point |
+| `/demo` | Dashboard | Tab-based operator dashboard (Contract / Feed / Oracle / Settlement / Inspector) |
+| `/portal` | PortalPage | Master policy portal for participants |
+| `/insurance` | InsurancePage | Insurance subscription and insurer management |
 
 ## Demo Modes
 
-The frontend dashboard supports two operating modes, toggled from the header:
+The `/demo` dashboard supports two operating modes, toggled from the header:
 
 | Mode | Description | Wallet Required |
 |------|-------------|-----------------|
@@ -53,9 +66,7 @@ Switch modes via the **DEVNET / SIM** toggle in the top-right header. SIM mode i
 | [`CONTRACT_TESTING_GUIDE_KO.md`](docs/CONTRACT_TESTING_GUIDE_KO.md) | Contract testing guide — unit, integration, and settlement tests (Korean) |
 | [`FRONTEND_TESTING_GUIDE_KO.md`](docs/FRONTEND_TESTING_GUIDE_KO.md) | Frontend unit testing guide — business logic tests (Korean) |
 | [`FILE_STATE_LOGIC_FULL_KO.md`](docs/FILE_STATE_LOGIC_FULL_KO.md) | Full file-by-file state/logic reference for the entire repo (Korean) |
-| [`MASTER_POLICY_REDESIGN_PLAN_KO.md`](docs/MASTER_POLICY_REDESIGN_PLAN_KO.md) | Master policy + child flight policy restructuring plan (Korean) |
 | [`feature/settle_flight_settlement.md`](docs/feature/settle_flight_settlement.md) | Flight settlement logic — claim and no-claim flows (Korean) |
-| [`emotion-migration-handoff.md`](docs/emotion-migration-handoff.md) | Emotion CSS-in-JS migration handoff notes |
 
 ### `contract/docs/`
 
@@ -69,6 +80,25 @@ Switch modes via the **DEVNET / SIM** toggle in the top-right header. SIM mode i
 | File | Description |
 |------|-------------|
 | [`README.md`](contract/README.md) | Contract setup notes — program ID, build/test, CI trigger |
+
+### `backend/docs/`
+
+| File | Description |
+|------|-------------|
+| [`backend-overview.md`](backend/docs/backend-overview.md) | Backend architecture — modules, config, oracle pipelines (Korean) |
+| [`e2e-workflow.md`](backend/docs/e2e-workflow.md) | End-to-end operational guide — setup, daemon, settlement (Korean) |
+| [`local-run.md`](backend/docs/local-run.md) | Local development quick start guide (Korean) |
+| [`master-flight-policy-explained.md`](backend/docs/master-flight-policy-explained.md) | Master/Flight policy domain model explained (Korean) |
+| [`flight-policies-api-response-explained.md`](backend/docs/flight-policies-api-response-explained.md) | `/api/flight-policies` response key reference (Korean) |
+| [`leader-flight-policy-ingestion-plan.md`](backend/docs/leader-flight-policy-ingestion-plan.md) | Leader-side policy ingestion API design plan (Korean) |
+| [`track-b-explained.md`](backend/docs/track-b-explained.md) | Track B (Switchboard On-Demand) detailed walkthrough (Korean) |
+
+### `frontend/docs/`
+
+| File | Description |
+|------|-------------|
+| [`demo_code_refactor.md`](frontend/docs/demo_code_refactor.md) | Demo-only code removal guide for production transition |
+| [`deployment-guide.md`](frontend/docs/deployment-guide.md) | Frontend + contract deployment checklist (IDL, PROGRAM_ID, CURRENCY_MINT) |
 
 ## Oracle Architecture
 
@@ -116,7 +146,19 @@ npm run dev
 - Preview: `npm run preview`
 - The app uses `BrowserRouter` with `basename` set to `/riskmesh`. Configure subpath hosting accordingly.
 
-### 2) Build / Test Contract
+### 2) Run Backend
+
+```bash
+cd backend
+cp .env.example .env   # fill in PROGRAM_ID, LEADER_PUBKEY, SWITCHBOARD_QUEUE
+cargo run --bin oracle-daemon
+```
+
+- Health check: `curl http://localhost:3000/health`
+- API docs: see [`backend/docs/backend-overview.md`](backend/docs/backend-overview.md)
+- DB backend: SQLite (default) or Firebase Firestore (`DB_BACKEND=firebase`)
+
+### 3) Build / Test Contract
 
 ```bash
 cd contract
@@ -195,7 +237,11 @@ For detailed guides, see:
 
 ## Architecture
 
-The on-chain program manages Policy, Underwriting, RiskPool, Claim, and PolicyholderRegistry accounts as PDAs. The risk pool owns an SPL Token vault (ATA). Oracle verification creates claims once delay conditions are met.
+### On-Chain Accounts
+
+The program has two policy designs:
+
+**Legacy (co-insurance pool + Switchboard oracle):**
 
 ```
 Policy
@@ -205,12 +251,45 @@ Policy
   └─ PolicyholderRegistry (optional)
 ```
 
-What each element means:
+**Master/Flight (trusted resolver + tiered payouts):**
+
+```
+MasterPolicy (co-insurance agreement + reinsurance terms)
+  └─ FlightPolicy (individual flight issued under a master)
+```
+
+- `MasterPolicy`: Sets tiered payouts, ceded/reinsurance ratios, participant wallets. Lifecycle: `Draft → PendingConfirm → Active → Closed/Cancelled`
+- `FlightPolicy`: Individual flight delay policy. Lifecycle: `Issued → AwaitingOracle → Claimable/NoClaim → Paid/Expired`
+
+**Legacy accounts:**
 - `Policy`: The insurance product itself. Stores route/flight, departure time, delay threshold, payout amount, oracle feed, and state.
 - `Underwriting`: Co-underwriting structure. Tracks leader/participant ratios, acceptance status, and escrowed funds.
 - `RiskPool`: Pool holding escrowed funds. Manages the SPL Token vault, available balance, and total escrowed amount.
 - `Claim`: Per-oracle-round claim record. Stores delay value, verification time, approval status, and payout amount.
 - `PolicyholderRegistry`: (Optional) Minimal policyholder registry. Stores external references and coverage data without PII.
+
+### Backend
+
+The backend runs as a single process with three responsibilities:
+
+1. **Oracle scheduler** — cron-based (`ORACLE_CHECK_CRON`, default: 15min) pipeline that scans on-chain policies, fetches flight data, and sends resolve/settle transactions
+2. **DB sync scheduler** — cron-based (`DB_SYNC_CRON`, default: 1min) pipeline that reads on-chain MasterPolicy/FlightPolicy accounts and persists them to SQLite or Firebase Firestore
+3. **REST API server** — Axum-based HTTP server exposing policy data and real-time events
+
+**API Endpoints:**
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Health check |
+| GET | `/api/master-policies` | List all master policies |
+| GET | `/api/master-policies/accounts` | List master policy on-chain accounts |
+| GET | `/api/master-policies/:pubkey` | Get single master policy |
+| GET | `/api/master-policies/tree` | Master policies with nested flight policies |
+| GET | `/api/master-policies/:pubkey/flight-policies` | Flight policies under a master |
+| POST | `/api/master-policies/:pubkey/flight-policies` | Create a flight policy |
+| GET | `/api/flight-policies` | List all flight policies |
+| GET | `/api/flight-policies/:pubkey` | Get single flight policy |
+| GET | `/api/events` | SSE event stream |
 
 ## State Machines
 
