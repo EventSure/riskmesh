@@ -7,6 +7,7 @@ export interface EnrollmentData {
   subscriberName: string;
   flightNo: string;
   departureDate: string;
+  masterPolicyPDA?: string;
 }
 
 export interface EnrollmentResult {
@@ -26,9 +27,21 @@ interface CreateFlightPolicyResponse {
   tx_signature: string;
 }
 
-interface MasterPolicyInfo {
+export interface MasterPolicyInfo {
   pubkey: string;
   status_label: string;
+  coverage_end_ts: number;
+}
+
+export async function fetchActiveMasterPolicies(): Promise<MasterPolicyInfo[]> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/master-policies`);
+    if (!res.ok) return [];
+    const body = await res.json() as { master_policies: MasterPolicyInfo[] };
+    return body.master_policies.filter(p => p.status_label === 'Active');
+  } catch {
+    return [];
+  }
 }
 
 /* ── Helpers ── */
@@ -59,7 +72,7 @@ export async function enrollPolicy(data: EnrollmentData): Promise<EnrollmentResu
   const store = useProtocolStore.getState();
   const premium = store.premiumPerPolicy;
 
-  const masterPDA = await resolveMasterPolicyPDA();
+  const masterPDA = data.masterPolicyPDA ?? await resolveMasterPolicyPDA();
   if (!masterPDA) {
     return {
       success: false,

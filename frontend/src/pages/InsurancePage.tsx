@@ -1,8 +1,8 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FormGroup, FormLabel, FormInput, FormSelect } from '@/components/common';
 import { FLIGHTS, FLIGHT_ROUTES, useProtocolStore } from '@/store/useProtocolStore';
-import { enrollPolicy, type EnrollmentResult } from '@/services/insurerApi';
+import { enrollPolicy, fetchActiveMasterPolicies, type EnrollmentResult, type MasterPolicyInfo } from '@/services/insurerApi';
 import {
   PageWrap, Header, BrandWrap, BrandIcon, BrandName, BrandSub,
   HeroWrap, HeroContent, HeroTag, HeroTitle, HeroSubtitle, HeroCTA,
@@ -27,14 +27,32 @@ interface CompletionData {
 export function InsurancePage() {
   const { t, i18n } = useTranslation();
   const premiumPerPolicy = useProtocolStore(s => s.premiumPerPolicy);
+  const storedMasterPDA = useProtocolStore(s => s.masterPolicyPDA);
+
+  useEffect(() => {
+    const prev = document.body.style.background;
+    document.body.style.background = '#1E293B';
+    return () => { document.body.style.background = prev; };
+  }, []);
 
   const [pageState, setPageState] = useState<PageState>('landing');
   const [name, setName] = useState('');
-  const [flight, setFlight] = useState<string>(FLIGHTS[0]);
+  const [flight, setFlight] = useState<string>('');
   const [date, setDate] = useState('');
   const [loading, setLoading] = useState(false);
   const [completion, setCompletion] = useState<CompletionData | null>(null);
+  const [masterPolicies, setMasterPolicies] = useState<MasterPolicyInfo[]>([]);
+  const [selectedMasterPDA, setSelectedMasterPDA] = useState<string>(storedMasterPDA ?? '');
   const formRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    fetchActiveMasterPolicies().then(list => {
+      setMasterPolicies(list);
+      if (!selectedMasterPDA && list.length > 0) {
+        setSelectedMasterPDA(list[0]!.pubkey);
+      }
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const scrollToForm = useCallback(() => {
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -45,13 +63,14 @@ export function InsurancePage() {
   }, [i18n]);
 
   const handleSubmit = useCallback(async () => {
-    if (!name.trim() || !date) return;
+    if (!name.trim() || !date || !selectedMasterPDA) return;
     setLoading(true);
     try {
       const result: EnrollmentResult = await enrollPolicy({
         subscriberName: name.trim(),
         flightNo: flight,
         departureDate: date,
+        masterPolicyPDA: selectedMasterPDA,
       });
 
       if (result.success) {
@@ -83,7 +102,7 @@ export function InsurancePage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  const isFormValid = name.trim().length > 0 && date.length > 0;
+  const isFormValid = name.trim().length > 0 && flight.trim().length > 0 && date.length > 0 && selectedMasterPDA.length > 0;
 
   /* ── Completion View ── */
   if (pageState === 'complete' && completion) {
@@ -204,6 +223,25 @@ export function InsurancePage() {
         <FormCard>
           <FormTitle>{t('insurance.form.title')}</FormTitle>
 
+          {!storedMasterPDA && (
+            <FormGroup>
+              <FormLabel>{t('insurance.form.masterPolicy')}</FormLabel>
+              <FormSelect
+                value={selectedMasterPDA}
+                onChange={e => setSelectedMasterPDA(e.target.value)}
+              >
+                {masterPolicies.length === 0 && (
+                  <option value="">{t('insurance.form.masterPolicyLoading')}</option>
+                )}
+                {masterPolicies.map(p => (
+                  <option key={p.pubkey} value={p.pubkey}>
+                    {p.pubkey.slice(0, 8)}...{p.pubkey.slice(-4)} · {new Date(p.coverage_end_ts * 1000).toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' })}
+                  </option>
+                ))}
+              </FormSelect>
+            </FormGroup>
+          )}
+
           <FormGroup>
             <FormLabel>{t('insurance.form.name')}</FormLabel>
             <FormInput
@@ -215,17 +253,18 @@ export function InsurancePage() {
 
           <FormGroup>
             <FormLabel>{t('insurance.form.flight')}</FormLabel>
-            <FormSelect
+            <FormInput
               value={flight}
-              onChange={e => setFlight(e.target.value)}
-              style={{ cursor: 'pointer' }}
-            >
+              onChange={e => setFlight(e.target.value.toUpperCase())}
+              placeholder="KE001"
+              list="flight-suggestions"
+              style={{ fontFamily: "'DM Mono', monospace" }}
+            />
+            <datalist id="flight-suggestions">
               {FLIGHTS.map(f => (
-                <option key={f} value={f}>
-                  {f} ({FLIGHT_ROUTES[f]})
-                </option>
+                <option key={f} value={f}>{f} ({FLIGHT_ROUTES[f]})</option>
               ))}
-            </FormSelect>
+            </datalist>
           </FormGroup>
 
           <FormGroup>

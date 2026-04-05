@@ -575,6 +575,8 @@ const en = {
   'insurance.form.name': 'Subscriber Name',
   'insurance.form.namePlaceholder': 'Enter your name',
   'insurance.form.flight': 'Flight',
+  'insurance.form.masterPolicy': 'Master Policy',
+  'insurance.form.masterPolicyLoading': 'No active policies',
   'insurance.form.date': 'Departure Date',
   'insurance.form.premium': 'Premium',
   'insurance.form.submit': 'Submit Enrollment',

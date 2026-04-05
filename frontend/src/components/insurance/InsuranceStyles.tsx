@@ -8,9 +8,10 @@ const ins = {
   primaryLight: '#3B82F6',
   heroBg: 'linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #0F172A 100%)',
   heroOverlay: 'linear-gradient(180deg, rgba(15,23,42,0.4) 0%, rgba(15,23,42,0.95) 100%)',
-  cardBg: 'rgba(30,41,59,0.6)',
-  sectionAlt: '#0D1424',
-  completeBg: 'linear-gradient(135deg, #064E3B 0%, #0F172A 100%)',
+  pageBg: '#1E293B',
+  cardBg: 'rgba(51,72,100,0.6)',
+  sectionAlt: '#172436',
+  completeBg: 'linear-gradient(135deg, #064E3B 0%, #1E293B 100%)',
 };
 
 /* ── Animations ── */
@@ -27,7 +28,7 @@ const shimmer = keyframes`
 /* ── Page Shell ── */
 export const PageWrap = styled.div`
   min-height: 100vh;
-  background: ${p => p.theme.colors.bg};
+  background: ${ins.pageBg};
   color: ${p => p.theme.colors.text};
   font-family: ${p => p.theme.fonts.sans};
   display: flex;

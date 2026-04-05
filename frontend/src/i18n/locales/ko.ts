@@ -575,6 +575,8 @@ const ko = {
   'insurance.form.name': '가입자명',
   'insurance.form.namePlaceholder': '이름을 입력하세요',
   'insurance.form.flight': '항공편',
+  'insurance.form.masterPolicy': '마스터계약',
+  'insurance.form.masterPolicyLoading': '활성 계약 없음',
   'insurance.form.date': '출발일',
   'insurance.form.premium': '보험료',
   'insurance.form.submit': '가입 신청',

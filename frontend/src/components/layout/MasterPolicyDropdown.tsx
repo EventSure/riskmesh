@@ -37,16 +37,30 @@ function formatDate(ts: number): string {
   });
 }
 
+const ROLE_LABEL: Record<'leader' | 'partA' | 'partB' | 'rein', string> = {
+  leader: '리더사',
+  partA: '참여사A',
+  partB: '참여사B',
+  rein: '재보험사',
+};
+
 export function MasterPolicyDropdown() {
   const mode = useProtocolStore(s => s.mode);
   const masterPolicyPDA = useProtocolStore(s => s.masterPolicyPDA);
   const selectMasterPolicy = useProtocolStore(s => s.selectMasterPolicy);
+  const setRole = useProtocolStore(s => s.setRole);
   const { t } = useTranslation();
   const { connected } = useProgram();
   const { policies, loading, refetch } = useMasterPolicies();
 
-  // After a new master contract is created, its PDA won't be in the fetched list yet.
-  // Refetch whenever masterPolicyPDA is set to a value not already in the list.
+  // Sync detected role to store when selected policy changes or list updates
+  useEffect(() => {
+    if (!masterPolicyPDA) return;
+    const found = policies.find(p => p.pda === masterPolicyPDA);
+    if (found?.myRole) setRole(found.myRole);
+  }, [masterPolicyPDA, policies]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Refetch when a newly created policy isn't in the list yet
   useEffect(() => {
     if (masterPolicyPDA && !policies.some(p => p.pda === masterPolicyPDA)) {
       refetch();
@@ -55,21 +69,32 @@ export function MasterPolicyDropdown() {
 
   if (mode !== 'onchain' || !connected) return null;
 
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const pda = e.target.value || null;
+    selectMasterPolicy(pda);
+    if (pda) {
+      const found = policies.find(p => p.pda === pda);
+      if (found?.myRole) setRole(found.myRole);
+    }
+  };
+
   return (
-    <SelectBase
-      value={masterPolicyPDA ?? ''}
-      onChange={e => selectMasterPolicy(e.target.value || null)}
-    >
+    <SelectBase value={masterPolicyPDA ?? ''} onChange={handleChange}>
       <option value="">{t('master.newCreate')}</option>
       {loading && <option disabled>{t('master.loading')}</option>}
-      {!loading && policies.length === 0 && (
+      {!loading && policies.length === 0 && !masterPolicyPDA && (
         <option disabled>{t('master.noPrevious')}</option>
       )}
       {policies.map(p => (
         <option key={p.pda} value={p.pda}>
-          {p.pda.slice(0, 8)}... · {statusLabel(p.status)} · {formatDate(p.coverageEndTs)}
+          {p.pda.slice(0, 8)}... · {statusLabel(p.status)} · {p.myRole ? ROLE_LABEL[p.myRole] : ''} · {formatDate(p.coverageEndTs)}
         </option>
       ))}
+      {masterPolicyPDA && !policies.some(p => p.pda === masterPolicyPDA) && (
+        <option value={masterPolicyPDA}>
+          {masterPolicyPDA.slice(0, 8)}... · {loading ? t('master.loading') : 'New'}
+        </option>
+      )}
     </SelectBase>
   );
 }

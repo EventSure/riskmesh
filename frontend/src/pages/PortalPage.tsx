@@ -42,9 +42,6 @@ const ErrorBox = styled.div`
   text-align: center;
 `;
 
-const TabContent = styled.div<{ visible: boolean }>`
-  display: ${p => (p.visible ? 'block' : 'none')};
-`;
 
 const PolicyListWrap = styled.div`
   max-width: 600px;
@@ -205,7 +202,7 @@ export function PortalPage() {
     catch { return null; }
   }, [trackBParam]);
 
-  const { info: participantInfo, roles, loading, error } = useParticipantRole(masterPDA);
+  const { info: participantInfo, roles, loading, error, refresh: refreshRole } = useParticipantRole(masterPDA);
 
   const roleSet = useMemo(() => new Set(roles.map(r => r.role)), [roles]);
   const primaryRole = participantInfo?.role ?? null;
@@ -215,7 +212,7 @@ export function PortalPage() {
       { id: 'overview', label: t('portal.overview') },
       { id: 'contracts', label: t('portal.contracts') },
     ];
-    if (roleSet.has('leader') || roleSet.has('partA') || roleSet.has('partB')) {
+    if (roleSet.has('leader') || roleSet.has('partA') || roleSet.has('partB') || roleSet.has('rein')) {
       common.push({ id: 'confirm', label: t('portal.confirm') });
     }
     if (roleSet.has('leader') || roleSet.has('rein')) {
@@ -354,30 +351,26 @@ export function PortalPage() {
 
   // Find role-specific info for each tab
   const reinInfo = roles.find(r => r.role === 'rein') ?? participantInfo;
-  const participantRoleInfo = roles.find(r => r.role === 'partA' || r.role === 'partB') ?? participantInfo;
+  const participantRoleInfo = roles.find(r => r.role === 'partA' || r.role === 'partB' || r.role === 'rein') ?? participantInfo;
 
   return (
     <PageShell header={<PortalHeader role={primaryRole} masterPDA={masterParam} roles={roles} />}>
       <TabBar tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
-      <TabContent visible={activeTab === 'overview'}>
+      {activeTab === 'overview' && (
         <PortalOverview participantInfo={participantInfo} allRoles={roles} masterPDA={masterPDA} />
-      </TabContent>
-      <TabContent visible={activeTab === 'contracts'}>
+      )}
+      {activeTab === 'contracts' && (
         <PortalContracts masterPDA={masterPDA} />
-      </TabContent>
-      {(roleSet.has('leader') || roleSet.has('partA') || roleSet.has('partB')) && (
-        <TabContent visible={activeTab === 'confirm'}>
-          <PortalConfirm masterPDA={masterPDA} participantInfo={participantRoleInfo} allRoles={roles} />
-        </TabContent>
       )}
-      {(roleSet.has('leader') || roleSet.has('rein')) && (
-        <TabContent visible={activeTab === 'risk'}>
-          <PortalRiskDashboard participantInfo={reinInfo} allRoles={roles} />
-        </TabContent>
+      {activeTab === 'confirm' && (roleSet.has('leader') || roleSet.has('partA') || roleSet.has('partB') || roleSet.has('rein')) && (
+        <PortalConfirm masterPDA={masterPDA} participantInfo={participantRoleInfo} allRoles={roles} onSuccess={refreshRole} />
       )}
-      <TabContent visible={activeTab === 'settlement'}>
+      {activeTab === 'risk' && (roleSet.has('leader') || roleSet.has('rein')) && (
+        <PortalRiskDashboard participantInfo={reinInfo} allRoles={roles} />
+      )}
+      {activeTab === 'settlement' && (
         <PortalSettlement participantInfo={participantInfo} allRoles={roles} />
-      </TabContent>
+      )}
     </PageShell>
   );
 }
