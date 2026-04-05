@@ -84,9 +84,10 @@ export function useMyPolicies() {
             });
           }
 
-          // Check participants
-          for (let i = 0; i < mp.participants.length; i++) {
-            const p = mp.participants[i]!;
+          // Check participants (skip leader — already handled above)
+          const nonLeaders = mp.participants.filter(p => p.insurer !== mp.leader);
+          for (let i = 0; i < nonLeaders.length; i++) {
+            const p = nonLeaders[i]!;
             if (p.insurer === walletBase58) {
               roles.push({
                 role: i === 0 ? 'partA' : 'partB',

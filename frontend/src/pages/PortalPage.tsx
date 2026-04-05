@@ -154,9 +154,6 @@ function PolicyListItem({ policy, onClick }: { policy: MyPolicySummary; onClick:
     <PolicyCard onClick={onClick}>
       <PolicyInfo>
         <RoleTagsWrap>
-          <Tag variant="subtle" style={{ color: isTrackB ? '#9945FF' : '#22C55E', fontSize: 8, minWidth: 40, textAlign: 'center' }}>
-            {isTrackB ? 'Track B' : 'Track A'}
-          </Tag>
           {policy.roles.map(r => (
             <Tag key={r.role} variant="subtle" style={{ color: ROLE_COLORS[r.role] || '#94A3B8', fontSize: 9, minWidth: 48, textAlign: 'center' }}>
               {t(`portal.role.${r.role}`, r.role)}
