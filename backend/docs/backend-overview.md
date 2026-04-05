@@ -2,8 +2,12 @@
 
 ## 개요
 
-이 백엔드는 **Solana 오라클 데몬(Oracle Daemon)**이다.
-비행 지연 보험 정책을 주기적으로 스캔하여, 출발 시간이 지난 정책에 대해 외부 API에서 실제 지연 데이터를 가져온 뒤 온체인 트랜잭션을 발행하는 역할을 한다.
+이 백엔드는 **Solana 오라클 데몬 + REST API 서버**이다.
+하나의 비동기 프로세스에서 세 가지 역할을 수행한다:
+
+1. **오라클 스케줄러** — 비행 지연 보험 정책을 주기적으로 스캔하여, 출발 시간이 지난 정책에 대해 외부 API에서 실제 지연 데이터를 가져온 뒤 온체인 트랜잭션을 발행한다.
+2. **DB 동기화 스케줄러** — 온체인 MasterPolicy/FlightPolicy 계정을 주기적으로 읽어 SQLite 또는 Firebase Firestore에 저장한다.
+3. **REST API 서버** — Axum 기반 HTTP 서버로 정책 데이터 조회 및 SSE 실시간 이벤트 스트리밍을 제공한다.
 
 두 가지 독립적인 오라클 경로(Track A, Track B)를 하나의 비동기 프로세스에서 운용한다.
 
@@ -14,18 +18,39 @@
 ```
 backend/
 ├── Cargo.toml              # Rust 의존성 및 바이너리 설정
+├── Dockerfile              # 컨테이너 빌드 설정
 ├── .env.example            # 환경 변수 템플릿
+├── data/                   # SQLite DB 파일 (런타임 생성)
 ├── docs/
+│   ├── backend-overview.md # 이 문서
 │   ├── e2e-workflow.md     # E2E 운용 가이드
-│   └── backend-overview.md # 이 문서
+│   ├── local-run.md        # 로컬 실행 가이드
+│   ├── master-flight-policy-explained.md
+│   ├── flight-policies-api-response-explained.md
+│   ├── leader-flight-policy-ingestion-plan.md
+│   └── track-b-explained.md
 └── src/
     ├── main.rs             # 진입점 (tokio async main)
     ├── config.rs           # .env → Config 구조체 로딩
-    ├── scheduler.rs        # 크론 기반 스케줄러
+    ├── scheduler.rs        # 크론 기반 스케줄러 (오라클 + DB 동기화)
+    ├── db.rs               # SQLite 기반 PolicyRepository 구현
+    ├── events.rs           # EventBus — SSE 실시간 이벤트 브로드캐스트
     ├── flight_api.rs       # AviationStack HTTP 클라이언트
     ├── switchboard.rs      # Switchboard On-Demand 오라클 클라이언트
+    ├── api/                # REST API 레이어 (Axum)
+    │   ├── client.rs       # HTTP 클라이언트 유틸
+    │   ├── error.rs        # API 에러 타입
+    │   ├── handlers.rs     # 라우트 핸들러 함수들
+    │   ├── repository.rs   # PolicyRepository 트레이트 정의
+    │   ├── router.rs       # Axum 라우터 빌드
+    │   ├── service.rs      # 비즈니스 로직 서비스
+    │   ├── state.rs        # AppState (공유 상태)
+    │   └── types.rs        # 요청/응답 DTO
+    ├── firebase/           # Firebase Firestore 기반 PolicyRepository 구현
+    │   └── mod.rs
     ├── oracle/
     │   ├── mod.rs          # 모듈 export
+    │   ├── program_accounts.rs  # 온체인 계정 파싱/조회 (MasterPolicy, FlightPolicy)
     │   ├── track_a.rs      # Track A: AviationStack 오라클 파이프라인
     │   └── track_b.rs      # Track B: Switchboard 오라클 파이프라인
     └── solana/
@@ -48,7 +73,13 @@ backend/
 | `LEADER_PUBKEY` | **예** | — | 리더 공개키 |
 | `AVIATIONSTACK_API_KEY` | 아니오 | (없음) | Track A 전용 API 키 |
 | `SWITCHBOARD_QUEUE` | **예** | — | Switchboard 큐 주소 |
-| `ORACLE_CHECK_CRON` | 아니오 | `0 */15 * * * *` | 실행 주기 (6-field cron) |
+| `ORACLE_CHECK_CRON` | 아니오 | `0 */15 * * * *` | 오라클 체크 실행 주기 (6-field cron) |
+| `DB_SYNC_CRON` | 아니오 | `0 */1 * * * *` | DB 동기화 실행 주기 (6-field cron) |
+| `DB_BACKEND` | 아니오 | `sqlite` | DB 백엔드 선택: `sqlite` 또는 `firebase` |
+| `DATABASE_PATH` | 아니오 | `data/riskmesh.db` | SQLite DB 파일 경로 |
+| `WEB_BIND_ADDR` | 아니오 | `0.0.0.0:3000` | 웹서버 바인드 주소 |
+| `FIREBASE_PROJECT_ID` | 아니오 | — | Firebase 프로젝트 ID (`DB_BACKEND=firebase` 시 필요) |
+| `FIREBASE_SERVICE_ACCOUNT_PATH` | 아니오 | — | Firebase 서비스 계정 JSON 경로 |
 | `RUST_LOG` | 아니오 | `info` | 로그 레벨 |
 
 ---
@@ -60,15 +91,17 @@ backend/
 ```
 [main]
   → Config::from_env() 로드
-  → 스케줄러 시작 (scheduler::start)
-  → 영구 루프 (프로세스 유지)
+  → DB_BACKEND에 따라 PolicyRepository 생성 (SQLite 또는 Firebase)
+  → EventBus 생성 (SSE 브로드캐스트 채널)
+  → 스케줄러 시작 (scheduler::start) — tokio::spawn으로 백그라운드 실행
+  → API 서버 시작 (api::start) — 메인 스레드에서 실행
 ```
 
 ### 2. 스케줄러 (`scheduler.rs`)
 
-크론 표현식(`ORACLE_CHECK_CRON`)에 따라 `run_oracle_check()`를 주기적으로 실행한다.
-기본값은 15분마다 한 번.
+두 개의 크론 잡을 등록한다:
 
+**오라클 체크 잡** (`ORACLE_CHECK_CRON`, 기본: 15분):
 ```
 [run_oracle_check]
   1. 리더 키페어 파일을 읽어 Keypair 로드
@@ -76,6 +109,42 @@ backend/
   3. Track A 실행 → 활성 FlightPolicy 스캔 후 처리
   4. 개별 에러는 로그만 남기고 계속 진행
 ```
+
+**DB 동기화 잡** (`DB_SYNC_CRON`, 기본: 1분):
+```
+[run_db_sync]
+  1. 온체인 MasterPolicy 계정 전체 조회 (get_program_accounts)
+  2. 온체인 FlightPolicy 계정 전체 조회
+  3. PolicyRepository.sync()로 DB에 저장 (upsert)
+  4. EventBus로 변경 이벤트 브로드캐스트
+```
+
+### 3. REST API 서버 (`api/`)
+
+Axum 기반 HTTP 서버. `AppState`에 `PolicyRepository`와 `EventBus`를 공유한다.
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | `/health` | 서비스 상태/설정 확인 |
+| GET | `/api/master-policies` | DB에서 마스터 정책 목록 조회 |
+| GET | `/api/master-policies/accounts` | 온체인 계정 직접 조회 |
+| GET | `/api/master-policies/:pubkey` | 마스터 정책 상세 |
+| GET | `/api/master-policies/tree` | 마스터 + 하위 FlightPolicy 트리 |
+| GET | `/api/master-policies/:pubkey/flight-policies` | 마스터 아래 FlightPolicy 목록 |
+| POST | `/api/master-policies/:pubkey/flight-policies` | FlightPolicy 생성 (온체인 트랜잭션) |
+| GET | `/api/flight-policies` | 전체 FlightPolicy 목록 |
+| GET | `/api/flight-policies/:pubkey` | FlightPolicy 상세 |
+| GET | `/api/events` | SSE 이벤트 스트림 |
+| POST | `/api/db/test` | DB 테스트 엔드포인트 |
+
+### 4. DB 레이어
+
+`PolicyRepository` 트레이트를 두 가지 백엔드로 구현한다:
+
+- **SQLite** (`db.rs`): `data/riskmesh.db`에 `documents` 테이블로 JSON 문서 저장. WAL 모드 사용.
+- **Firebase** (`firebase/mod.rs`): Firestore REST API를 통해 컬렉션에 문서 저장.
+
+`DB_BACKEND` 환경변수로 선택 (기본값: `sqlite`).
 
 ---
 
@@ -284,13 +353,17 @@ Solana `RpcClient`의 래퍼. commitment level = `Confirmed`.
 | `solana-client` / `solana-sdk` | Solana RPC, 트랜잭션, 키 타입 |
 | `tokio` | 비동기 런타임 |
 | `tokio-cron-scheduler` | 크론 스케줄링 |
-| `reqwest` | HTTP 클라이언트 (AviationStack, Crossbar) |
+| `axum` | HTTP 웹 프레임워크 (REST API) |
+| `tower-http` | CORS 미들웨어 |
+| `reqwest` | HTTP 클라이언트 (AviationStack, Crossbar, Firebase) |
+| `rusqlite` | SQLite 데이터베이스 |
+| `async-trait` | 비동기 트레이트 (`PolicyRepository`) |
 | `borsh` | 온체인 어카운트 데이터 역직렬화 |
 | `bincode` | Crossbar 응답 인스트럭션 역직렬화 |
 | `sha2` | Anchor discriminator 계산 |
 | `serde` / `serde_json` | JSON 처리 |
 | `base64` | Crossbar 응답 디코딩 |
 | `dotenv` | .env 파일 로딩 |
-| `tracing` | 구조적 로깅 |
+| `tracing` / `tracing-subscriber` | 구조적 로깅 |
 | `anyhow` | 에러 핸들링 |
 | `shellexpand` | `~` 경로 확장 |

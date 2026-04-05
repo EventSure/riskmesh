@@ -203,11 +203,20 @@
 - state: 전역 Provider 체인(Query/Solana/Theme/Toast/Router)과 초기 로그 상태.
 - logic:
   - 언어 변경 시 초기 로그 문구 동기화
-  - `/dashboard` 라우팅 및 기본 리다이렉트 처리
+  - 라우팅: `/` (LandingPage), `/demo` (Dashboard), `/portal` (PortalPage), `/insurance` (InsurancePage)
+  - `/dashboard` → `/demo`로 리다이렉트
 
 ### `frontend/src/pages/Dashboard.tsx`
 - state: 현재 활성 탭(`tab-contract` 등).
 - logic: 탭별 화면 컴포넌트를 조건 렌더링.
+
+### `frontend/src/pages/PortalPage.tsx`
+- state: 마스터 정책 데이터, 참여사 뷰.
+- logic: 참여사용 마스터 계약 포털. 정책 조회 및 참여 관리.
+
+### `frontend/src/pages/InsurancePage.tsx`
+- state: 보험 가입/보험사 관리 데이터.
+- logic: 보험 가입자 및 보험사 관리 페이지.
 
 ### `frontend/src/providers/QueryProvider.tsx`
 - state: React Query 클라이언트(staleTime/retry 옵션).
@@ -484,7 +493,118 @@
 
 ---
 
-## 15) 기타/스킬 파일
+## 15) 보험 컴포넌트: `frontend/src/components/insurance/`
+
+### `InsuranceStyles.tsx`
+- state: 보험 페이지 전용 스타일 컴포넌트.
+- logic: InsurancePage 레이아웃/요소 스타일 정의.
+
+---
+
+## 16) 가이드 컴포넌트: `frontend/src/components/guide/`
+
+### `GuideTour.tsx`
+- state: 가이드 투어 UI 상태 (현재 스텝, 활성 여부).
+- logic: 단계별 안내 오버레이 렌더링.
+
+### `useGuideTour.ts`
+- state: 가이드 투어 커스텀 훅.
+- logic: 투어 시작/종료/스텝 이동 관리.
+
+### `guideSteps.ts`
+- state: 가이드 스텝 정의 (대상 요소, 설명 텍스트).
+- logic: 각 가이드 단계의 내용과 위치 지정.
+
+---
+
+## 17) 추가 Hooks: `frontend/src/hooks/`
+
+### `useBackendEvents.ts`
+- state: SSE(Server-Sent Events) 연결 상태, 수신 이벤트 목록.
+- logic: 백엔드 `/api/events` 엔드포인트에 SSE 연결하여 실시간 이벤트 수신.
+
+### `useFlightPolicies.ts`
+- state: FlightPolicy 목록 데이터.
+- logic: 백엔드 API 또는 온체인에서 FlightPolicy 조회.
+
+### `useMyPolicies.ts`
+- state: 현재 지갑 기준 정책 목록.
+- logic: 연결된 지갑에 관련된 정책만 필터링 조회.
+
+### `useParticipantRole.ts`
+- state: 현재 사용자의 참여사 역할.
+- logic: 연결된 지갑이 어떤 MasterPolicy에서 어떤 역할인지 판별.
+
+### `useMasterPolicies.ts`
+- state: MasterPolicy 목록 데이터.
+- logic: 온체인 또는 백엔드에서 MasterPolicy 조회.
+
+### `useMasterPolicyAccount.ts`
+- state: 단일 MasterPolicy 계정 상세 데이터.
+- logic: 특정 MasterPolicy pubkey로 온체인 계정 조회.
+
+---
+
+## 18) 백엔드 API 레이어: `backend/src/api/`
+
+### `router.rs`
+- state: Axum 라우터 설정.
+- logic: 10+ API 엔드포인트를 AppState와 함께 라우터에 등록.
+
+### `handlers.rs`
+- state: 각 HTTP 핸들러의 요청/응답 처리.
+- logic: 요청 파싱, 서비스 호출, 응답 직렬화. SSE 이벤트 스트림 포함.
+
+### `service.rs`
+- state: 비즈니스 로직 서비스 레이어.
+- logic: PolicyRepository와 Solana 클라이언트를 조합하여 데이터 조회/생성.
+
+### `repository.rs`
+- state: `PolicyRepository` 트레이트 정의.
+- logic: `sync()`, `get_master_policies()`, `get_flight_policies()` 등 DB 추상화 인터페이스.
+
+### `types.rs`
+- state: API 요청/응답 DTO (Data Transfer Object).
+- logic: JSON 직렬화/역직렬화 구조체 정의.
+
+### `state.rs`
+- state: `AppState` — 공유 상태 (Config, Repository, EventBus).
+- logic: Axum 핸들러에서 접근하는 공유 리소스 관리.
+
+### `error.rs`
+- state: API 에러 타입.
+- logic: 에러를 HTTP 상태 코드 + JSON 응답으로 변환.
+
+### `client.rs`
+- state: HTTP 클라이언트 유틸.
+- logic: 외부 서비스 호출용 공통 클라이언트 설정.
+
+---
+
+## 19) 백엔드 DB/이벤트 레이어
+
+### `backend/src/db.rs`
+- state: SQLite 기반 `PolicyRepository` 구현체 (`SqliteRepository`).
+- logic:
+  - `documents` 테이블에 JSON 문서로 저장 (collection + id 기반)
+  - WAL 모드로 동시 읽기 성능 확보
+  - `sync()`: 온체인 계정 데이터를 DB에 upsert
+
+### `backend/src/events.rs`
+- state: `EventBus` — 브로드캐스트 채널 기반 이벤트 시스템.
+- logic: DB 동기화 시 변경 이벤트를 발행, SSE 핸들러가 구독하여 클라이언트에 전달.
+
+### `backend/src/firebase/mod.rs`
+- state: Firebase Firestore 기반 `PolicyRepository` 구현체 (`FirebaseRepository`).
+- logic: Firestore REST API로 문서 CRUD. 서비스 계정 인증.
+
+### `backend/src/oracle/program_accounts.rs`
+- state: 온체인 계정 파싱 결과 (`MasterPolicyInfo`, `FlightPolicyInfo`).
+- logic: `get_program_accounts`로 조회한 raw 바이트를 Borsh 파싱하여 구조화된 데이터로 변환.
+
+---
+
+## 20) 기타/스킬 파일
 
 ### `skills/git-commit/SKILL.md`
 - state: 커밋 시 권장 워크플로우(상태 확인→stage→메시지→commit).
@@ -492,12 +612,21 @@
 
 ---
 
-## 16) 전체 시스템 상태 흐름 요약
+## 21) 전체 시스템 상태 흐름 요약
+
+### 레거시 (Policy + Switchboard)
 - 계약 생성: `create_policy`에서 Policy/Underwriting/RiskPool/Registry 상태를 초기화.
 - 인수 모집/수락: 참여자 예치가 누적되어 100% 도달 시 `Funded`.
 - 보험 활성화: 시간 조건 충족 시 `Active`.
 - 오라클 트리거: 지연 시간 임계값 이상이면 `Claimable`.
 - 승인/정산: 리더 승인 후 Vault에서 지급, `Settled`.
+
+### Master/Flight (Trusted Resolver)
+- 마스터 생성: `create_master_policy`에서 참여사/재보험 조건 설정.
+- 참여사 확인: `confirm_master`로 각 참여사/재보험사 확인 후 `Active`.
+- FlightPolicy 발행: `create_flight_policy_from_master`로 개별 항공편 보험 생성.
+- 오라클 해소: `resolve_flight_delay` (Track A) 또는 `check_oracle_and_resolve_flight` (Track B).
+- 정산: `settle_flight_claim` (Claimable → Paid) 또는 `settle_flight_no_claim` (NoClaim → Expired).
 - 만기/환급: 트리거 없으면 `Expired` 후 참여자 환급.
 
 프론트 데모는 이 온체인 흐름을 `zustand` 상태머신으로 시각적으로 재현합니다.
