@@ -37,7 +37,8 @@ export function InsurancePage() {
 
   const [pageState, setPageState] = useState<PageState>('landing');
   const [name, setName] = useState('');
-  const [flight, setFlight] = useState<string>('');
+  const [flight, setFlight] = useState<string>('KE001');
+  const [route, setRoute] = useState<string>('ICN-NRT');
   const [date, setDate] = useState('');
   const [loading, setLoading] = useState(false);
   const [completion, setCompletion] = useState<CompletionData | null>(null);
@@ -69,6 +70,7 @@ export function InsurancePage() {
       const result: EnrollmentResult = await enrollPolicy({
         subscriberName: name.trim(),
         flightNo: flight,
+        route: route.trim(),
         departureDate: date,
         masterPolicyPDA: selectedMasterPDA,
       });
@@ -91,18 +93,19 @@ export function InsurancePage() {
     } finally {
       setLoading(false);
     }
-  }, [name, flight, date]);
+  }, [name, flight, route, date, selectedMasterPDA]);
 
   const handleReset = useCallback(() => {
     setPageState('landing');
     setCompletion(null);
     setName('');
-    setFlight(FLIGHTS[0]);
+    setFlight('');
+    setRoute('');
     setDate('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  const isFormValid = name.trim().length > 0 && flight.trim().length > 0 && date.length > 0 && selectedMasterPDA.length > 0;
+  const isFormValid = name.trim().length > 0 && flight.trim().length > 0 && route.trim().length > 0 && date.length > 0 && selectedMasterPDA.length > 0;
 
   /* ── Completion View ── */
   if (pageState === 'complete' && completion) {
@@ -255,7 +258,11 @@ export function InsurancePage() {
             <FormLabel>{t('insurance.form.flight')}</FormLabel>
             <FormInput
               value={flight}
-              onChange={e => setFlight(e.target.value.toUpperCase())}
+              onChange={e => {
+                const val = e.target.value.toUpperCase();
+                setFlight(val);
+                if (FLIGHT_ROUTES[val]) setRoute(FLIGHT_ROUTES[val]);
+              }}
               placeholder="KE001"
               list="flight-suggestions"
               style={{ fontFamily: "'DM Mono', monospace" }}
@@ -265,6 +272,16 @@ export function InsurancePage() {
                 <option key={f} value={f}>{f} ({FLIGHT_ROUTES[f]})</option>
               ))}
             </datalist>
+          </FormGroup>
+
+          <FormGroup>
+            <FormLabel>{t('insurance.form.route')}</FormLabel>
+            <FormInput
+              value={route}
+              onChange={e => setRoute(e.target.value.toUpperCase())}
+              placeholder="ICN-NRT"
+              style={{ fontFamily: "'DM Mono', monospace" }}
+            />
           </FormGroup>
 
           <FormGroup>
