@@ -635,7 +635,7 @@ export function LandingPage() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
 
-  const goDemo = () => navigate('/demo');
+  const goDemo = () => navigate('/dashboard');
   const goPortal = () => navigate('/portal');
 
   return (
@@ -678,7 +678,7 @@ export function LandingPage() {
           </HeroSub>
           <HeroActions>
             <HeroCta onClick={goPortal}>{t('landing.portalCta')}</HeroCta>
-            <HeroCta onClick={goDemo} style={{ background: 'transparent', border: '1px solid var(--border2)', color: 'var(--text)', boxShadow: 'none' }}>
+            <HeroCta onClick={goDemo}>
               {t('landing.cta')}
             </HeroCta>
             <HeroCtaOutline href="https://github.com/EventSure/riskmesh" target="_blank" rel="noopener noreferrer">

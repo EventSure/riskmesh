@@ -370,7 +370,7 @@ const ko = {
   'lang.en': 'English',
 
   // === Landing Page ===
-  'landing.cta': 'Settlement Dashboard',
+  'landing.cta': '정산 대시보드',
   'landing.portalCta': '참여사 포탈',
   'landing.badge': 'Built on Solana',
 
