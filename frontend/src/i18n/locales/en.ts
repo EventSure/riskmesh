@@ -44,7 +44,7 @@ const en = {
 
   // === Tabs ===
   'tab.contract': '📋 Contract Setup',
-  'tab.feed': '⚡ Live Contract Feed',
+  'tab.feed': '⚡ Live Policy Feed',
   'tab.oracle': '🔮 Oracle & Claims',
   'tab.settlement': '💰 Settlement',
   'tab.inspector': '🔍 On-chain Inspector',
@@ -58,7 +58,7 @@ const en = {
   'master.premiumPerContract': 'Premium per Contract (USDC)',
   'master.payoutByTier': 'Payout by Delay Tier',
   'master.setTermsBtn': '📄 Set Terms & Rate',
-  'master.newCreate': 'Create New Master Contract',
+  'master.newCreate': 'Create New Master Policy',
   'master.loading': 'Loading...',
   'master.noPrevious': 'No previous contracts',
   'master.tier.6h': '6h+ / Cancellation',
@@ -146,7 +146,7 @@ const en = {
   'feed.autoStop': '⏹ Stop Auto Feed',
   'feed.autoRunning': 'Accumulating contracts in real-time...',
   'feed.afterActivation': 'Available after Master Contract activation',
-  'feed.tableTitle': 'Live Contract Feed',
+  'feed.tableTitle': 'Live Policy Feed',
   'feed.th.policyholder': 'Policyholder',
   'feed.th.flight': 'Flight',
   'feed.th.date': 'Departure Date',
@@ -192,7 +192,7 @@ const en = {
   'oracle.sendingTx': 'Sending TX...',
   'oracle.tagManual': 'Manual',
   'oracle.manualNote': 'Manual override console. Backend daemon is auto-processing oracle → claims → settlement.',
-  'oracle.policyMonitor': 'FlightPolicy Status Monitor',
+  'oracle.policyMonitor': 'Flight Policy Status Monitor',
   'oracle.th.flight': 'Flight',
   'oracle.th.contract': 'Contract',
   'oracle.th.date': 'Date',
@@ -370,7 +370,7 @@ const en = {
   'lang.en': 'English',
 
   // === Landing Page ===
-  'landing.cta': 'Launch Demo',
+  'landing.cta': 'Settlement Dashboard',
   'landing.portalCta': 'Participant Portal',
   'landing.badge': 'Built on Solana',
 
@@ -470,8 +470,8 @@ const en = {
   'guide.step9.desc': 'Click the master contract activation button.',
   'guide.step10.title': 'Step 10: Fund Pool',
   'guide.step10.desc': 'Fund the demo pool. Click "Next" when done.',
-  'guide.step11.title': 'Step 11: Live Contract Feed',
-  'guide.step11.desc': 'Click the "Live Contract Feed" tab.',
+  'guide.step11.title': 'Step 11: Live Policy Feed',
+  'guide.step11.desc': 'Click the "Live Policy Feed" tab.',
   'guide.step12.title': 'Step 12: Create Contract',
   'guide.step12.desc': 'Create an insurance contract by clicking this button.',
   'guide.step13.title': 'Step 13: Oracle & Claims',

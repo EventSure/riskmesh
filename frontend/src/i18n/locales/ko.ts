@@ -44,7 +44,7 @@ const ko = {
 
   // === Tabs ===
   'tab.contract': '📋 계약 체결',
-  'tab.feed': '⚡ 실시간 계약 피드',
+  'tab.feed': '⚡ 실시간 보험 피드',
   'tab.oracle': '🔮 오라클 & 클레임',
   'tab.settlement': '💰 정산 현황',
   'tab.inspector': '🔍 On-chain Inspector',
@@ -58,7 +58,7 @@ const ko = {
   'master.premiumPerContract': '건당 보험료 (USDC)',
   'master.payoutByTier': '지연 구간별 보험금',
   'master.setTermsBtn': '📄 약관 세팅 & 요율 산정',
-  'master.newCreate': '새 마스터계약 생성',
+  'master.newCreate': '새 마스터 보험 생성',
   'master.loading': '조회 중...',
   'master.noPrevious': '이전 계약 없음',
   'master.tier.6h': '6h+ / 결항',
@@ -146,7 +146,7 @@ const ko = {
   'feed.autoStop': '⏹ 자동 피드 정지',
   'feed.autoRunning': '실시간 계약 누적 중...',
   'feed.afterActivation': '마스터 계약 활성화 후 이용 가능',
-  'feed.tableTitle': '실시간 계약 피드',
+  'feed.tableTitle': '실시간 보험 피드',
   'feed.th.policyholder': '계약자',
   'feed.th.flight': '항공편',
   'feed.th.date': '출발일',
@@ -192,7 +192,7 @@ const ko = {
   'oracle.sendingTx': 'TX 전송 중...',
   'oracle.tagManual': '수동',
   'oracle.manualNote': '수동 처리 콘솔입니다. 백엔드 데몬이 오라클 확인 → 클레임 → 정산을 자동으로 처리 중입니다.',
-  'oracle.policyMonitor': 'FlightPolicy 상태 모니터',
+  'oracle.policyMonitor': '항공편 보험 상태 모니터',
   'oracle.th.flight': '편명',
   'oracle.th.contract': '계약명',
   'oracle.th.date': '날짜',
@@ -370,7 +370,7 @@ const ko = {
   'lang.en': 'English',
 
   // === Landing Page ===
-  'landing.cta': '데모 시작하기',
+  'landing.cta': 'Settlement Dashboard',
   'landing.portalCta': '참여사 포탈',
   'landing.badge': 'Built on Solana',
 
@@ -470,8 +470,8 @@ const ko = {
   'guide.step9.desc': '마스터 계약 활성화 버튼을 클릭하세요.',
   'guide.step10.title': 'Step 10: Pool 펀딩',
   'guide.step10.desc': 'Demo Pool에 자금을 입금하세요. 완료 후 "다음"을 클릭하세요.',
-  'guide.step11.title': 'Step 11: 실시간 계약 피드',
-  'guide.step11.desc': '"실시간 계약 피드" 탭을 클릭하세요.',
+  'guide.step11.title': 'Step 11: 실시간 보험 피드',
+  'guide.step11.desc': '"실시간 보험 피드" 탭을 클릭하세요.',
   'guide.step12.title': 'Step 12: 계약 체결',
   'guide.step12.desc': '보험 계약을 체결하세요. 버튼을 클릭합니다.',
   'guide.step13.title': 'Step 13: 오라클 & 클레임',
