@@ -112,12 +112,11 @@ export function App() {
               <Routes>
                 <Route path="/" element={<LandingPage />} />
                 <Route element={<Layout />}>
-                  <Route path="/demo" element={<Dashboard />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
                 </Route>
                 <Route path="/portal" element={<PortalPage />} />
                 <Route path="/insurance" element={<InsurancePage />} />
-                <Route path="/dashboard" element={<Navigate to="/demo" replace />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
+<Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </BrowserRouter>
           </ToastProvider>
