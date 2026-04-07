@@ -1,0 +1,120 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: true
+
+env:
+  IMAGE_NAME: riskmesh-oracle
+  IMAGE_TAG: arm64
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU (arm64 emulation)
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build arm64 image
+        run: |
+          docker buildx build \
+            --platform linux/arm64 \
+            -t $IMAGE_NAME:$IMAGE_TAG \
+            --load \
+            ./backend
+
+      - name: Save image as tarball
+        run: docker save $IMAGE_NAME:$IMAGE_TAG | gzip > /tmp/image.tar.gz
+
+      - name: Install cloudflared
+        run: |
+          curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb \
+            -o /tmp/cloudflared.deb
+          sudo dpkg -i /tmp/cloudflared.deb
+
+      - name: Configure SSH via Cloudflare Tunnel
+        run: |
+          mkdir -p ~/.ssh
+          cat >> ~/.ssh/config <<EOF
+          Host pi
+            HostName ${{ secrets.PI_SSH_HOST }}
+            User ${{ secrets.PI_SSH_USER }}
+            StrictHostKeyChecking no
+            ProxyCommand cloudflared access ssh --hostname %h --id ${{ secrets.CF_ACCESS_CLIENT_ID }} --secret ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          EOF
+
+      - name: Transfer image to Raspberry Pi
+        run: scp /tmp/image.tar.gz pi:/tmp/image.tar.gz
+
+      - name: Deploy on Raspberry Pi
+        env:
+          PROGRAM_ID: ${{ secrets.PROGRAM_ID }}
+          LEADER_PUBKEY: ${{ secrets.LEADER_PUBKEY }}
+          RPC_URL: ${{ secrets.RPC_URL }}
+          SWITCHBOARD_QUEUE: ${{ secrets.SWITCHBOARD_QUEUE }}
+          AVIATIONSTACK_API_KEY: ${{ secrets.AVIATIONSTACK_API_KEY }}
+          DATABASE_PATH: ${{ vars.DATABASE_PATH || '/app/data/riskmesh.db' }}
+          ORACLE_CHECK_CRON: ${{ vars.ORACLE_CHECK_CRON || '0 */15 * * * *' }}
+          DB_SYNC_CRON: ${{ vars.DB_SYNC_CRON || '0 */1 * * * *' }}
+          DB_BACKEND: ${{ vars.DB_BACKEND || 'sqlite' }}
+          RUST_LOG: ${{ vars.RUST_LOG || 'info' }}
+        run: |
+          ssh pi << DEPLOY
+            set -e
+            echo "Loading new image..."
+            docker load -i /tmp/image.tar.gz
+
+            echo "Restarting container..."
+            docker stop riskmesh-oracle 2>/dev/null || true
+            docker rm riskmesh-oracle 2>/dev/null || true
+
+            docker run -d \
+              --name riskmesh-oracle \
+              --restart unless-stopped \
+              -p 3000:3000 \
+              -e PROGRAM_ID="${PROGRAM_ID}" \
+              -e LEADER_PUBKEY="${LEADER_PUBKEY}" \
+              -e RPC_URL="${RPC_URL}" \
+              -e SWITCHBOARD_QUEUE="${SWITCHBOARD_QUEUE}" \
+              -e AVIATIONSTACK_API_KEY="${AVIATIONSTACK_API_KEY}" \
+              -e DATABASE_PATH="${DATABASE_PATH}" \
+              -e ORACLE_CHECK_CRON="${ORACLE_CHECK_CRON}" \
+              -e DB_SYNC_CRON="${DB_SYNC_CRON}" \
+              -e DB_BACKEND="${DB_BACKEND}" \
+              -e RUST_LOG="${RUST_LOG}" \
+              -v ~/riskmesh/secrets/firebase:/run/secrets/firebase:ro \
+              -v ~/riskmesh/secrets/solana:/run/secrets/solana:ro \
+              -v ~/riskmesh/data:/app/data \
+              riskmesh-oracle:arm64
+
+            echo "Cleaning up..."
+            rm -f /tmp/image.tar.gz
+            docker image prune -f
+
+            echo "Health check..."
+            sleep 3
+            if docker ps --format '{{.Names}}' | grep -q riskmesh-oracle; then
+              echo "✅ Container is running"
+            else
+              echo "❌ Container failed to start"
+              docker logs riskmesh-oracle --tail 20
+              exit 1
+            fi
+          DEPLOY
