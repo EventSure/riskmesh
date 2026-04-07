@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'backend/**'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -103,6 +104,21 @@ jobs:
               -v ~/riskmesh/secrets/solana:/run/secrets/solana:ro \
               -v ~/riskmesh/data:/app/data \
               riskmesh-oracle:arm64
+
+            echo "Ensuring Dozzle log viewer..."
+            if ! docker ps --format '{{.Names}}' | grep -q dozzle; then
+              docker rm dozzle 2>/dev/null || true
+              docker pull amir20/dozzle:latest
+              docker run -d \
+                --name dozzle \
+                --restart unless-stopped \
+                -p 9090:8080 \
+                -v /var/run/docker.sock:/var/run/docker.sock:ro \
+                amir20/dozzle:latest
+              echo "Dozzle started on :8080"
+            else
+              echo "Dozzle already running"
+            fi
 
             echo "Cleaning up..."
             rm -f /tmp/image.tar.gz
