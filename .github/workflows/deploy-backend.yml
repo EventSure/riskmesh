@@ -25,7 +25,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up QEMU (arm64 emulation)
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cross
+        run: |
+          curl -fsSL https://github.com/cross-rs/cross/releases/latest/download/cross-x86_64-unknown-linux-gnu.tar.gz \
+            | sudo tar xz -C /usr/local/bin
+
+      - name: Cross-compile for arm64
+        working-directory: backend
+        run: cross build --release --target aarch64-unknown-linux-gnu --locked --bin oracle-daemon
+
+      - name: Set up QEMU (for runtime image)
         uses: docker/setup-qemu-action@v3
         with:
           platforms: arm64
@@ -33,11 +44,13 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build arm64 image
+      - name: Build arm64 runtime image
         run: |
+          cp backend/target/aarch64-unknown-linux-gnu/release/oracle-daemon backend/oracle-daemon
           docker buildx build \
             --platform linux/arm64 \
             -t $IMAGE_NAME:$IMAGE_TAG \
+            -f backend/Dockerfile.deploy \
             --load \
             ./backend
 
