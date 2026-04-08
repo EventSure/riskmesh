@@ -11,7 +11,7 @@ import { useProgram } from '@/hooks/useProgram';
 
 export function ContractForm() {
   const { t } = useTranslation();
-  const { mode, masterActive, masterPolicyPDA, contractCount, premiumPerPolicy, addContract, onChainAddContract } = useProtocolStore();
+  const { mode, masterActive, masterAgreementPDA, contractCount, premiumPerPolicy, addContract, onChainAddContract } = useProtocolStore();
   const { toast } = useToast();
   const { createFlightPolicy, loading } = useCreateFlightPolicy();
   const { wallet, program } = useProgram();
@@ -30,15 +30,15 @@ export function ContractForm() {
     }
 
     // On-chain mode
-    if (!masterPolicyPDA || !wallet || !program) {
-      toast('Wallet or master policy not available', 'd');
+    if (!masterAgreementPDA || !wallet || !program) {
+      toast('Wallet or master agreement not available', 'd');
       return;
     }
 
     const childId = contractCount + 1;
     const route = FLIGHT_ROUTES[flight] || 'ICN→JFK';
     const departureTs = Math.floor(new Date(date).getTime() / 1000);
-    const masterPK = new PublicKey(masterPolicyPDA);
+    const masterPK = new PublicKey(masterAgreementPDA);
 
     // MasterPolicy에서 leader_deposit_wallet, currency_mint를 읽어서 사용
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -65,7 +65,7 @@ export function ContractForm() {
 
     onChainAddContract(childId, name, flight, date, result.signature);
     toast(`Flight policy created! TX: ${result.signature.slice(0, 8)}...`, 's');
-  }, [mode, masterActive, name, flight, date, masterPolicyPDA, wallet, program, contractCount, addContract, onChainAddContract, createFlightPolicy, toast, t]);
+  }, [mode, masterActive, name, flight, date, masterAgreementPDA, wallet, program, contractCount, addContract, onChainAddContract, createFlightPolicy, toast, t]);
 
   const handleAutoFeed = useCallback(() => {
     if (timerRef.current) {

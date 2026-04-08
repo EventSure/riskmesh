@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styled from '@emotion/styled';
 import { useTranslation } from 'react-i18next';
 import { PublicKey, Transaction, SystemProgram, Keypair } from '@solana/web3.js';
 import { getAssociatedTokenAddress, createAssociatedTokenAccountIdempotentInstruction, createInitializeAccount3Instruction, ACCOUNT_SIZE, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { Card, CardHeader, CardTitle, CardBody, Button, Tag } from '@/components/common';
+import { Card, CardHeader, CardTitle, CardBody, Button, Tag, Divider, TierItem } from '@/components/common';
 import { ConfirmRole } from '@/lib/idl/open_parametric';
 import { KVRow } from './KVRow';
 import { useToast } from '@/components/common';
@@ -37,6 +37,25 @@ export function PortalConfirm({ masterPDA, participantInfo, allRoles, onSuccess 
   const { program, provider, wallet } = useProgram();
   const [loading, setLoading] = useState(false);
   const [confirmedLocally, setConfirmedLocally] = useState(false);
+  const [masterData, setMasterData] = useState<{
+    coverageStartTs: { toNumber(): number };
+    coverageEndTs: { toNumber(): number };
+    premiumPerPolicy: { toNumber(): number };
+    payoutDelay2h: { toNumber(): number };
+    payoutDelay3h: { toNumber(): number };
+    payoutDelay4to5h: { toNumber(): number };
+    payoutDelay6hOrCancelled: { toNumber(): number };
+    cededRatioBps: number;
+    reinsCommissionBps: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!program) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (program as any).account.masterPolicy.fetch(masterPDA)
+      .then((data: typeof masterData) => setMasterData(data))
+      .catch(() => { /* silent */ });
+  }, [program, masterPDA]);
 
   const isConfirmed = participantInfo.confirmed || confirmedLocally;
 
@@ -152,6 +171,26 @@ export function PortalConfirm({ masterPDA, participantInfo, allRoles, onSuccess 
           <KVRow label={t('portal.myRole')} value={roleLabels} />
           <KVRow label={t('portal.myShare')} value={`${sharePct}% (${participantInfo.shareBps} bps)`} />
           <KVRow label={t('portal.participantIndex')} value={`#${participantInfo.participantIndex}`} />
+
+          {masterData && (
+            <>
+              <Divider />
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--sub)', marginBottom: 8, marginTop: 4 }}>
+                {t('portal.contractTerms')}
+              </div>
+              <KVRow label={t('master.coverageStart')} value={new Date(masterData.coverageStartTs.toNumber() * 1000).toLocaleDateString('ko-KR')} />
+              <KVRow label={t('master.coverageEnd')} value={new Date(masterData.coverageEndTs.toNumber() * 1000).toLocaleDateString('ko-KR')} />
+              <KVRow label={t('master.premiumPerContract')} value={`${masterData.premiumPerPolicy.toNumber() / 1_000_000} USDC`} />
+              <KVRow label={t('portal.cededRatio')} value={`${(masterData.cededRatioBps / 100).toFixed(0)}% / 커미션 ${(masterData.reinsCommissionBps / 100).toFixed(0)}%`} />
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--sub)', marginBottom: 6, marginTop: 8 }}>
+                {t('oracle.tierSection')}
+              </div>
+              <TierItem label={t('oracle.tier120')} value={`→ ${masterData.payoutDelay2h.toNumber() / 1_000_000} USDC`} color="#F59E0B" />
+              <TierItem label={t('oracle.tier180')} value={`→ ${masterData.payoutDelay3h.toNumber() / 1_000_000} USDC`} color="#f97316" />
+              <TierItem label={t('oracle.tier240')} value={`→ ${masterData.payoutDelay4to5h.toNumber() / 1_000_000} USDC`} color="#EF4444" />
+              <TierItem label={t('oracle.tier360')} value={`→ ${masterData.payoutDelay6hOrCancelled.toNumber() / 1_000_000} USDC`} color="#fca5a5" />
+            </>
+          )}
 
           {!isConfirmed && (
             <Button

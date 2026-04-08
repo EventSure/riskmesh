@@ -13,7 +13,7 @@ import { setPoolWallet } from '@/lib/demo-keypairs';
 import { ConfirmRole } from '@/lib/idl/open_parametric';
 
 export function MasterContractSetup() {
-  const { mode, masterActive, processStep, shares, masterPolicyPDA, setTerms, onChainSetTerms, setMasterPolicyPDA, refreshPool } = useProtocolStore();
+  const { mode, masterActive, processStep, shares, masterAgreementPDA, setTerms, onChainSetTerms, setMasterAgreementPDA, refreshPool } = useProtocolStore();
   const { toast } = useToast();
   const { t } = useTranslation();
   const { program, provider, wallet, connected } = useProgram();
@@ -75,7 +75,7 @@ export function MasterContractSetup() {
 
       const masterId = Date.now();
       const masterIdBN = new BN(masterId);
-      const [masterPolicyPDA] = getMasterPolicyPDA(leaderKey, masterIdBN);
+      const [masterAgreementPDA] = getMasterPolicyPDA(leaderKey, masterIdBN);
 
       const operatorKey = leaderKey;
       const reinsurerKey = reinsurerPubkey;
@@ -93,7 +93,7 @@ export function MasterContractSetup() {
           space: ACCOUNT_SIZE,
           programId: TOKEN_PROGRAM_ID,
         }),
-        createInitializeAccount3Instruction(kp.publicKey, CURRENCY_MINT, masterPolicyPDA),
+        createInitializeAccount3Instruction(kp.publicKey, CURRENCY_MINT, masterAgreementPDA),
       ];
       const [createLeaderPoolIx, initLeaderPoolIx] = makePoolIxs(leaderPoolKp);
       const [createPartAPoolIx, initPartAPoolIx] = makePoolIxs(partAPoolKp);
@@ -123,7 +123,7 @@ export function MasterContractSetup() {
           operator: operatorKey,
           reinsurer: reinsurerKey,
           currencyMint: CURRENCY_MINT,
-          masterPolicy: masterPolicyPDA,
+          masterPolicy: masterAgreementPDA,
           leaderDepositWallet: leaderPoolKp.publicKey, // PDA-owned: settle 시 MasterPolicy PDA가 서명
           reinsurerPoolWallet: reinsurerPoolKp.publicKey, // PDA-owned
           reinsurerDepositWallet: await getAssociatedTokenAddress(CURRENCY_MINT, reinsurerPubkey),
@@ -136,7 +136,7 @@ export function MasterContractSetup() {
         .registerParticipantWallets()
         .accounts({
           insurer: leaderKey,
-          masterPolicy: masterPolicyPDA,
+          masterPolicy: masterAgreementPDA,
           poolWallet: leaderPoolKp.publicKey,
           depositWallet: leaderATA,
           tokenProgram: TOKEN_PROGRAM_ID,
@@ -145,7 +145,7 @@ export function MasterContractSetup() {
 
       const confirmLeaderIx = await prog.methods
         .confirmMaster(ConfirmRole.Participant)
-        .accounts({ actor: leaderKey, masterPolicy: masterPolicyPDA })
+        .accounts({ actor: leaderKey, masterPolicy: masterAgreementPDA })
         .instruction();
 
       // leader/reinsurer ATA가 없을 경우 idempotent하게 생성 (이미 있으면 no-op)
@@ -184,7 +184,7 @@ export function MasterContractSetup() {
       setPoolWallet('partB', partBPoolKp.publicKey);
 
       // ── Update store (partA/B/rein 컨펌은 ParticipantConfirm에서 단계별로 처리) ──
-      setMasterPolicyPDA(masterPolicyPDA.toBase58());
+      setMasterAgreementPDA(masterAgreementPDA.toBase58());
       onChainSetTerms(sig, 5000, 1000, premium, {
         delay2h: payout2h, delay3h: payout3h, delay4to5h: payout4to5h, delay6hOrCancelled: payout6h,
       });
@@ -199,13 +199,13 @@ export function MasterContractSetup() {
   };
 
   const handleFundPools = async () => {
-    if (!masterPolicyPDA || !wallet || !program || !provider) {
-      toast('Wallet not connected or no master policy selected', 'd');
+    if (!masterAgreementPDA || !wallet || !program || !provider) {
+      toast('Wallet not connected or no master agreement selected', 'd');
       return;
     }
     setFundLoading(true);
     try {
-      const masterPK = new PublicKey(masterPolicyPDA);
+      const masterPK = new PublicKey(masterAgreementPDA);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const masterData = await (program as any).account.masterPolicy.fetch(masterPK);
 

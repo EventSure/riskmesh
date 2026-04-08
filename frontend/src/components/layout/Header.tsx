@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useProgram } from '@/hooks/useProgram';
 import { useNavigate } from 'react-router-dom';
-import { MasterPolicyDropdown } from './MasterPolicyDropdown';
+import { MasterAgreementDropdown } from './MasterAgreementDropdown';
 import { useGuideTour } from '@/components/guide/useGuideTour';
 
 const blink = keyframes`
@@ -345,7 +345,7 @@ const handleModeSwitch = (m: 'simulation' | 'onchain') => {
               SIM
             </ModeBtn>
           </ModeToggleWrap>
-          <MasterPolicyDropdown />
+          <MasterAgreementDropdown />
           {mode === 'onchain' && connected && (
             <RoleBadge role={role} data-guide="role-select">
               {t(`role.${role}`)}

@@ -7,7 +7,7 @@ import { useToast } from '@/components/common';
 import { useTranslation } from 'react-i18next';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useProgram } from '@/hooks/useProgram';
-import { MasterPolicyDropdown } from './MasterPolicyDropdown';
+import { MasterAgreementDropdown } from './MasterAgreementDropdown';
 import { useGuideTour } from '@/components/guide/useGuideTour';
 import { BaseHeader } from './BaseHeader';
 
@@ -222,8 +222,8 @@ const KpiValue = styled(Mono)`
 `;
 
 export function AdminHeader() {
-  const { mode, setMode, role, masterPolicyPDA, masterActive, contracts, totalPremium, totalClaim, poolBalance } = useProtocolStore(
-    useShallow(s => ({ mode: s.mode, setMode: s.setMode, role: s.role, masterPolicyPDA: s.masterPolicyPDA, masterActive: s.masterActive, contracts: s.contracts, totalPremium: s.totalPremium, totalClaim: s.totalClaim, poolBalance: s.poolBalance })),
+  const { mode, setMode, role, masterAgreementPDA, masterActive, contracts, totalPremium, totalClaim, poolBalance } = useProtocolStore(
+    useShallow(s => ({ mode: s.mode, setMode: s.setMode, role: s.role, masterAgreementPDA: s.masterAgreementPDA, masterActive: s.masterActive, contracts: s.contracts, totalPremium: s.totalPremium, totalClaim: s.totalClaim, poolBalance: s.poolBalance })),
   );
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
@@ -260,13 +260,13 @@ export function AdminHeader() {
           SIM
         </ModeBtn>
       </ModeToggleWrap>
-      <MasterPolicyDropdown />
+      <MasterAgreementDropdown />
     </>
   );
 
   const actions = (
     <>
-      {mode === 'onchain' && connected && masterPolicyPDA && (
+      {mode === 'onchain' && connected && masterAgreementPDA && (
         <RoleBadge role={role} data-guide="role-select">
           {t(`role.${role}`)}
         </RoleBadge>

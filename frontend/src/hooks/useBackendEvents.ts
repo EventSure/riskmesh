@@ -4,7 +4,7 @@ import { BACKEND_URL } from '@/lib/constants';
 /**
  * Generic SSE hook that connects to /api/events for a given master pubkey.
  * Used by components that need raw SSE access outside of the policy hooks.
- * Policy-specific SSE is handled within useMasterPolicyAccount and useFlightPolicies.
+ * Policy-specific SSE is handled within useMasterAgreementAccount and useFlightPolicies.
  */
 export function useBackendEvents(masterPubkey?: string | null) {
   useEffect(() => {

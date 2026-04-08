@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, useToast } from '@/components/common';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { useSettleFlight } from '@/hooks/useSettleFlight';
-import { useMasterPolicyAccount } from '@/hooks/useMasterPolicyAccount';
+import { useMasterAgreementAccount } from '@/hooks/useMasterAgreementAccount';
 import { getFlightPolicyPDA } from '@/lib/pda';
 
 /* ── Styles ── */
@@ -102,9 +102,9 @@ const STATUS_ICON: Record<string, string> = {
 export function PolicyMonitorTable() {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { contracts, claims, masterPolicyPDA, onChainSettle } = useProtocolStore();
-  const masterPK = masterPolicyPDA ? new PublicKey(masterPolicyPDA) : null;
-  const { account: masterAccount } = useMasterPolicyAccount(masterPK);
+  const { contracts, claims, masterAgreementPDA, onChainSettle } = useProtocolStore();
+  const masterPK = masterAgreementPDA ? new PublicKey(masterAgreementPDA) : null;
+  const { account: masterAccount } = useMasterAgreementAccount(masterPK);
   const { settleFlightClaim, settleFlightNoClaim, buildSettleAccounts, loading: settleLoading } = useSettleFlight();
   const [settleLoadingId, setSettleLoadingId] = useState<number | null>(null);
 

@@ -107,12 +107,12 @@ const ModeBadge = styled.span<{ isOnChain: boolean }>`
 
 export function InspectorPanel() {
   const { t } = useTranslation();
-  const { mode, masterActive, policyStateIdx, contracts, poolBalance, totalPremium, totalClaim, acc, shares, masterPolicyPDA, lastTxSignature } = useProtocolStore(
+  const { mode, masterActive, policyStateIdx, contracts, poolBalance, totalPremium, totalClaim, acc, shares, masterAgreementPDA, lastTxSignature } = useProtocolStore(
     useShallow(s => ({
       mode: s.mode, masterActive: s.masterActive, policyStateIdx: s.policyStateIdx,
       contracts: s.contracts, poolBalance: s.poolBalance, totalPremium: s.totalPremium,
       totalClaim: s.totalClaim, acc: s.acc, shares: s.shares,
-      masterPolicyPDA: s.masterPolicyPDA, lastTxSignature: s.lastTxSignature,
+      masterAgreementPDA: s.masterAgreementPDA, lastTxSignature: s.lastTxSignature,
     })),
   );
 
@@ -134,13 +134,13 @@ export function InspectorPanel() {
     );
   }
 
-  const masterAddr = isOnChain && masterPolicyPDA ? masterPolicyPDA : masterPDA();
-  const poolAddr = isOnChain && masterPolicyPDA ? `pool_${masterPolicyPDA.slice(0, 8)}` : poolPDA();
+  const masterAddr = isOnChain && masterAgreementPDA ? masterAgreementPDA : masterPDA();
+  const poolAddr = isOnChain && masterAgreementPDA ? `pool_${masterAgreementPDA.slice(0, 8)}` : poolPDA();
   const vaultAddr = isOnChain ? `vault_${masterAddr.slice(0, 8)}` : vaultPDA();
 
   const accounts = [
     {
-      icon: '📋', name: 'MasterPolicy',
+      icon: '📋', name: 'MasterAgreement',
       seeds: isOnChain ? ['master_policy', 'leader', 'master_id'] : ['master', '2026', 'flight_delay'],
       addr: masterAddr,
       fields: [
@@ -194,7 +194,7 @@ export function InspectorPanel() {
               <div>
                 <AccountName>{a.name}</AccountName>
                 <AccountAddr>
-                  {isOnChain && masterPolicyPDA && a.addr.length === 44 ? (
+                  {isOnChain && masterAgreementPDA && a.addr.length === 44 ? (
                     <AddrLink
                       href={getExplorerUrl(a.addr, 'address', 'devnet')}
                       target="_blank"
