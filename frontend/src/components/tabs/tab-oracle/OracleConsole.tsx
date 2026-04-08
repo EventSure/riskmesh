@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import styled from '@emotion/styled';
 import { PublicKey } from '@solana/web3.js';
 import { BN } from '@coral-xyz/anchor';
@@ -113,7 +113,7 @@ export function OracleConsole() {
   const { t } = useTranslation();
   const {
     mode, contracts, masterActive, masterAgreementPDA, payoutTiers,
-    runOracle, onChainResolve, lastDaemonActivityTs,
+    runOracle, onChainResolve,
   } = useProtocolStore();
   const { toast } = useToast();
   const { resolveFlightDelay, loading } = useResolveFlightDelay();
@@ -126,13 +126,6 @@ export function OracleConsole() {
   const [cancelled, setCancelled] = useState(false);
   const [result, setResult] = useState<{ type: 'error' | 'ok'; msg: string; code?: string } | null>(null);
 
-  const SCHEDULER_INTERVAL_MIN = 15;
-  const nextRunLabel = useMemo(() => {
-    if (lastDaemonActivityTs == null) return null;
-    const nowSec = Math.floor(Date.now() / 1000);
-    const minsLeft = Math.ceil((lastDaemonActivityTs + SCHEDULER_INTERVAL_MIN * 60 - nowSec) / 60);
-    return minsLeft > 0 ? `(${minsLeft}분 후)` : '(잠시 후)';
-  }, [lastDaemonActivityTs]);
 
   const handleRun = async () => {
     if (contractId === 0) { toast(t('toast.selectContract'), 'w'); return; }
@@ -180,7 +173,6 @@ export function OracleConsole() {
           <InfoDot />
           <span>
             {t('oracle.manualNote')}
-            {mode === 'onchain' && nextRunLabel && <> <span style={{ opacity: 0.6 }}>{nextRunLabel}</span></>}
           </span>
         </InfoNote>
 
@@ -222,12 +214,7 @@ export function OracleConsole() {
               </SegmentWrap>
             </FormGroup>
 
-            {resolveType === 'noDelay' ? (
-              <div style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.25)', marginBottom: 12, fontSize: 12, color: 'var(--sub)', lineHeight: 1.5 }}>
-                {t('oracle.noDelayDesc')}<br />
-                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--success)' }}>{t('oracle.noDelayHint')}</span>
-              </div>
-            ) : (
+            {resolveType === 'delay' && (
               <>
                 <FormGroup>
                   <FormLabel>{t('oracle.delayLabel')}</FormLabel>
@@ -266,13 +253,17 @@ export function OracleConsole() {
                 />
               </FormGroup>
             )}
-            <Divider />
-            <SectionLabel>{t('oracle.tierSection')}</SectionLabel>
-            <TierItem label={t('oracle.tier120')} value={`→ ${payoutTiers.delay2h} USDC`} color="#F59E0B" />
-            <TierItem label={t('oracle.tier180')} value={`→ ${payoutTiers.delay3h} USDC`} color="#f97316" />
-            <TierItem label={t('oracle.tier240')} value={`→ ${payoutTiers.delay4to5h} USDC`} color="#EF4444" />
-            <TierItem label={t('oracle.tier360')} value={`→ ${payoutTiers.delay6hOrCancelled} USDC`} color="#fca5a5" />
-            <Divider />
+            {resolveType === 'delay' && (
+              <>
+                <Divider />
+                <SectionLabel>{t('oracle.tierSection')}</SectionLabel>
+                <TierItem label={t('oracle.tier120')} value={`→ ${payoutTiers.delay2h} USDC`} color="#F59E0B" />
+                <TierItem label={t('oracle.tier180')} value={`→ ${payoutTiers.delay3h} USDC`} color="#f97316" />
+                <TierItem label={t('oracle.tier240')} value={`→ ${payoutTiers.delay4to5h} USDC`} color="#EF4444" />
+                <TierItem label={t('oracle.tier360')} value={`→ ${payoutTiers.delay6hOrCancelled} USDC`} color="#fca5a5" />
+                <Divider />
+              </>
+            )}
             {result?.type === 'error' && (
               <MsgBox variant="error">
                 <MsgCode>{result.code}</MsgCode>

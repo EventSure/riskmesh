@@ -541,6 +541,7 @@ const ko = {
   'portal.role.partB': '공동보험사 B',
   'portal.role.rein': '재보험사',
   'portal.role.leader': '리더',
+  'portal.contractTerms': '항공 지연 약정 내용',
   'portal.myPolicies': '내 마스터 계약 목록',
   'portal.loadingPolicies': '계약 목록 로딩 중...',
   'portal.noPolicies': '참여 중인 마스터 계약이 없습니다',

@@ -541,6 +541,7 @@ const en = {
   'portal.role.partB': 'Co-insurer B',
   'portal.role.rein': 'Reinsurer',
   'portal.role.leader': 'Leader',
+  'portal.contractTerms': 'Flight Delay Contract Terms',
   'portal.myPolicies': 'My Master Agreements',
   'portal.loadingPolicies': 'Loading agreements...',
   'portal.noPolicies': 'No master agreements found',
