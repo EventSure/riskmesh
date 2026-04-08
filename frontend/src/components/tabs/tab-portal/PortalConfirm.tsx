@@ -41,10 +41,10 @@ export function PortalConfirm({ masterPDA, participantInfo, allRoles, onSuccess 
     coverageStartTs: { toNumber(): number };
     coverageEndTs: { toNumber(): number };
     premiumPerPolicy: { toNumber(): number };
-    payoutDelay2h: { toNumber(): number };
-    payoutDelay3h: { toNumber(): number };
-    payoutDelay4to5h: { toNumber(): number };
-    payoutDelay6hOrCancelled: { toNumber(): number };
+    payoutDelay2H: { toNumber(): number };
+    payoutDelay3H: { toNumber(): number };
+    payoutDelay4To5H: { toNumber(): number };
+    payoutDelay6HOrCancelled: { toNumber(): number };
     cededRatioBps: number;
     reinsCommissionBps: number;
   } | null>(null);
@@ -185,10 +185,10 @@ export function PortalConfirm({ masterPDA, participantInfo, allRoles, onSuccess 
               <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--sub)', marginBottom: 6, marginTop: 8 }}>
                 {t('oracle.tierSection')}
               </div>
-              <TierItem label={t('oracle.tier120')} value={`→ ${masterData.payoutDelay2h.toNumber() / 1_000_000} USDC`} color="#F59E0B" />
-              <TierItem label={t('oracle.tier180')} value={`→ ${masterData.payoutDelay3h.toNumber() / 1_000_000} USDC`} color="#f97316" />
-              <TierItem label={t('oracle.tier240')} value={`→ ${masterData.payoutDelay4to5h.toNumber() / 1_000_000} USDC`} color="#EF4444" />
-              <TierItem label={t('oracle.tier360')} value={`→ ${masterData.payoutDelay6hOrCancelled.toNumber() / 1_000_000} USDC`} color="#fca5a5" />
+              <TierItem label={t('oracle.tier120')} value={`→ ${masterData.payoutDelay2H.toNumber() / 1_000_000} USDC`} color="#F59E0B" />
+              <TierItem label={t('oracle.tier180')} value={`→ ${masterData.payoutDelay3H.toNumber() / 1_000_000} USDC`} color="#f97316" />
+              <TierItem label={t('oracle.tier240')} value={`→ ${masterData.payoutDelay4To5H.toNumber() / 1_000_000} USDC`} color="#EF4444" />
+              <TierItem label={t('oracle.tier360')} value={`→ ${masterData.payoutDelay6HOrCancelled.toNumber() / 1_000_000} USDC`} color="#fca5a5" />
             </>
           )}
 
