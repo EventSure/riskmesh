@@ -112,7 +112,7 @@ const InfoDot = styled.span`
 export function OracleConsole() {
   const { t } = useTranslation();
   const {
-    mode, contracts, masterActive, masterPolicyPDA, payoutTiers,
+    mode, contracts, masterActive, masterAgreementPDA, payoutTiers,
     runOracle, onChainResolve, lastDaemonActivityTs,
   } = useProtocolStore();
   const { toast } = useToast();
@@ -154,8 +154,8 @@ export function OracleConsole() {
       return;
     }
 
-    if (!masterPolicyPDA || !wallet) { toast(t('toast.walletNotAvailable'), 'd'); return; }
-    const masterPK = new PublicKey(masterPolicyPDA);
+    if (!masterAgreementPDA || !wallet) { toast(t('toast.walletNotAvailable'), 'd'); return; }
+    const masterPK = new PublicKey(masterAgreementPDA);
     const [flightPolicyPDA] = getFlightPolicyPDA(masterPK, new BN(contractId));
     const txResult = await resolveFlightDelay({ masterPolicy: masterPK, flightPolicy: flightPolicyPDA, delayMinutes: resolvedDelay, cancelled: resolvedCancelled });
     if (!txResult.success) {

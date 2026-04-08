@@ -10,7 +10,7 @@ import { getFlightPolicyPDA } from '@/lib/pda';
 
 export function ClaimApproval() {
   const { t } = useTranslation();
-  const { mode, role, claims, masterPolicyPDA, approveClaims, settleClaims, onChainSettle } = useProtocolStore();
+  const { mode, role, claims, masterAgreementPDA, approveClaims, settleClaims, onChainSettle } = useProtocolStore();
   const { toast } = useToast();
   const { settleFlightClaim, buildSettleAccounts, loading } = useSettleFlight();
   const { wallet, program } = useProgram();
@@ -43,7 +43,7 @@ export function ClaimApproval() {
     }
 
     // On-chain: settle each claimable flight policy
-    if (!masterPolicyPDA || !wallet || !program) {
+    if (!masterAgreementPDA || !wallet || !program) {
       toast(t('toast.walletNotAvailable'), 'd');
       return;
     }
@@ -51,7 +51,7 @@ export function ClaimApproval() {
     const claimable = claims.filter(c => c.status === 'claimable' || c.status === 'approved');
     if (claimable.length === 0) { toast(t('toast.noClaimSettle'), 'w'); return; }
 
-    const masterPK = new PublicKey(masterPolicyPDA);
+    const masterPK = new PublicKey(masterAgreementPDA);
 
     // 온체인 master 데이터에서 등록된 pool/deposit 지갑 주소를 읽어 사용
     // (registerParticipantWallets로 저장된 PDA-owned pool 계정)

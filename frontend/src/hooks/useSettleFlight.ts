@@ -109,7 +109,7 @@ export function useSettleFlight() {
     [program, provider, wallet],
   );
 
-  /** Helper to build wallet arrays from master policy account data */
+  /** Helper to build wallet arrays from master agreement account data */
   const buildSettleAccounts = (master: MasterPolicyAccount) => ({
     participantPoolWallets: master.participants.map((p) => p.poolWallet),
     participantDepositWallets: master.participants.map((p) => p.depositWallet),

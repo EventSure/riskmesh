@@ -15,7 +15,7 @@ import { useEffect, useRef, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PublicKey } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useMasterPolicyAccount } from '@/hooks/useMasterPolicyAccount';
+import { useMasterAgreementAccount } from '@/hooks/useMasterAgreementAccount';
 import { useFlightPolicies, type FlightPolicyWithKey } from '@/hooks/useFlightPolicies';
 import { useToast } from '@/components/common';
 
@@ -31,14 +31,14 @@ function ChainSyncer() {
     console.log('[Wallet] publicKey:', publicKey?.toBase58() ?? 'not connected');
   }, [publicKey]);
   const mode = useProtocolStore(s => s.mode);
-  const masterPolicyPDA = useProtocolStore(s => s.masterPolicyPDA);
+  const masterAgreementPDA = useProtocolStore(s => s.masterAgreementPDA);
   const syncMasterFromChain = useProtocolStore(s => s.syncMasterFromChain);
   const syncFlightPoliciesFromChain = useProtocolStore(s => s.syncFlightPoliciesFromChain);
   const addLog = useProtocolStore(s => s.addLog);
 
   const pdaKey = useMemo(
-    () => mode === 'onchain' && masterPolicyPDA ? new PublicKey(masterPolicyPDA) : null,
-    [mode, masterPolicyPDA],
+    () => mode === 'onchain' && masterAgreementPDA ? new PublicKey(masterAgreementPDA) : null,
+    [mode, masterAgreementPDA],
   );
 
   const handleStatusChange = useCallback((fp: FlightPolicyWithKey, prev: number, next: number) => {
@@ -54,7 +54,7 @@ function ChainSyncer() {
     );
   }, [t, toast, addLog]);
 
-  const { account } = useMasterPolicyAccount(pdaKey);
+  const { account } = useMasterAgreementAccount(pdaKey);
   const { policies } = useFlightPolicies(pdaKey, { onStatusChange: handleStatusChange });
 
   useEffect(() => {

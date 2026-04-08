@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import styled from '@emotion/styled';
 import { useTranslation } from 'react-i18next';
 import { useProtocolStore } from '@/store/useProtocolStore';
-import { useMasterPolicies } from '@/hooks/useMasterPolicies';
+import { useMasterAgreements } from '@/hooks/useMasterAgreements';
 import { useProgram } from '@/hooks/useProgram';
 import { MasterPolicyStatus } from '@/lib/idl/open_parametric';
 
@@ -44,34 +44,34 @@ const ROLE_LABEL: Record<'leader' | 'partA' | 'partB' | 'rein', string> = {
   rein: '재보험사',
 };
 
-export function MasterPolicyDropdown() {
+export function MasterAgreementDropdown() {
   const mode = useProtocolStore(s => s.mode);
-  const masterPolicyPDA = useProtocolStore(s => s.masterPolicyPDA);
-  const selectMasterPolicy = useProtocolStore(s => s.selectMasterPolicy);
+  const masterAgreementPDA = useProtocolStore(s => s.masterAgreementPDA);
+  const selectMasterAgreement = useProtocolStore(s => s.selectMasterAgreement);
   const setRole = useProtocolStore(s => s.setRole);
   const { t } = useTranslation();
   const { connected } = useProgram();
-  const { policies, loading, refetch } = useMasterPolicies();
+  const { policies, loading, refetch } = useMasterAgreements();
 
   // Sync detected role to store when selected policy changes or list updates
   useEffect(() => {
-    if (!masterPolicyPDA) return;
-    const found = policies.find(p => p.pda === masterPolicyPDA);
+    if (!masterAgreementPDA) return;
+    const found = policies.find(p => p.pda === masterAgreementPDA);
     if (found?.myRole) setRole(found.myRole);
-  }, [masterPolicyPDA, policies]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [masterAgreementPDA, policies]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Refetch when a newly created policy isn't in the list yet
   useEffect(() => {
-    if (masterPolicyPDA && !policies.some(p => p.pda === masterPolicyPDA)) {
+    if (masterAgreementPDA && !policies.some(p => p.pda === masterAgreementPDA)) {
       refetch();
     }
-  }, [masterPolicyPDA]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [masterAgreementPDA]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (mode !== 'onchain' || !connected) return null;
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const pda = e.target.value || null;
-    selectMasterPolicy(pda);
+    selectMasterAgreement(pda);
     if (pda) {
       const found = policies.find(p => p.pda === pda);
       if (found?.myRole) setRole(found.myRole);
@@ -79,10 +79,10 @@ export function MasterPolicyDropdown() {
   };
 
   return (
-    <SelectBase value={masterPolicyPDA ?? ''} onChange={handleChange}>
+    <SelectBase value={masterAgreementPDA ?? ''} onChange={handleChange}>
       <option value="">{t('master.newCreate')}</option>
       {loading && <option disabled>{t('master.loading')}</option>}
-      {!loading && policies.length === 0 && !masterPolicyPDA && (
+      {!loading && policies.length === 0 && !masterAgreementPDA && (
         <option disabled>{t('master.noPrevious')}</option>
       )}
       {policies.map(p => (
@@ -90,9 +90,9 @@ export function MasterPolicyDropdown() {
           {p.pda.slice(0, 8)}... · {statusLabel(p.status)} · {p.myRole ? ROLE_LABEL[p.myRole] : ''} · {formatDate(p.coverageEndTs)}
         </option>
       ))}
-      {masterPolicyPDA && !policies.some(p => p.pda === masterPolicyPDA) && (
-        <option value={masterPolicyPDA}>
-          {masterPolicyPDA.slice(0, 8)}... · {loading ? t('master.loading') : 'New'}
+      {masterAgreementPDA && !policies.some(p => p.pda === masterAgreementPDA) && (
+        <option value={masterAgreementPDA}>
+          {masterAgreementPDA.slice(0, 8)}... · {loading ? t('master.loading') : 'New'}
         </option>
       )}
     </SelectBase>

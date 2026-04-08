@@ -82,12 +82,12 @@ function toMasterPolicyAccount(data: BackendMasterPolicy): MasterPolicyAccount {
   } as unknown as MasterPolicyAccount;
 }
 
-export function useMasterPolicyAccount(masterPolicyPDA: PublicKey | null) {
+export function useMasterAgreementAccount(masterAgreementPDA: PublicKey | null) {
   const [account, setAccount] = useState<MasterPolicyAccount | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const pdaKey = masterPolicyPDA?.toBase58() ?? null;
+  const pdaKey = masterAgreementPDA?.toBase58() ?? null;
   const pdaRef = useRef(pdaKey);
   pdaRef.current = pdaKey;
 

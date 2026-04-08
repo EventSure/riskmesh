@@ -39,10 +39,10 @@ const PtDot = styled.div`
 `;
 
 export function ParticipantConfirm() {
-  const { mode, role, confirms, shares, masterActive, masterPolicyPDA, confirmParty, activateMaster, onChainActivate } = useProtocolStore(
+  const { mode, role, confirms, shares, masterActive, masterAgreementPDA, confirmParty, activateMaster, onChainActivate } = useProtocolStore(
     useShallow(s => ({
       mode: s.mode, role: s.role, confirms: s.confirms, shares: s.shares,
-      masterActive: s.masterActive, masterPolicyPDA: s.masterPolicyPDA,
+      masterActive: s.masterActive, masterAgreementPDA: s.masterAgreementPDA,
       confirmParty: s.confirmParty, activateMaster: s.activateMaster,
       onChainActivate: s.onChainActivate,
     })),
@@ -74,12 +74,12 @@ export function ParticipantConfirm() {
     }
 
     // On-chain
-    if (!masterPolicyPDA) { toast('No master policy PDA', 'd'); return; }
+    if (!masterAgreementPDA) { toast('No master agreement PDA', 'd'); return; }
     const result = await activateMasterOnChain({
-      masterPolicy: new PublicKey(masterPolicyPDA),
+      masterPolicy: new PublicKey(masterAgreementPDA),
     });
     if (!result.success) { toast(`TX failed: ${result.error}`, 'd'); return; }
-    onChainActivate(result.signature, masterPolicyPDA);
+    onChainActivate(result.signature, masterAgreementPDA);
     toast(t('toast.masterActivated') + ` TX: ${result.signature.slice(0, 8)}...`, 's');
   };
 

@@ -62,7 +62,7 @@ function toFlightPolicyWithKey(data: BackendFlightPolicy): FlightPolicyWithKey {
 }
 
 export function useFlightPolicies(
-  masterPolicyPDA: PublicKey | null,
+  masterAgreementPDA: PublicKey | null,
   options?: {
     onStatusChange?: (fp: FlightPolicyWithKey, prevStatus: number, newStatus: number) => void;
     pollInterval?: number;
@@ -76,7 +76,7 @@ export function useFlightPolicies(
   const onStatusChangeRef = useRef(options?.onStatusChange);
   onStatusChangeRef.current = options?.onStatusChange;
 
-  const masterKey = masterPolicyPDA?.toBase58() ?? null;
+  const masterKey = masterAgreementPDA?.toBase58() ?? null;
 
   const fetchPolicies = useCallback(async () => {
     if (!masterKey) {

@@ -24,14 +24,14 @@ interface BackendMasterPolicy {
  * Detect all roles the connected wallet holds in a MasterPolicy.
  * Uses backend API instead of direct RPC.
  */
-export function useParticipantRole(masterPolicyPDA: PublicKey | null) {
+export function useParticipantRole(masterAgreementPDA: PublicKey | null) {
   const { publicKey } = useWallet();
   const [roles, setRoles] = useState<ParticipantInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const pda = masterPolicyPDA?.toBase58() ?? null;
+  const pda = masterAgreementPDA?.toBase58() ?? null;
   const walletKey = publicKey?.toBase58() ?? null;
 
   useEffect(() => {

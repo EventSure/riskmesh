@@ -8,7 +8,7 @@ export interface EnrollmentData {
   flightNo: string;
   route: string;
   departureDate: string;
-  masterPolicyPDA?: string;
+  masterAgreementPDA?: string;
 }
 
 export interface EnrollmentResult {
@@ -47,12 +47,12 @@ export async function fetchActiveMasterPolicies(): Promise<MasterPolicyInfo[]> {
 
 /* ── Helpers ── */
 
-/** Store 또는 백엔드에서 활성 MasterPolicy PDA를 가져온다. */
+/** Store 또는 백엔드에서 활성 MasterAgreement PDA를 가져온다. */
 async function resolveMasterPolicyPDA(): Promise<string | null> {
-  const stored = useProtocolStore.getState().masterPolicyPDA;
+  const stored = useProtocolStore.getState().masterAgreementPDA;
   if (stored) return stored;
 
-  // Store에 없으면 백엔드에서 Active 상태인 첫 번째 마스터 정책을 조회
+  // Store에 없으면 백엔드에서 Active 상태인 첫 번째 마스터 계약을 조회
   try {
     const res = await fetch(`${BACKEND_URL}/api/master-policies`);
     if (!res.ok) return null;
@@ -73,7 +73,7 @@ export async function enrollPolicy(data: EnrollmentData): Promise<EnrollmentResu
   const store = useProtocolStore.getState();
   const premium = store.premiumPerPolicy;
 
-  const masterPDA = data.masterPolicyPDA ?? await resolveMasterPolicyPDA();
+  const masterPDA = data.masterAgreementPDA ?? await resolveMasterPolicyPDA();
   if (!masterPDA) {
     return {
       success: false,

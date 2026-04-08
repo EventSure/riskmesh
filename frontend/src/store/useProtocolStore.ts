@@ -69,7 +69,7 @@ export interface LogEntry {
 
 export type ProtocolMode = 'simulation' | 'onchain';
 
-export interface MasterPolicySummary {
+export interface MasterAgreementSummary {
   pda: string;
   masterId: string;
   status: number;
@@ -196,9 +196,9 @@ interface ProtocolState {
 
   // On-chain state
   poolRefreshKey: number;
-  masterPolicyPDA: string | null;
+  masterAgreementPDA: string | null;
   lastTxSignature: string | null;
-  masterPolicies: MasterPolicySummary[];
+  masterAgreements: MasterAgreementSummary[];
   lastDaemonActivityTs: number | null;
 
   // Actions
@@ -214,9 +214,9 @@ interface ProtocolState {
   approveClaims: () => number;
   settleClaims: () => number;
   addLog: (msg: string, color: string, instruction: string, detail?: string, txSignature?: string) => void;
-  setMasterPolicyPDA: (pda: string | null) => void;
-  setMasterPolicies: (list: MasterPolicySummary[]) => void;
-  selectMasterPolicy: (pda: string | null) => void;
+  setMasterAgreementPDA: (pda: string | null) => void;
+  setMasterAgreements: (list: MasterAgreementSummary[]) => void;
+  selectMasterAgreement: (pda: string | null) => void;
   onChainSetTerms: (txSignature: string, cededRatioBps?: number, reinsCommissionBps?: number, premium?: number, payoutTiers?: { delay2h: number; delay3h: number; delay4to5h: number; delay6hOrCancelled: number }) => void;
   onChainConfirm: (key: 'partA' | 'partB' | 'rein', txSignature: string) => void;
   onChainActivate: (txSignature: string, pda: string) => void;
@@ -264,9 +264,9 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
 
   // On-chain state
   poolRefreshKey: 0,
-  masterPolicyPDA: null,
+  masterAgreementPDA: null,
   lastTxSignature: null,
-  masterPolicies: [],
+  masterAgreements: [],
   lastDaemonActivityTs: null,
 
   setMode: (m) => {
@@ -467,11 +467,11 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     }));
   },
 
-  setMasterPolicyPDA: (pda) => set({ masterPolicyPDA: pda }),
+  setMasterAgreementPDA: (pda) => set({ masterAgreementPDA: pda }),
 
-  setMasterPolicies: (list) => set({ masterPolicies: list }),
+  setMasterAgreements: (list) => set({ masterAgreements: list }),
 
-  selectMasterPolicy: (pda) => {
+  selectMasterAgreement: (pda) => {
     const resetMirror = {
       masterActive: false,
       processStep: 0,
@@ -483,10 +483,10 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       claimCount: 0,
     };
     if (pda === null) {
-      set({ masterPolicyPDA: null, ...resetMirror });
+      set({ masterAgreementPDA: null, ...resetMirror });
       get().addLog('새 마스터계약 생성 모드', '#94A3B8', 'select_master');
     } else {
-      set({ masterPolicyPDA: pda, ...resetMirror });
+      set({ masterAgreementPDA: pda, ...resetMirror });
       get().addLog(`마스터계약 전환: ${pda.slice(0, 8)}...`, '#9945FF', 'select_master', '체인에서 상태 조회 중...');
     }
   },
@@ -526,7 +526,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
   },
 
   onChainActivate: (txSignature, pda) => {
-    set({ masterActive: true, policyStateIdx: 3, processStep: 5, masterPolicyPDA: pda });
+    set({ masterActive: true, policyStateIdx: 3, processStep: 5, masterAgreementPDA: pda });
     get().addLog(
       i18n.t('store.masterActivated'), '#14F195', 'activate_master',
       `PDA: ${pda.substring(0, 16)}...`, txSignature,
@@ -663,7 +663,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       acc: { ...INITIAL_ACC },
       premHist: [], poolHist: [{ t: 'init', v: 10000 }],
       logs: [], logIdCounter: 0,
-      masterPolicyPDA: null, lastTxSignature: null,
+      masterAgreementPDA: null, lastTxSignature: null,
     });
     get().addLog(i18n.t('store.resetMsg'), '#9945FF', 'system_init');
   },
@@ -854,7 +854,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     const always = {
       mode: state.mode,
       role: state.role,
-      masterPolicyPDA: state.masterPolicyPDA,
+      masterAgreementPDA: state.masterAgreementPDA,
       shares: state.shares,
       cededRatioBps: state.cededRatioBps,
       reinsCommissionBps: state.reinsCommissionBps,

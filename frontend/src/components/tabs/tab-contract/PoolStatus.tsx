@@ -3,14 +3,14 @@ import { PublicKey } from '@solana/web3.js';
 import { Card, CardHeader, CardTitle, CardBody, SummaryRow } from '@/components/common';
 import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
 import { useProgram } from '@/hooks/useProgram';
-import { useMasterPolicyAccount } from '@/hooks/useMasterPolicyAccount';
+import { useMasterAgreementAccount } from '@/hooks/useMasterAgreementAccount';
 import { Chart, registerables } from 'chart.js';
 import { useTranslation } from 'react-i18next';
 
 Chart.register(...registerables);
 
 export function PoolStatus() {
-  const { mode, masterPolicyPDA, poolBalance, totalClaim, poolHist, poolRefreshKey, setPoolBalance } = useProtocolStore();
+  const { mode, masterAgreementPDA, poolBalance, totalClaim, poolHist, poolRefreshKey, setPoolBalance } = useProtocolStore();
   const { connection } = useProgram();
   const { t, i18n: { language } } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -18,10 +18,10 @@ export function PoolStatus() {
   const [onChainBalance, setOnChainBalance] = useState<number | null>(null);
 
   const pdaKey = useMemo(
-    () => mode === 'onchain' && masterPolicyPDA ? new PublicKey(masterPolicyPDA) : null,
-    [mode, masterPolicyPDA],
+    () => mode === 'onchain' && masterAgreementPDA ? new PublicKey(masterAgreementPDA) : null,
+    [mode, masterAgreementPDA],
   );
-  const { account: masterData } = useMasterPolicyAccount(pdaKey);
+  const { account: masterData } = useMasterAgreementAccount(pdaKey);
 
   const fetchOnChainBalance = useCallback(async () => {
     if (mode !== 'onchain' || !masterData || !connection) {

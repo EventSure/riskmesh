@@ -27,7 +27,7 @@ interface CompletionData {
 export function InsurancePage() {
   const { t, i18n } = useTranslation();
   const premiumPerPolicy = useProtocolStore(s => s.premiumPerPolicy);
-  const storedMasterPDA = useProtocolStore(s => s.masterPolicyPDA);
+  const storedMasterPDA = useProtocolStore(s => s.masterAgreementPDA);
 
   useEffect(() => {
     const prev = document.body.style.background;
@@ -42,13 +42,13 @@ export function InsurancePage() {
   const [date, setDate] = useState('');
   const [loading, setLoading] = useState(false);
   const [completion, setCompletion] = useState<CompletionData | null>(null);
-  const [masterPolicies, setMasterPolicies] = useState<MasterPolicyInfo[]>([]);
+  const [masterAgreements, setMasterAgreements] = useState<MasterPolicyInfo[]>([]);
   const [selectedMasterPDA, setSelectedMasterPDA] = useState<string>(storedMasterPDA ?? '');
   const formRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     fetchActiveMasterPolicies().then(list => {
-      setMasterPolicies(list);
+      setMasterAgreements(list);
       if (!selectedMasterPDA && list.length > 0) {
         setSelectedMasterPDA(list[0]!.pubkey);
       }
@@ -72,7 +72,7 @@ export function InsurancePage() {
         flightNo: flight,
         route: route.trim(),
         departureDate: date,
-        masterPolicyPDA: selectedMasterPDA,
+        masterAgreementPDA: selectedMasterPDA,
       });
 
       if (result.success) {
@@ -233,10 +233,10 @@ export function InsurancePage() {
                 value={selectedMasterPDA}
                 onChange={e => setSelectedMasterPDA(e.target.value)}
               >
-                {masterPolicies.length === 0 && (
+                {masterAgreements.length === 0 && (
                   <option value="">{t('insurance.form.masterPolicyLoading')}</option>
                 )}
-                {masterPolicies.map(p => (
+                {masterAgreements.map(p => (
                   <option key={p.pubkey} value={p.pubkey}>
                     {p.pubkey.slice(0, 8)}...{p.pubkey.slice(-4)} · {new Date(p.coverage_end_ts * 1000).toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' })}
                   </option>

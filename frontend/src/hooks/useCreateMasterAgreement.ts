@@ -6,7 +6,7 @@ import { getMasterPolicyPDA } from '@/lib/pda';
 import { sendTx, type TxResult } from '@/lib/tx';
 import type { CreateMasterPolicyParams, MasterParticipantInit } from '@/lib/idl/open_parametric';
 
-export interface CreateMasterPolicyInput {
+export interface CreateMasterAgreementInput {
   masterId: number;
   coverageStartTs: number; // unix seconds
   coverageEndTs: number;
@@ -26,12 +26,12 @@ export interface CreateMasterPolicyInput {
   participants: { insurer: PublicKey; shareBps: number }[];
 }
 
-export function useCreateMasterPolicy() {
+export function useCreateMasterAgreement() {
   const { program, provider, wallet } = useProgram();
   const [loading, setLoading] = useState(false);
 
-  const createMasterPolicy = useCallback(
-    async (input: CreateMasterPolicyInput): Promise<TxResult> => {
+  const createMasterAgreement = useCallback(
+    async (input: CreateMasterAgreementInput): Promise<TxResult> => {
       if (!program || !provider || !wallet) {
         return { signature: '', success: false, error: 'Wallet not connected' };
       }
@@ -40,7 +40,7 @@ export function useCreateMasterPolicy() {
       try {
         const masterIdBN = new BN(input.masterId);
         const leader = wallet.publicKey;
-        const [masterPolicyPDA] = getMasterPolicyPDA(leader, masterIdBN);
+        const [masterAgreementPDA] = getMasterPolicyPDA(leader, masterIdBN);
 
         const params: CreateMasterPolicyParams = {
           masterId: masterIdBN,
@@ -71,7 +71,7 @@ export function useCreateMasterPolicy() {
               operator: input.operator,
               reinsurer: input.reinsurer,
               currencyMint: input.currencyMint,
-              masterPolicy: masterPolicyPDA,
+              masterPolicy: masterAgreementPDA,
               leaderDepositWallet: input.leaderDepositWallet,
               reinsurerPoolWallet: input.reinsurerPoolWallet,
               reinsurerDepositWallet: input.reinsurerDepositWallet,
@@ -90,5 +90,5 @@ export function useCreateMasterPolicy() {
     [program, provider, wallet],
   );
 
-  return { createMasterPolicy, loading };
+  return { createMasterAgreement, loading };
 }
