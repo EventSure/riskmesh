@@ -13,15 +13,15 @@ MVP는 **항공편 지연 보험** (주요 공항 30% 지연율의 $10B+ 시장)
 - `contract/` — Anchor 기반 온체인 프로그램 (Rust)
 - `backend/` — 오라클 데몬 + REST API 서버 (Rust, Axum)
 - `frontend/` — 운영 대시보드 & 보험 포털 (React + Vite + Emotion)
-- `docs/` — 컨트랙트 가이드, 테스트 가이드, 설계 문서
-- `OpenParametric.md` — MVP / 설계 초안
+- `docs/` — 테스트 가이드 및 설계 문서
 
 ## 주요 기능
 
 - **이벤트 기반 정산** — 이벤트 발생과 동시에 온체인 청구 정산, 대사 단계 없음
-- 보험상품 생성 및 공동 인수 (리더/참여사 비율 관리)
-- 온체인 자본 관리가 포함된 예치 리스크 풀
-- 모듈식 오라클 연동 — 중앙화 (항공 API) 또는 탈중앙화 (Switchboard)
+- **단계별 지급 티어** — 2시간/3시간/4-5시간/6시간+ 지연 티어 및 결항 오버라이드
+- MasterPolicy + FlightPolicy 구조: 하나의 공동 인수 계약이 다수의 개별 항공 계약을 커버
+- 리더·참여사·재보험사 공동 인수 (basis-point 비율, 온체인 확인)
+- 모듈식 오라클 연동 — 중앙화 (AviationStack API, Track A) 또는 탈중앙화 (Switchboard On-Demand, Track B)
 - REST API 서버 + 온체인 데이터 동기화 (SQLite / Firebase Firestore)
 - SSE(Server-Sent Events) 기반 실시간 이벤트 스트리밍
 - 대시보드 탭 기반 운영 UI (Contract / Feed / Oracle / Settlement / Inspector)
@@ -53,8 +53,8 @@ MVP는 **항공편 지연 보험** (주요 공항 30% 지연율의 $10B+ 시장)
 
 | 트랙 | 방식 | 신뢰 모델 | 대상 계정 |
 |------|------|-----------|-----------|
-| **Track A** — Trusted Resolver | 리더/오퍼레이터가 API 데이터를 가져와 `resolve_flight_delay` 온체인 호출 | 중앙화 (서명자 신뢰) | `FlightPolicy` |
-| **Track B** — Switchboard On-Demand | Switchboard 오라클 노드가 API 데이터를 가져와 온체인 feed에 서명·기록; `check_oracle_and_create_claim`이 암호학적으로 검증 | 탈중앙화 (암호학적 검증) | `Policy` |
+| **Track A** — Trusted Resolver | 리더/오퍼레이터가 AviationStack 데이터를 가져와 `resolve_flight_delay` 온체인 호출 | 중앙화 (서명자 신뢰) | `FlightPolicy` |
+| **Track B** — Switchboard On-Demand | Switchboard 오라클 노드가 API 데이터를 가져와 온체인 feed에 서명·기록; `check_oracle_and_resolve_flight`이 암호학적으로 검증 | 탈중앙화 (암호학적 검증) | `FlightPolicy` |
 
 **데모/시뮬레이션 모드**에서는 대시보드 UI에서 오라클 해소를 수동으로 트리거합니다 — 외부 API나 오라클 네트워크가 필요하지 않습니다.
 
@@ -73,11 +73,11 @@ MVP는 **항공편 지연 보험** (주요 공항 30% 지연율의 $10B+ 시장)
 
 이 프로토콜이 솔라나를 필요로 하는 다섯 가지 아키텍처적 이유:
 
-- **동일 트랜잭션 오라클 검증** — `check_oracle_and_create_claim`은 Ed25519 서명 검증, Switchboard 오라클 업데이트, 클레임 생성을 단일 트랜잭션에서 원자적으로 수행합니다. 솔라나의 Instructions sysvar — 같은 TX 내 다른 인스트럭션을 프로그램 안에서 검사할 수 있는 기능 — 덕분에 가능하며, EVM에서는 구조적으로 불가능합니다.
-- **PDA 기반 무신뢰 수탁** — 리스크풀의 vault는 프로그램에서 파생된 주소(PDA)가 소유합니다. 멀티시그도, 관리자 키도, 외부 커스터디도 없습니다. 프로그램 자체가 수탁자이며, 탈취할 관리자 키가 존재하지 않습니다.
-- **계정 수준 병렬성** — 각 Policy, Underwriting, RiskPool, Claim이 별도의 온체인 계정입니다. 솔라나 런타임은 서로 다른 계정을 건드리는 트랜잭션을 병렬로 처리합니다. KE081 인천→뉴욕 편의 클레임 처리가 OZ201 인천→LA 편의 인수 절차를 블로킹하지 않습니다. EVM의 단일 컨트랙트 모델에서는 모든 보험상품이 같은 스토리지를 경쟁합니다.
-- **다자간 원자적 정산** — `settle_claim`은 PDA 서명 권한으로 vault에서 beneficiary로 토큰을 이체합니다. 최대 16개 참여사의 basis point 비율 계산과 이체가 하나의 트랜잭션에서 완결됩니다 — 전부 아니면 전무, 부분 정산은 없습니다.
-- **온체인 상태 머신 = 보험 약관** — 8단계 상태 전이(Draft → Open → Funded → Active → Claimable → Approved → Settled / Expired)가 온체인에 강제됩니다. "인수 완료 전 보장 개시 불가"는 약관 조항이 아니라 프로그램이 거부하는 트랜잭션입니다.
+- **동일 트랜잭션 오라클 검증** — Track B의 `check_oracle_and_resolve_flight`은 Ed25519 서명 검증, Switchboard 오라클 업데이트, FlightPolicy 상태 갱신을 단일 트랜잭션에서 원자적으로 수행합니다. 솔라나의 Instructions sysvar — 같은 TX 내 다른 인스트럭션을 프로그램 안에서 검사할 수 있는 기능 — 덕분에 가능하며, EVM에서는 구조적으로 불가능합니다.
+- **PDA 기반 무신뢰 수탁** — 풀 지갑이 프로그램에서 파생된 주소(PDA)에 소유됩니다. 멀티시그도, 관리자 키도, 외부 커스터디도 없습니다. 프로그램 자체가 수탁자이며, 탈취할 관리자 키가 존재하지 않습니다.
+- **계정 수준 병렬성** — 각 MasterPolicy와 FlightPolicy가 별도의 온체인 계정입니다. 솔라나 런타임은 서로 다른 계정을 건드리는 트랜잭션을 병렬로 처리합니다. KE081 인천→뉴욕 편의 정산이 OZ201 인천→LA 편의 오라클 해소를 블로킹하지 않습니다. EVM의 단일 컨트랙트 모델에서는 모든 보험상품이 같은 스토리지를 경쟁합니다.
+- **다자간 원자적 정산** — `settle_flight_claim`은 재보험사 및 참여사 풀에서 basis-point 비율로 나누어 단일 트랜잭션에서 이체합니다 — 전부 아니면 전무, 부분 정산은 없습니다.
+- **온체인 상태 머신 = 보험 약관** — FlightPolicy의 상태 전이(`Issued → AwaitingOracle → Claimable/NoClaim → Paid/Expired`)가 온체인에 강제됩니다. "오라클 해소 전 정산 불가"는 약관 조항이 아니라 프로그램이 거부하는 트랜잭션입니다.
 
 ## 빠른 시작
 
@@ -184,28 +184,20 @@ npm run test:coverage
 
 ## 문서
 
-### 루트
+### `contract/docs/`
 
 | 파일 | 설명 |
 |------|------|
-| [`OpenParametric.md`](OpenParametric.md) | MVP 설계 초안 — 계정 스키마, 상태 머신, 오라클 스펙 |
+| [`oracle.md`](contract/docs/oracle.md) | 오라클 연동 가이드 — Track A (중앙화) & Track B (Switchboard On-Demand) |
+| [`setup-and-test.md`](contract/docs/setup-and-test.md) | 개발 환경 설치, 테스트 스위트 개요, 데모 스크립트 |
 
 ### `docs/`
 
 | 파일 | 설명 |
 |------|------|
-| [`CONTRACT_GUIDE.md`](docs/CONTRACT_GUIDE.md) | 스마트 컨트랙트 상세 스펙 — 계정, 인스트럭션, 에러코드, 시퀀스 |
 | [`CONTRACT_TESTING_GUIDE_KO.md`](docs/CONTRACT_TESTING_GUIDE_KO.md) | 컨트랙트 테스트 가이드 — 단위, 통합, 정산 테스트 |
 | [`FRONTEND_TESTING_GUIDE_KO.md`](docs/FRONTEND_TESTING_GUIDE_KO.md) | 프런트엔드 단위 테스트 가이드 — 비즈니스 로직 테스트 |
-| [`FILE_STATE_LOGIC_FULL_KO.md`](docs/FILE_STATE_LOGIC_FULL_KO.md) | 전체 파일별 상태/로직 설명서 |
 | [`feature/settle_flight_settlement.md`](docs/feature/settle_flight_settlement.md) | 항공 보험 정산 로직 — 클레임/무클레임 흐름 |
-
-### `contract/docs/`
-
-| 파일 | 설명 |
-|------|------|
-| [`oracle.md`](contract/docs/oracle.md) | 오라클 연동 가이드 — Track A (중앙화) & Track B (탈중앙화) |
-| [`setup-and-test.md`](contract/docs/setup-and-test.md) | 개발 환경 설치 가이드 — Rust, Solana CLI, Anchor |
 
 ### `contract/`
 
@@ -220,7 +212,6 @@ npm run test:coverage
 | [`backend-overview.md`](backend/docs/backend-overview.md) | 백엔드 구조 — 모듈, 설정, 오라클 파이프라인 |
 | [`e2e-workflow.md`](backend/docs/e2e-workflow.md) | E2E 운영 가이드 — 셋업, 데몬, 정산 |
 | [`local-run.md`](backend/docs/local-run.md) | 로컬 개발 빠른 시작 가이드 |
-| [`master-flight-policy-explained.md`](backend/docs/master-flight-policy-explained.md) | Master/Flight 정책 도메인 모델 설명 |
 | [`flight-policies-api-response-explained.md`](backend/docs/flight-policies-api-response-explained.md) | `/api/flight-policies` 응답 키 레퍼런스 |
 | [`leader-flight-policy-ingestion-plan.md`](backend/docs/leader-flight-policy-ingestion-plan.md) | 리더사 가입 연동 API 설계 계획 |
 | [`track-b-explained.md`](backend/docs/track-b-explained.md) | Track B (Switchboard On-Demand) 상세 설명 |
@@ -236,34 +227,17 @@ npm run test:coverage
 
 ### 온체인 계정
 
-프로그램은 두 가지 보험 설계를 지원합니다:
-
-**레거시 (공동 보험 풀 + Switchboard 오라클):**
+온체인 프로그램은 2계층 계정 구조를 사용합니다. `MasterPolicy`는 기간 단위 공동 인수 계약(리더 + 최대 8개 참여사 + 재보험사)이고, 개별 항공편마다 `FlightPolicy` PDA가 발행됩니다.
 
 ```
-Policy
-  ├─ Underwriting (participants, ratios, escrow)
-  ├─ RiskPool (vault, balances)
-  ├─ Claim (oracle_round별)
-  └─ PolicyholderRegistry (옵션)
+MasterPolicy  (보장 기간당 1개)
+  └─ FlightPolicy (가입 항공편당 1개, 온디맨드 발행)
 ```
 
-**Master/Flight (신뢰 기반 리졸버 + 단계별 지급):**
+- `MasterPolicy`: 공동 인수 계약. 지급 티어, 출재/수수료 비율, 참여사 지분(bps), 풀 지갑 주소, 오라클 피드(Track B), 라이프사이클 상태를 저장합니다.
+- `FlightPolicy`: 개별 항공편 계약. 항공편 번호, 노선, 출발 시각, 납입 보험료, 오라클로 해소된 지연, 지급액, 정산 상태를 저장합니다.
 
-```
-MasterPolicy (공동 인수 계약 + 재보험 조건)
-  └─ FlightPolicy (마스터 아래 개별 항공편)
-```
-
-- `MasterPolicy`: 단계별 지급액, 출재/재보험 비율, 참여사 지갑 설정. 상태: `Draft → PendingConfirm → Active → Closed/Cancelled`
-- `FlightPolicy`: 개별 항공편 지연 보험. 상태: `Issued → AwaitingOracle → Claimable/NoClaim → Paid/Expired`
-
-**레거시 계정:**
-- `Policy`: 보험상품 자체. 노선/항공편/출발시각, 지연 임계값, 지급액, 오라클 피드, 상태 등을 보관합니다.
-- `Underwriting`: 공동 인수 구조. 리더/참여사 비율, 수락/거절 상태, 예치(escrow) 정보를 추적합니다.
-- `RiskPool`: 예치 자금을 보관하는 풀. SPL 토큰 Vault와 가용 잔액/총 예치액을 관리합니다.
-- `Claim`: 오라클 라운드별 청구 기록. 지연값, 검증 시각, 승인 상태, 지급액을 담습니다.
-- `PolicyholderRegistry`: (옵션) 계약자 최소 정보 등록부. PII 없이 외부 참조와 보장 정보만 저장합니다.
+풀 지갑(PDA)이 예치 자금을 보관합니다. `settle_flight_claim` 시 재보험 풀·참여사 풀에서 리더 입금 지갑으로 이체됩니다. `settle_flight_no_claim` 시 리더 입금 지갑의 보험료가 각 참여사 입금 지갑으로 반환됩니다.
 
 ### 백엔드
 
@@ -290,28 +264,23 @@ MasterPolicy (공동 인수 계약 + 재보험 조건)
 
 ## 상태 머신
 
-Policy 상태 전이 흐름:
+MasterPolicy 라이프사이클:
 
 ```
-Draft → Open → Funded → Active → Claimable → Approved → Settled
-                                   └───────────────→ Expired
+PendingConfirm → Active → Closed
+                        → Cancelled
 ```
 
-Underwriting 상태:
+FlightPolicy 라이프사이클:
 
 ```
-Proposed → Open → Finalized (또는 Failed)
-```
-
-Claim 상태:
-
-```
-None → PendingOracle → Claimable → Approved → Settled (또는 Rejected)
+Issued → AwaitingOracle → Claimable → Paid
+                        → NoClaim   → Expired
 ```
 
 ## 개발 메모
 
 - Anchor 0.31.1
-- 오라클: 모듈식 — Switchboard On-Demand (탈중앙화) 또는 Trusted Resolver (중앙화)
-- SPL 토큰을 예치/지급에 사용
-- 네트워크: localnet (개발), devnet (데모), mainnet (프로덕션)
+- 오라클: 모듈식 — Switchboard On-Demand (Track B, 탈중앙화) 또는 Trusted Resolver (Track A, 중앙화)
+- SPL 토큰을 풀 지갑 및 지급에 사용
+- 네트워크: localnet (개발/테스트), devnet (데모), mainnet (프로덕션)

@@ -11,11 +11,12 @@
 [운영자]
   ├─ TS 스크립트 (contract/scripts/)   ← 최초 셋업 / 수동 정산
   └─ Rust 백엔드 데몬 (backend/)       ← 오라클 자동 체크 (cron)
-       ├─ Track A: AviationStack API → resolve_flight_delay
-       └─ Track B: Switchboard On-Demand → check_oracle_and_create_claim
+       ├─ Track A: AviationStack API → resolve_flight_delay (FlightPolicy)
+       └─ Track B: Switchboard On-Demand → check_oracle_and_resolve_flight (FlightPolicy)
 ```
 
-Track A (Master/Flight Policy)와 Track B (단독 Policy + Switchboard)는 독립적으로 동작합니다.
+두 Track 모두 동일한 MasterPolicy + FlightPolicy 계정 구조를 사용합니다.
+오라클 방식만 다를 뿐 — Track A는 신뢰된 resolver(서명자 인증), Track B는 Switchboard 암호학적 검증입니다.
 실제 운영에서는 두 Track 모두 같은 데몬 프로세스 하나가 처리합니다.
 
 ---
@@ -182,83 +183,57 @@ CHILD_POLICY_ID=2 yarn demo:settle
 
 ---
 
-## Track B — 단독 Policy (Switchboard On-Demand 연동)
+## Track B — FlightPolicy (Switchboard On-Demand 연동)
 
 ### 흐름 개요
 
 ```
-1. setup         →  계좌 생성, 토큰 민팅 (.state.json 초기화)
-2. create-policy →  Policy 계정 생성 (Draft)
-3. underwriting  →  언더라이팅 오픈 (Open)
-4. accept-shares →  참여사 지분 수락 (Funded)
-5. activate      →  Policy 활성화 (Active)
-6. [데몬 자동]   →  Switchboard Crossbar → check_oracle_and_create_claim
-                    (Claimable 또는 시간 초과 → Expired)
-7. approve_claim →  (Claimable인 경우) 리더가 승인
-8. settle_claim  →  정산 또는 expire
+1. feed-create   →  Switchboard Pull Feed 생성 (devnet, 최초 1회)
+2. master-setup  →  MasterPolicy 생성·확인·활성화 (oracle_feed = 피드 주소)
+3. flight-create →  FlightPolicy 생성 (Issued → AwaitingOracle)
+4. [데몬 자동]   →  Switchboard Crossbar → check_oracle_and_resolve_flight
+                    (AwaitingOracle → Claimable 또는 NoClaim)
+5. settle        →  정산 실행 (Paid 또는 Expired)
 ```
 
-### Step 1–5. 온체인 셋업
+Track B는 Track A와 동일한 MasterPolicy/FlightPolicy 계정 구조를 사용합니다.
+차이점: MasterPolicy의 `oracle_feed`가 Switchboard Pull Feed 주소이고, oracle 해석 instruction이 다릅니다.
+
+### Step 1. Switchboard Feed 생성 (최초 1회)
 
 ```bash
 cd contract
-yarn install
-
-yarn demo:setup           # 1. 키페어 생성, 토큰 민팅
-yarn demo:create-policy   # 2. Policy 생성 (Draft)
-yarn demo:open-uw         # 3. 언더라이팅 오픈 (Open)
-yarn demo:accept-shares   # 4. 지분 수락 (Funded)
-yarn demo:activate        # 5. Policy 활성화 (Active)
+AVIATIONSTACK_API_KEY=<키> FLIGHT_NO=KE017 yarn demo:2-feed-create
 ```
 
-각 단계 완료 후 `.state.json`에 필요한 정보가 저장됩니다.
+완료 후 `.state.json`에 `feedPubkey`, `feedCid`, `feedHash`가 저장됩니다.
 
-### Step 6. Switchboard Feed 생성 (최초 1회)
+> **주의:** AviationStack 무료 플랜은 HTTP-only API를 제공합니다.
+> Switchboard oracle 노드는 HTTPS만 허용하므로, Track B 실사용 시 HTTPS를 지원하는 API나
+> Cloudflare Worker 같은 프록시가 필요합니다.
 
-Track B는 Switchboard On-Demand 피드가 Policy에 연결되어야 합니다.
+### Step 2–4. MasterPolicy & FlightPolicy 셋업
 
 ```bash
-# Switchboard feed 주소 생성 및 .state.json에 feedPubkey 저장
-yarn demo:oracle-feed-create
+# MasterPolicy 생성 (oracle_feed = state.json의 feedPubkey)
+yarn demo:3-master-setup
+
+# FlightPolicy 생성
+FLIGHT_NO=KE017 yarn demo:4-flight-create
 ```
 
-> Policy의 `oracle_feed` 필드가 이 피드 주소와 일치해야 합니다.
-> `create-policy` 단계에서 피드 주소를 지정하거나, 피드를 먼저 만든 뒤 Policy를 생성해야 합니다.
+### Step 5. 백엔드 데몬 실행 (Track B 자동화)
 
-### Step 7. 백엔드 데몬 실행 (Track B 자동화)
+> Track B 백엔드 통합은 현재 진행 중입니다.
+> `check_oracle_and_resolve_flight` instruction이 온체인에 존재하며 수동 테스트는 devnet에서 진행합니다.
+> 자동화 데몬 지원은 추후 추가됩니다.
 
+devnet 수동 확인:
 ```bash
-cd backend
-RUST_LOG=info ./target/release/riskmesh-oracle-daemon
+cd contract
+yarn demo:5b-claim   # Switchboard oracle → check_oracle_and_resolve_flight
+yarn demo:6-settle   # 상태에 따라 settle_flight_claim 또는 settle_flight_no_claim
 ```
-
-데몬은 `ORACLE_CHECK_CRON` 주기마다 다음을 수행합니다:
-1. `Active` 상태 Policy 전체 조회 (리더 pubkey로 필터)
-2. `departure_date` 경과 여부 확인
-3. Switchboard Crossbar에서 서명된 oracle update 수신
-4. 3개 인스트럭션 트랜잭션 전송:
-   - `Ed25519 서명 검증` ix
-   - `verified_update` ix (Switchboard)
-   - `check_oracle_and_create_claim` ix → `Claimable` Claim 계정 생성
-
-로그 예시:
-```
-[track_b] Active Policy 1개 발견
-[track_b] KE017 오라클 조회 시작 (Policy=3aB4...)
-[track_b] KE017 oracle 값: 150분
-[track_b] KE017 check_oracle_and_create_claim 완료. tx=9kLm...
-```
-
-### Step 8. 승인 & 정산
-
-```bash
-# 만료 시 환불
-yarn demo:expire         # Policy를 Expired로 전환
-yarn demo:refund         # 참여사에게 자금 반환
-```
-
-> Track B의 `approve_claim` / `settle_claim`은 별도 스크립트가 없습니다.
-> Anchor IDL을 통해 직접 호출하거나, 추후 스크립트를 추가해야 합니다.
 
 ---
 
@@ -320,6 +295,6 @@ sudo journalctl -u riskmesh-daemon -f
 | `PROGRAM_ID 환경변수 필요` 오류 | `.env` 미설정 | `.env.example` 복사 후 작성 |
 | `FlightPolicy 파싱 실패` 경고 | 다른 account 타입이 섞임 | discriminator 필터 정상 동작 중, 무시 가능 |
 | `AviationStack 조회 실패` | API 키 없음 또는 과거 데이터 무료 플랜 제한 | 유료 플랜 사용 또는 `demo:oracle-resolve` 수동 실행 |
-| `Switchboard oracle update 수신 실패` | 피드 주소 불일치 또는 devnet queue 오류 | `oracle-feed-create` 재실행 후 Policy 재생성 |
+| `Switchboard oracle update 수신 실패` | 피드 주소 불일치 또는 devnet queue 오류 | `demo:2-feed-create` 재실행 후 MasterPolicy 재생성 |
 | `departure_ts 이전이면 스킵` 로그 | 출발 전 항공편 | 정상 동작. 출발 이후 재실행 |
 | `키페어 파일 읽기 실패` | `LEADER_KEYPAIR_PATH` 경로 오류 | `~` 경로 지원됨. 절대경로로 변경하거나 `master-setup` 재실행 |

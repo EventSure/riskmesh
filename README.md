@@ -15,15 +15,15 @@ The MVP targets **flight delay insurance** (a $10B+ market with 30% of flights d
 - `contract/` — Anchor-based on-chain program (Rust)
 - `backend/` — Oracle daemon + REST API server (Rust, Axum)
 - `frontend/` — Operator dashboard & insurance portal (React + Vite + Emotion)
-- `docs/` — Contract guide, testing guides, and design documents
-- `OpenParametric.md` — MVP / design draft (Korean)
+- `docs/` — Testing guides and design documents
 
 ## Key Features
 
 - **Event-driven settlement** — claims settle on-chain as the event happens, no reconciliation step
-- Policy creation and co-underwriting (leader/participant ratio management)
-- Escrowed risk pool with on-chain capital management
-- Modular oracle integration — centralized (flight API) or decentralized (Switchboard)
+- **Tiered payouts** — 2h / 3h / 4-5h / 6h+ delay tiers, plus cancellation override
+- MasterPolicy + FlightPolicy architecture: one co-insurance agreement covers many individual flight contracts
+- Co-underwriting with leader, participants, and reinsurer (basis-point ratios, on-chain confirmation)
+- Modular oracle integration — centralized (AviationStack API via Track A) or decentralized (Switchboard On-Demand via Track B)
 - REST API server with on-chain data sync (SQLite / Firebase Firestore)
 - Real-time event streaming via SSE (Server-Sent Events)
 - Tab-based operator UI (Contract / Feed / Oracle / Settlement / Inspector)
@@ -51,29 +51,20 @@ Switch modes via the **DEVNET / SIM** toggle in the top-right header. SIM mode i
 
 ## Docs
 
-### Root
+### `contract/docs/`
 
 | File | Description |
 |------|-------------|
-| [`OpenParametric.md`](OpenParametric.md) | MVP design draft — account schemas, state machines, oracle spec (Korean) |
+| [`oracle.md`](contract/docs/oracle.md) | Oracle integration guide — Track A (centralized) & Track B (Switchboard On-Demand) (Korean) |
+| [`setup-and-test.md`](contract/docs/setup-and-test.md) | Development environment setup, test suite overview, demo scripts (Korean) |
 
 ### `docs/`
 
 | File | Description |
 |------|-------------|
-| [`CONTRACT_GUIDE.md`](docs/CONTRACT_GUIDE.md) | Smart contract detailed spec — accounts, instructions, error codes, sequences (Korean) |
-| [`CONTRACT_GUIDE_EN.md`](docs/CONTRACT_GUIDE_EN.md) | Smart contract detailed spec — accounts, instructions, error codes, sequences (English) |
 | [`CONTRACT_TESTING_GUIDE_KO.md`](docs/CONTRACT_TESTING_GUIDE_KO.md) | Contract testing guide — unit, integration, and settlement tests (Korean) |
 | [`FRONTEND_TESTING_GUIDE_KO.md`](docs/FRONTEND_TESTING_GUIDE_KO.md) | Frontend unit testing guide — business logic tests (Korean) |
-| [`FILE_STATE_LOGIC_FULL_KO.md`](docs/FILE_STATE_LOGIC_FULL_KO.md) | Full file-by-file state/logic reference for the entire repo (Korean) |
 | [`feature/settle_flight_settlement.md`](docs/feature/settle_flight_settlement.md) | Flight settlement logic — claim and no-claim flows (Korean) |
-
-### `contract/docs/`
-
-| File | Description |
-|------|-------------|
-| [`oracle.md`](contract/docs/oracle.md) | Oracle integration guide — Track A (centralized) & Track B (decentralized) (Korean) |
-| [`setup-and-test.md`](contract/docs/setup-and-test.md) | Development environment setup — Rust, Solana CLI, Anchor installation (Korean) |
 
 ### `contract/`
 
@@ -88,7 +79,6 @@ Switch modes via the **DEVNET / SIM** toggle in the top-right header. SIM mode i
 | [`backend-overview.md`](backend/docs/backend-overview.md) | Backend architecture — modules, config, oracle pipelines (Korean) |
 | [`e2e-workflow.md`](backend/docs/e2e-workflow.md) | End-to-end operational guide — setup, daemon, settlement (Korean) |
 | [`local-run.md`](backend/docs/local-run.md) | Local development quick start guide (Korean) |
-| [`master-flight-policy-explained.md`](backend/docs/master-flight-policy-explained.md) | Master/Flight policy domain model explained (Korean) |
 | [`flight-policies-api-response-explained.md`](backend/docs/flight-policies-api-response-explained.md) | `/api/flight-policies` response key reference (Korean) |
 | [`leader-flight-policy-ingestion-plan.md`](backend/docs/leader-flight-policy-ingestion-plan.md) | Leader-side policy ingestion API design plan (Korean) |
 | [`track-b-explained.md`](backend/docs/track-b-explained.md) | Track B (Switchboard On-Demand) detailed walkthrough (Korean) |
@@ -106,8 +96,8 @@ The oracle integration uses a **modular, dual-track design** — the same contra
 
 | Track | Strategy | Trust Model | Target Account |
 |-------|----------|-------------|----------------|
-| **Track A** — Trusted Resolver | Leader/Operator fetches API data and calls `resolve_flight_delay` on-chain | Centralized (signer trust) | `FlightPolicy` |
-| **Track B** — Switchboard On-Demand | Switchboard oracle nodes fetch API data, sign and write to an on-chain feed; `check_oracle_and_create_claim` verifies cryptographically | Decentralized (cryptographic verification) | `Policy`  |
+| **Track A** — Trusted Resolver | Leader/Operator fetches AviationStack data and calls `resolve_flight_delay` on-chain | Centralized (signer trust) | `FlightPolicy` |
+| **Track B** — Switchboard On-Demand | Switchboard oracle nodes fetch API data, sign and write to an on-chain feed; `check_oracle_and_resolve_flight` verifies cryptographically | Decentralized (cryptographic verification) | `FlightPolicy` |
 
 **In demo/simulation mode**, oracle resolution is triggered manually via the dashboard UI — no external API or oracle network is required.
 
@@ -126,11 +116,11 @@ Building this workflow on legacy infrastructure — oracle verification, multi-p
 
 Specifically, Solana enables five architectural properties that this protocol requires:
 
-- **Atomic oracle verification** — `check_oracle_and_create_claim` performs Ed25519 signature verification, Switchboard oracle update, and claim creation in a single transaction. Solana's Instructions sysvar allows a program to inspect other instructions within the same TX — structurally impossible on EVM.
-- **Trustless custody via PDAs** — The risk pool vault is owned by a program-derived address. No multisig, no admin key, no external custodian. The program itself is the custodian — there is no admin key to compromise because none exists.
-- **Account-level parallelism** — Each Policy, Underwriting, RiskPool, and Claim is a separate on-chain account. The Solana runtime processes transactions touching different accounts in parallel. KE081 ICN→JFK claim processing never blocks OZ201 ICN→LAX underwriting. In EVM's single-contract model, all policies compete for the same storage.
-- **Multi-party atomic settlement** — `settle_claim` transfers from the vault to the beneficiary in one transaction with PDA-signed authority. Up to 16 participants' basis-point ratios are calculated and settled atomically — all or nothing, no partial settlement.
-- **On-chain state machine as policy terms** — The 8-step state transition (Draft → Open → Funded → Active → Claimable → Approved → Settled / Expired) is enforced on-chain. "Cannot activate before fully funded" is not a contractual clause subject to interpretation — it's a transaction that the program rejects.
+- **Atomic oracle verification** — Track B's `check_oracle_and_resolve_flight` performs Ed25519 signature verification, Switchboard oracle update, and FlightPolicy state update in a single transaction. Solana's Instructions sysvar allows a program to inspect other instructions within the same TX — structurally impossible on EVM.
+- **Trustless custody via PDAs** — Pool wallets are owned by program-derived addresses. No multisig, no admin key, no external custodian. The program itself is the custodian — there is no admin key to compromise because none exists.
+- **Account-level parallelism** — Each MasterPolicy and FlightPolicy is a separate on-chain account. The Solana runtime processes transactions touching different accounts in parallel. KE081 ICN→JFK settlement never blocks OZ201 ICN→LAX oracle resolution. In EVM's single-contract model, all policies compete for the same storage.
+- **Multi-party atomic settlement** — `settle_flight_claim` splits payouts across reinsurer and participants by basis-point ratios and executes all transfers in one transaction — all or nothing, no partial settlement.
+- **On-chain state machine as policy terms** — FlightPolicy's state transition (`Issued → AwaitingOracle → Claimable/NoClaim → Paid/Expired`) is enforced on-chain. "Cannot settle before oracle resolves" is not a contractual clause subject to interpretation — it's a transaction the program rejects.
 
 ## Quick Start
 
@@ -239,34 +229,17 @@ For detailed guides, see:
 
 ### On-Chain Accounts
 
-The program has two policy designs:
-
-**Legacy (co-insurance pool + Switchboard oracle):**
+The on-chain program uses a two-tier account structure. A `MasterPolicy` is a period-based co-insurance agreement (leader + up to 8 participants + reinsurer). Each individual flight is issued as a `FlightPolicy` PDA under the master.
 
 ```
-Policy
-  ├─ Underwriting (participants, ratios, escrow)
-  ├─ RiskPool (vault, balances)
-  ├─ Claim (per oracle_round)
-  └─ PolicyholderRegistry (optional)
+MasterPolicy  (one per coverage period)
+  └─ FlightPolicy (one per insured flight, issued on-demand)
 ```
 
-**Master/Flight (trusted resolver + tiered payouts):**
+- `MasterPolicy`: Co-insurance agreement. Stores tiered payout amounts, ceded/commission ratios, participant shares (bps), pool wallet addresses, oracle feed (Track B), and lifecycle status.
+- `FlightPolicy`: Individual flight contract. Stores flight number, route, departure timestamp, premium paid, oracle-resolved delay, payout amount, and settlement status.
 
-```
-MasterPolicy (co-insurance agreement + reinsurance terms)
-  └─ FlightPolicy (individual flight issued under a master)
-```
-
-- `MasterPolicy`: Sets tiered payouts, ceded/reinsurance ratios, participant wallets. Lifecycle: `Draft → PendingConfirm → Active → Closed/Cancelled`
-- `FlightPolicy`: Individual flight delay policy. Lifecycle: `Issued → AwaitingOracle → Claimable/NoClaim → Paid/Expired`
-
-**Legacy accounts:**
-- `Policy`: The insurance product itself. Stores route/flight, departure time, delay threshold, payout amount, oracle feed, and state.
-- `Underwriting`: Co-underwriting structure. Tracks leader/participant ratios, acceptance status, and escrowed funds.
-- `RiskPool`: Pool holding escrowed funds. Manages the SPL Token vault, available balance, and total escrowed amount.
-- `Claim`: Per-oracle-round claim record. Stores delay value, verification time, approval status, and payout amount.
-- `PolicyholderRegistry`: (Optional) Minimal policyholder registry. Stores external references and coverage data without PII.
+Pool wallets (PDAs) hold escrowed funds. On `settle_flight_claim`, payouts flow from the reinsurer pool and participant pools to the leader's deposit wallet. On `settle_flight_no_claim`, premiums flow from the leader's deposit wallet back to each participant's deposit wallet.
 
 ### Backend
 
@@ -293,28 +266,23 @@ The backend runs as a single process with three responsibilities:
 
 ## State Machines
 
-Policy state flow:
+MasterPolicy lifecycle:
 
 ```
-Draft → Open → Funded → Active → Claimable → Approved → Settled
-                                   └───────────────→ Expired
+PendingConfirm → Active → Closed
+                        → Cancelled
 ```
 
-Underwriting state:
+FlightPolicy lifecycle:
 
 ```
-Proposed → Open → Finalized (or Failed)
-```
-
-Claim state:
-
-```
-None → PendingOracle → Claimable → Approved → Settled (or Rejected)
+Issued → AwaitingOracle → Claimable → Paid
+                        → NoClaim   → Expired
 ```
 
 ## Dev Notes
 
 - Anchor 0.31.1
-- Oracle: modular — Switchboard On-Demand (decentralized) or Trusted Resolver (centralized)
-- SPL tokens used for escrow/payout
-- Network: localnet (dev), devnet (demo), mainnet (production)
+- Oracle: modular — Switchboard On-Demand (Track B, decentralized) or Trusted Resolver (Track A, centralized)
+- SPL tokens used for pool wallets and payouts
+- Network: localnet (dev/test), devnet (demo), mainnet (production)
