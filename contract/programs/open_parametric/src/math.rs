@@ -1,3 +1,4 @@
+use crate::constants::DELAY_THRESHOLD_MIN;
 use crate::errors::OpenParamError;
 
 pub const BPS_DENOM: u64 = 10_000;
@@ -38,7 +39,7 @@ pub fn tiered_payout(delay_minutes: u16, cancelled: bool, tiers: TierPayouts) ->
     if (180..240).contains(&delay_minutes) {
         return tiers.delay_3h;
     }
-    if (120..180).contains(&delay_minutes) {
+    if (DELAY_THRESHOLD_MIN..180).contains(&delay_minutes) {
         return tiers.delay_2h;
     }
     0

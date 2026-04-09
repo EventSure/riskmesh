@@ -4,7 +4,6 @@ use anchor_lang::prelude::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq)]
 pub enum MasterPolicyStatus {
-    Draft = 0,
     PendingConfirm = 1,
     Active = 2,
     Closed = 3,
@@ -58,13 +57,6 @@ pub struct CreateMasterPolicyParams {
     pub reins_commission_bps: u16,
     pub participants: Vec<MasterParticipantInit>,
     pub oracle_feed: Pubkey,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct RegisterWalletParams {
-    pub insurer: Pubkey,
-    pub pool_wallet: Pubkey,
-    pub deposit_wallet: Pubkey,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]

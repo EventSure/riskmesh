@@ -8,14 +8,8 @@ pub enum OpenParamError {
     InvalidState,
     #[msg("Invalid ratio sum")]
     InvalidRatio,
-    #[msg("Already exists")]
-    AlreadyExists,
     #[msg("Not found")]
     NotFound,
-    #[msg("Insufficient escrow")]
-    InsufficientEscrow,
-    #[msg("Pool has insufficient balance")]
-    PoolInsufficient,
     #[msg("Oracle value is stale")]
     OracleStale,
     #[msg("Oracle value format is invalid")]
@@ -26,8 +20,6 @@ pub enum OpenParamError {
     InvalidInput,
     #[msg("Invalid amount")]
     InvalidAmount,
-    #[msg("Invalid delay threshold")]
-    InvalidDelayThreshold,
     #[msg("Input too long")]
     InputTooLong,
     #[msg("Math overflow")]
