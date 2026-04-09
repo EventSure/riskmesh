@@ -39,11 +39,11 @@ Pull Feed 계정 (온체인 Solana 계정)
 **Job**은 오라클 노드가 실행할 데이터 수집·변환 파이프라인입니다.
 `OracleJob`은 순서가 있는 task 배열로 구성되며, 각 task의 출력이 다음 task의 입력이 됩니다.
 
-이 프로젝트에서 사용하는 Job 예시 (`oracle-feed-create.ts`):
+이 프로젝트에서 사용하는 Job 예시 (`02-feed-create.ts`):
 
 ```
-task[0]: httpTask  — AviationStack API HTTP 호출
-         URL: http://api.aviationstack.com/v1/flights
+task[0]: httpTask  — AviationStack API 호출
+         URL: https://api.aviationstack.com/v1/flights
               ?access_key=<API_KEY>&flight_iata=KE017
 
 task[1]: jsonParseTask — 응답 JSON에서 출발 지연(분) 추출
@@ -60,7 +60,11 @@ task[3]: multiplyTask(10) — 10을 곱해 분 단위로 복원
 최종 출력값 `120`이 온체인에 기록되고, `check_oracle_and_resolve_flight`에서
 `delay_minutes = 120`으로 읽힙니다.
 
-**중요**: Job 정의(API 키 포함)는 Feed 계정 데이터에 직접 저장되므로 온체인에 노출됩니다.
+> **HTTPS 필수**: Switchboard 오라클 노드는 보안상 HTTPS 엔드포인트만 허용합니다.
+> AviationStack 무료 플랜은 HTTP만 지원하므로 **유료 플랜** 또는 **HTTPS 프록시**
+> (예: Cloudflare Worker)가 필요합니다.
+
+**중요**: Job 정의(API 키 포함)는 Crossbar 서버(IPFS)에 저장되므로 사실상 공개됩니다.
 무료 AviationStack 키는 문제없지만, 유료 키는 Switchboard Secrets 기능 사용을 권장합니다.
 
 ### 오라클 네트워크 동작 방식
@@ -124,6 +128,13 @@ ix[2]: check_oracle_and_resolve_flight
 Feed 계정은 **최초 1회 생성**해야 합니다. 동일한 항공편이라도 MasterPolicy마다 별도 Feed를
 생성할 수도 있고, 여러 MasterPolicy가 같은 Feed를 공유할 수도 있습니다.
 
+내부적으로 `02-feed-create.ts`는 다음 두 단계를 수행합니다:
+
+1. `CrossbarClient.storeOracleFeed(feed)` — Job 정의를 Crossbar(IPFS)에 업로드
+   - 반환: `{ cid, feedId }` where `feedId = sha256(OracleFeed_bytes)`
+2. `PullFeed.initIx({ feedHash: Buffer.from(feedId) })` — 온체인 계정 생성
+   - `feedId`가 온체인 `feedHash`로 저장됨 → Switchboard UI·오라클 노드가 이 값으로 조회
+
 ```bash
 # devnet Feed 생성 스크립트 실행
 ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
@@ -135,12 +146,15 @@ yarn demo:2-feed-create
 실행 결과:
 ```
 === Feed 생성 완료 ===
-Tx          : 3s335FL2...
-Feed Pubkey : 278oAt1RBQLZAVfx35qYEjuhiH29nJmGpmzpKCVtDZTs   ← 이 주소를 사용
-항공편      : KE017
+Tx             : 3s335FL2...
+Feed Pubkey    : 278oAt1RBQLZAVfx35qYEjuhiH29nJmGpmzpKCVtDZTs   ← MasterPolicy에 등록할 주소
+IPFS CID       : bafkreid7ayyw...
+Feed ID        : 0xabc123...
+항공편         : KE017
 ```
 
-생성된 `Feed Pubkey`가 `oracle_feed` 파라미터에 들어가는 값입니다.
+생성된 `Feed Pubkey`가 `oracle_feed` 파라미터에 들어가는 값이며,
+`.state.json`에 `feedPubkey`, `feedCid`, `feedHash`로 저장되어 `03-master-setup`에서 자동으로 읽힙니다.
 
 ```typescript
 // create_master_policy 호출 시

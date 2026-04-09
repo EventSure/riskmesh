@@ -51,13 +51,18 @@ anchor test
 yarn ts-mocha -p ./tsconfig.json -t 1000000 tests/settle_flight_claim.ts
 ```
 
-현재 테스트 파일:
+현재 테스트 파일 (26개 통과):
 
-| 파일 | 커버 범위 |
-|---|---|
-| `tests/settle_flight_claim.ts` | Master/Flight 전체 — Track A(Trusted Resolver) 기반, Claim·NoClaim 양 경로 |
+| 파일 | 테스트 수 | 커버 범위 |
+|---|---|---|
+| `tests/settle_flight_claim.ts` | 1 | Master/Flight 기본 E2E — Claim 경로 |
+| `tests/settle_flight_no_claim.ts` | 4 | NoClaim E2E, ceded=0/50%, 119분 경계 |
+| `tests/payout_tiers.ts` | 6 | 4단계 지급 티어 (2H/3H/4-5H/6H) + cancelled 오버라이드 |
+| `tests/multiple_flights.ts` | 5 | 단일 Master 하에 다수 Flight 독립 정산 |
+| `tests/error_cases.ts` | 10 | 인가·상태·중복 정산 등 에러 경로 전반 |
+| `tests/open_parametric.ts` | 1 | 기본 smoke test |
 
-> **Track B(Switchboard) 통합 테스트**: `QuoteVerifier`가 실제 온체인 Switchboard 환경을 요구하므로 localnet에서는 단위 테스트가 불가합니다. devnet 통합 테스트로 분류됩니다.
+> **Track B(Switchboard) 통합 테스트**: `QuoteVerifier`가 실제 온체인 Switchboard 환경을 요구하므로 localnet에서는 불가합니다. devnet에서 `05b-claim` 스크립트로 수동 검증합니다.
 
 ---
 
@@ -182,7 +187,9 @@ solana-keygen new --outfile ~/.config/solana/riskmesh-reinsurer.json --no-passph
 {
   "mint": "...",                         // 1-setup이 생성
   "leaderKey": [...],                    // 1-setup이 생성
-  "feedPubkey": "...",                   // 2-feed-create가 저장 (Track B만)
+  "feedPubkey": "...",                   // 2-feed-create가 저장 (Track B만) — 온체인 PullFeed 주소
+  "feedCid": "bafkrei...",              // 2-feed-create가 저장 (Track B만) — IPFS CID
+  "feedHash": "0xabc123...",            // 2-feed-create가 저장 (Track B만) — feedId (sha256 of OracleFeed)
   "masterId": 1,                         // 3-master-setup이 저장
   "masterPda": "...",                    // 3-master-setup이 저장
   "leaderAta": "...",                    // 3-master-setup이 저장 (Leader ATA)

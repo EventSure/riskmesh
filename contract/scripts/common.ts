@@ -44,6 +44,8 @@ export interface State {
   }>;
   // Track B — oracle-feed-create 스크립트가 저장
   feedPubkey?: string;
+  feedCid?: string;
+  feedHash?: string;
 }
 
 export function loadState(): State {

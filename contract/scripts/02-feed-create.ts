@@ -23,7 +23,7 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
-import { OracleJob } from "@switchboard-xyz/common";
+import { CrossbarClient, OracleJob, OracleFeed } from "@switchboard-xyz/common";
 import {
   PullFeed,
   ON_DEMAND_DEVNET_PID,
@@ -56,7 +56,7 @@ async function main() {
   // ─── Job 정의 ─────────────────────────────────────────────────────────────
   // AviationStack → 출발 지연(분) → 10분 단위 내림
   //
-  // 주의: API 키가 job에 포함되어 feed 계정(온체인)에 저장됩니다.
+  // 주의: API 키가 job에 포함되어 Crossbar에 저장됩니다.
   //   - 무료 플랜 키는 노출되어도 괜찮지만, 유료 키는 주의 필요
   //   - 향후 Switchboard Secrets를 통해 키를 숨기는 방법 사용 가능
   const jobSpec = OracleJob.create({
@@ -74,20 +74,37 @@ async function main() {
         },
       },
       // 10분 단위 내림: floor(delay / 10) * 10
-      // divideTask(정수 나눗셈) → 자동으로 내림 효과, multiplyTask로 복원
       { divideTask: { scalar: 10 } },
       { multiplyTask: { scalar: 10 } },
     ],
   });
 
+  // ─── Crossbar에 job 업로드 (v2 /v2/store) ────────────────────────────────
+  // storeOracleFeed (v2) 는 feedId = sha256(OracleFeed) 를 반환한다.
+  // 이 feedId가 온체인 feedHash로 사용되어야 Switchboard UI와 oracle 노드가
+  // /v2/fetch/{feedId}로 job 정의를 조회할 수 있다.
+  //
+  // ❌ 이전 실수: storeOracleFeed로 저장하고 FeedHash.compute(queue, jobs) 를
+  //    온체인에 넣으면 feedId ≠ feedHash가 되어 503이 난다.
+  // ❌ 이전 실수: v1 /store 를 쓰면 v2 /v2/fetch에서 400이 난다.
+  console.log("\nCrossbar에 job 업로드 중 (v2 /v2/store)...");
+  const crossbar = CrossbarClient.default();
+  const oracleFeed = OracleFeed.create({ jobs: [jobSpec] });
+  const { cid, feedId } = await crossbar.storeOracleFeed(oracleFeed);
+  // feedId 를 그대로 온체인 feedHash로 사용한다.
+  const feedHash = Buffer.from(feedId.replace(/^0x/, ""), "hex");
+  console.log("IPFS CID   :", cid);
+  console.log("Feed ID    :", feedId);
+
   // ─── Feed 생성 ─────────────────────────────────────────────────────────────
-  // PullFeed.initTx 내부에서 payer를 asV0TxWithComputeIxs에 전달하지 않는
-  // SDK 버그(v3.9)를 우회: generate + initIx로 분리하여 수동 트랜잭션 구성.
+  // storeFeed가 반환한 feedHash를 initIx에 전달한다.
+  // jobs 배열을 직접 넘기면 Crossbar 업로드 없이 해시만 계산되어
+  // 오라클 노드가 job 정의를 조회할 수 없다.
   console.log(`\nPull Feed 생성 중 (항공편: ${flightNo})...`);
 
   const initParams = {
     queue: new PublicKey(ON_DEMAND_DEVNET_QUEUE),
-    jobs: [jobSpec],
+    feedHash,
     name: `${flightNo}-DELAY`,
     maxVariance: 1.0,
     minResponses: 1,
@@ -118,15 +135,16 @@ async function main() {
   console.log("\n=== Feed 생성 완료 ===");
   console.log("Tx             :", txSig);
   console.log("Feed Pubkey    :", feedPubkey);
+  console.log("IPFS CID       :", cid);
+  console.log("Feed ID        :", feedId);
   console.log("항공편         :", flightNo);
-  console.log("Switchboard Queue:", ON_DEMAND_DEVNET_QUEUE);
+  console.log("Switchboard Queue:", ON_DEMAND_DEVNET_QUEUE.toBase58());
 
-  // .state.json에 feed pubkey 저장
-  saveState({ ...s, feedPubkey });
-  console.log("\n.state.json에 feedPubkey 저장 완료");
+  // .state.json에 feed pubkey, cid, feedId 저장
+  saveState({ ...s, feedPubkey, feedCid: cid, feedHash: feedId });
+  console.log("\n.state.json에 feedPubkey / feedCid / feedHash 저장 완료");
   console.log("\n다음 단계:");
-  console.log("  1. create-policy 스크립트에서 oracleFeed에 이 주소를 사용하세요.");
-  console.log("  2. 05b-claim.ts가 .state.json에서 feedPubkey를 자동으로 읽습니다.");
+  console.log("  yarn demo:3-master-setup   (oracle_feed에 feedPubkey 자동 사용)");
   console.log("\n주의: oracle 노드가 feed를 처리하기까지 1~2분 소요될 수 있습니다.");
 }
 
