@@ -42,7 +42,7 @@ impl Config {
             switchboard_queue: pubkey_env("SWITCHBOARD_QUEUE")
                 .context("SWITCHBOARD_QUEUE 환경변수 필요")?,
             oracle_check_cron: env("ORACLE_CHECK_CRON", "0 */15 * * * *"),
-            db_sync_cron: env("DB_SYNC_CRON", "0 */1 * * * *"),
+            db_sync_cron: env("DB_SYNC_CRON", "0/30 * * * * *"),
             db_backend: match env("DB_BACKEND", "sqlite").as_str() {
                 "firebase" => DbBackend::Firebase,
                 _ => DbBackend::Sqlite,
