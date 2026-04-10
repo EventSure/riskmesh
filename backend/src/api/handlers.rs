@@ -15,7 +15,7 @@ use super::{
     state::AppState,
     types::{
         CreateFlightPolicyRequest, CreateFlightPolicyResponse, EventsQuery,
-        FirebaseTestDocumentResponse, FlightPoliciesQuery, FlightPoliciesResponse, HealthResponse,
+        FlightPoliciesQuery, FlightPoliciesResponse, HealthResponse,
         MasterFlightPoliciesResponse, MasterPoliciesQuery, MasterPoliciesResponse,
         MasterPoliciesTreeResponse, MasterPolicyAccountsResponse,
     },
@@ -29,7 +29,7 @@ pub(super) async fn get_master_policies(
     State(state): State<AppState>,
     Query(query): Query<MasterPoliciesQuery>,
 ) -> Result<Json<MasterPoliciesResponse>, ApiError> {
-    service::list_master_policies(&state.firebase_repository, &query)
+    service::list_master_policies(&*state.repository, &query)
         .await
         .map(Json)
         .map_err(ApiError)
@@ -52,16 +52,16 @@ pub(super) async fn get_master_policy(
         .parse::<Pubkey>()
         .map_err(|e| ApiError(anyhow::anyhow!("master_policy_pubkey 주소 파싱 실패: {e}")))?;
 
-    service::get_master_policy(&state.firebase_repository, &master_policy_pubkey)
+    service::get_master_policy(&*state.repository, &master_policy_pubkey)
         .await
         .map(Json)
         .map_err(ApiError)
 }
 
-pub(super) async fn post_firebase_test_document(
-    State(_state): State<AppState>,
-) -> Result<Json<FirebaseTestDocumentResponse>, ApiError> {
-    service::create_firebase_test_document()
+pub(super) async fn post_db_test(
+    State(state): State<AppState>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    service::create_db_test_document(&*state.repository)
         .await
         .map(Json)
         .map_err(ApiError)
@@ -78,7 +78,7 @@ pub(super) async fn get_flight_policies(
     State(state): State<AppState>,
     Query(query): Query<FlightPoliciesQuery>,
 ) -> Result<Json<FlightPoliciesResponse>, ApiError> {
-    service::list_flight_policies(&state.firebase_repository, &query)
+    service::list_flight_policies(&*state.repository, &query)
         .await
         .map(Json)
         .map_err(ApiError)
@@ -92,7 +92,7 @@ pub(super) async fn get_flight_policy(
         .parse::<Pubkey>()
         .map_err(|e| ApiError(anyhow::anyhow!("flight_policy_pubkey 주소 파싱 실패: {e}")))?;
 
-    service::get_flight_policy(&state.firebase_repository, &flight_policy_pubkey)
+    service::get_flight_policy(&*state.repository, &flight_policy_pubkey)
         .await
         .map(Json)
         .map_err(ApiError)
@@ -101,7 +101,7 @@ pub(super) async fn get_flight_policy(
 pub(super) async fn get_master_policies_tree(
     State(state): State<AppState>,
 ) -> Result<Json<MasterPoliciesTreeResponse>, ApiError> {
-    service::list_master_policies_tree(&state.firebase_repository, &state.config)
+    service::list_master_policies_tree(&*state.repository, &state.config)
         .await
         .map(Json)
         .map_err(ApiError)
@@ -116,7 +116,7 @@ pub(super) async fn get_flight_policies_by_master(
         .map_err(|e| ApiError(anyhow::anyhow!("master_policy_pubkey 주소 파싱 실패: {e}")))?;
 
     service::list_flight_policies_by_master(
-        &state.firebase_repository,
+        &*state.repository,
         &state.config,
         &master_policy_pubkey,
     )

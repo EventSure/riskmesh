@@ -16,10 +16,10 @@ use crate::{
 
 use super::{
     client::ProgramClient,
-    repository::FirebaseRepository,
+    repository::PolicyRepository,
     types::{
         CreateFlightPolicyParamsWire, CreateFlightPolicyRequest, CreateFlightPolicyResponse,
-        EventsQuery, FirebaseTestDocumentResponse, FlightPoliciesQuery, FlightPoliciesResponse,
+        EventsQuery, FlightPoliciesQuery, FlightPoliciesResponse,
         HealthResponse, MasterFlightPoliciesResponse, MasterPoliciesQuery, MasterPoliciesResponse,
         MasterPoliciesTreeResponse, MasterPolicyAccountTree, MasterPolicyAccountsResponse,
     },
@@ -69,18 +69,22 @@ pub(super) fn stream_events(
 }
 
 pub(super) async fn list_master_policies(
-    repository: &FirebaseRepository,
+    repository: &dyn PolicyRepository,
     query: &MasterPoliciesQuery,
 ) -> Result<MasterPoliciesResponse> {
     let master_policies = repository.list_master_policies().await?;
     let master_policies = master_policies
         .into_iter()
-        .filter(|master_policy| {
-            query
-                .leader
-                .as_deref()
-                .map(|leader| master_policy.leader == leader)
-                .unwrap_or(true)
+        .filter(|mp| {
+            if let Some(leader) = query.leader.as_deref() {
+                return mp.leader == leader;
+            }
+            if let Some(wallet) = query.wallet.as_deref() {
+                return mp.leader == wallet
+                    || mp.reinsurer == wallet
+                    || mp.participants.iter().any(|p| p.insurer == wallet);
+            }
+            true
         })
         .collect();
 
@@ -105,7 +109,7 @@ pub(super) fn list_master_policy_accounts(
 }
 
 pub(super) async fn get_master_policy(
-    repository: &FirebaseRepository,
+    repository: &dyn PolicyRepository,
     master_policy_pubkey: &str,
 ) -> Result<crate::oracle::program_accounts::MasterPolicyInfo> {
     let master_policy = repository
@@ -116,23 +120,19 @@ pub(super) async fn get_master_policy(
     Ok(master_policy)
 }
 
-pub(super) async fn create_firebase_test_document(
-) -> Result<FirebaseTestDocumentResponse> {
-    let saved = FirebaseRepository::from_env()?
-        .insert_test_document()
-        .await?;
-
-    Ok(FirebaseTestDocumentResponse {
-        firebase_saved: true,
-        collection_id: saved.collection_id,
-        document_id: saved.document_id,
-        firebase_document_path: saved.document.name,
-        auth_principal: saved.auth_local_id,
-    })
+pub(super) async fn create_db_test_document(
+    repository: &dyn PolicyRepository,
+) -> Result<serde_json::Value> {
+    // 간단한 DB 연결 테스트 — list_master_policies 호출로 확인
+    let master_policies = repository.list_master_policies().await?;
+    Ok(serde_json::json!({
+        "status": "ok",
+        "master_policy_count": master_policies.len(),
+    }))
 }
 
 pub(super) async fn list_flight_policies(
-    repository: &FirebaseRepository,
+    repository: &dyn PolicyRepository,
     query: &FlightPoliciesQuery,
 ) -> Result<FlightPoliciesResponse> {
     let flight_policies = repository.list_flight_policies().await?;
@@ -156,7 +156,7 @@ pub(super) async fn list_flight_policies(
 }
 
 pub(super) async fn get_flight_policy(
-    repository: &FirebaseRepository,
+    repository: &dyn PolicyRepository,
     flight_policy_pubkey: &str,
 ) -> Result<crate::oracle::program_accounts::FlightPolicyInfo> {
     let flight_policy = repository
@@ -168,7 +168,7 @@ pub(super) async fn get_flight_policy(
 }
 
 pub(super) async fn list_flight_policies_by_master(
-    repository: &FirebaseRepository,
+    repository: &dyn PolicyRepository,
     config: &Config,
     master_policy_pubkey: &Pubkey,
 ) -> Result<MasterFlightPoliciesResponse> {
@@ -193,7 +193,7 @@ pub(super) async fn list_flight_policies_by_master(
 }
 
 pub(super) async fn list_master_policies_tree(
-    repository: &FirebaseRepository,
+    repository: &dyn PolicyRepository,
     config: &Config,
 ) -> Result<MasterPoliciesTreeResponse> {
     let master_policies = repository.list_master_policies().await?;
