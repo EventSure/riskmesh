@@ -43,7 +43,7 @@ const en = {
   'role.operatorShort': 'Operator',
 
   // === Tabs ===
-  'tab.contract': '📋 Policy Setup',
+  'tab.contract': '📋 Agreement Setup',
   'tab.feed': '⚡ Live Policy Feed',
   'tab.oracle': '🔮 Oracle & Claims',
   'tab.settlement': '💰 Settlement',
@@ -79,7 +79,7 @@ const en = {
   'share.cessionValue': '50% of each share',
 
   // === Tab1: Contract Process ===
-  'process.title': 'Policy Execution Process',
+  'process.title': 'Agreement Execution Process',
   'process.step1.name': 'Terms Setup & Rate',
   'process.step1.role': 'Leader',
   'process.step1.desc': 'Leader sets coverage conditions, premium, and share structure.',

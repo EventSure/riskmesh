@@ -8,31 +8,35 @@ import { useToast } from '@/components/common';
 import { useTranslation } from 'react-i18next';
 import { useProgram } from '@/hooks/useProgram';
 import { getMasterPolicyPDA } from '@/lib/pda';
-import { CURRENCY_MINT, DEFAULT_PAYOUT_TIERS } from '@/lib/constants';
+import { CURRENCY_MINT } from '@/lib/constants';
 import { setPoolWallet } from '@/lib/demo-keypairs';
 import { ConfirmRole } from '@/lib/idl/open_parametric';
 
 export function MasterContractSetup() {
-  const { mode, masterActive, processStep, shares, masterAgreementPDA, setTerms, onChainSetTerms, setMasterAgreementPDA, refreshPool } = useProtocolStore();
+  const store = useProtocolStore();
+  const { mode, masterActive, processStep, shares, masterAgreementPDA, setTerms, onChainSetTerms, setMasterAgreementPDA, refreshPool, setCoverage } = store;
   const { toast } = useToast();
   const { t } = useTranslation();
   const { program, provider, wallet, connected } = useProgram();
 
-  const [coverageStart, setCoverageStart] = useState('2026-01-01');
-  const [coverageEnd, setCoverageEnd] = useState('2026-12-31');
-  const [premium, setPremium] = useState(3);
-  const [payout2h, setPayout2h] = useState(DEFAULT_PAYOUT_TIERS.delay2h);
-  const [payout3h, setPayout3h] = useState(DEFAULT_PAYOUT_TIERS.delay3h);
-  const [payout4to5h, setPayout4to5h] = useState(DEFAULT_PAYOUT_TIERS.delay4to5h);
-  const [payout6h, setPayout6h] = useState(DEFAULT_PAYOUT_TIERS.delay6hOrCancelled);
+  const locked = processStep >= 1;
+
+  const [coverageStart, setCoverageStart] = useState(store.coverageStart);
+  const [coverageEnd, setCoverageEnd] = useState(store.coverageEnd);
+  const [premium, setPremium] = useState(store.premiumPerPolicy);
+  const [payout2h, setPayout2h] = useState(store.payoutTiers.delay2h);
+  const [payout3h, setPayout3h] = useState(store.payoutTiers.delay3h);
+  const [payout4to5h, setPayout4to5h] = useState(store.payoutTiers.delay4to5h);
+  const [payout6h, setPayout6h] = useState(store.payoutTiers.delay6hOrCancelled);
   const [loading, setLoading] = useState(false);
   const [fundLoading, setFundLoading] = useState(false);
-  const [partAAddress, setPartAAddress] = useState('');
-  const [partBAddress, setPartBAddress] = useState('');
-  const [reinsurerAddress, setReinsurerAddress] = useState('');
+  const [partAAddress, setPartAAddress] = useState(store.participantAddresses.partA);
+  const [partBAddress, setPartBAddress] = useState(store.participantAddresses.partB);
+  const [reinsurerAddress, setReinsurerAddress] = useState(store.participantAddresses.reinsurer);
 
   const handleSetTerms = async () => {
     if (mode === 'simulation') {
+      setCoverage({ start: coverageStart, end: coverageEnd });
       const result = setTerms();
       if (!result.ok) { toast(result.msg!, 'd'); return; }
       toast(t('toast.termsSet'), 'i');
@@ -187,6 +191,8 @@ export function MasterContractSetup() {
       setMasterAgreementPDA(masterAgreementPDA.toBase58());
       onChainSetTerms(sig, 5000, 1000, premium, {
         delay2h: payout2h, delay3h: payout3h, delay4to5h: payout4to5h, delay6hOrCancelled: payout6h,
+      }, { start: coverageStart, end: coverageEnd }, {
+        partA: partAAddress, partB: partBAddress, reinsurer: reinsurerAddress,
       });
 
       toast(`Master policy created! TX: ${sig.slice(0, 8)}...`, 's');
@@ -273,17 +279,21 @@ export function MasterContractSetup() {
         <FormGroup>
           <FormLabel>{t('master.coverageStart')}</FormLabel>
           <FormInput
-            value={coverageStart}
+            value={locked ? store.coverageStart : coverageStart}
             onChange={e => setCoverageStart(e.target.value)}
             type="date"
+            readOnly={locked}
+            style={{ opacity: locked ? 0.6 : 1 }}
           />
         </FormGroup>
         <FormGroup>
           <FormLabel>{t('master.coverageEnd')}</FormLabel>
           <FormInput
-            value={coverageEnd}
+            value={locked ? store.coverageEnd : coverageEnd}
             onChange={e => setCoverageEnd(e.target.value)}
             type="date"
+            readOnly={locked}
+            style={{ opacity: locked ? 0.6 : 1 }}
           />
         </FormGroup>
         <FormGroup>
@@ -294,10 +304,11 @@ export function MasterContractSetup() {
           <FormLabel>{t('master.premiumPerContract')}</FormLabel>
           <FormInput
             type="number"
-            value={premium}
+            value={locked ? store.premiumPerPolicy : premium}
             onChange={e => setPremium(parseInt(e.target.value) || 1)}
             min={1}
-            style={{ fontFamily: "'DM Mono', monospace" }}
+            readOnly={locked}
+            style={{ fontFamily: "'DM Mono', monospace", opacity: locked ? 0.6 : 1 }}
           />
         </FormGroup>
         <Divider />
@@ -305,10 +316,10 @@ export function MasterContractSetup() {
           {t('master.payoutByTier')}
         </div>
         {([
-          { label: '2h~2h59m', color: '#F59E0B', value: payout2h, set: setPayout2h },
-          { label: '3h~3h59m', color: '#f97316', value: payout3h, set: setPayout3h },
-          { label: '4h~5h59m', color: '#EF4444', value: payout4to5h, set: setPayout4to5h },
-          { label: t('master.tier.6h'), color: '#fca5a5', value: payout6h, set: setPayout6h },
+          { label: '2h~2h59m', color: '#F59E0B', value: locked ? store.payoutTiers.delay2h : payout2h, set: setPayout2h },
+          { label: '3h~3h59m', color: '#f97316', value: locked ? store.payoutTiers.delay3h : payout3h, set: setPayout3h },
+          { label: '4h~5h59m', color: '#EF4444', value: locked ? store.payoutTiers.delay4to5h : payout4to5h, set: setPayout4to5h },
+          { label: t('master.tier.6h'), color: '#fca5a5', value: locked ? store.payoutTiers.delay6hOrCancelled : payout6h, set: setPayout6h },
         ] as { label: string; color: string; value: number; set: (v: number) => void }[]).map(tier => (
           <div key={tier.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
             <span style={{ fontSize: 10, color: 'var(--sub)' }}>{tier.label}</span>
@@ -318,10 +329,12 @@ export function MasterContractSetup() {
                 value={tier.value}
                 onChange={e => tier.set(parseInt(e.target.value) || 0)}
                 min={0}
+                readOnly={locked}
                 style={{
                   width: 52, textAlign: 'right', fontFamily: "'DM Mono', monospace", fontSize: 10,
                   color: tier.color, background: 'var(--card2)', border: '1px solid var(--border)',
                   borderRadius: 5, padding: '2px 5px', outline: 'none',
+                  opacity: locked ? 0.6 : 1,
                 }}
               />
               <span style={{ fontSize: 9, color: 'var(--sub)' }}>USDC</span>
@@ -337,28 +350,31 @@ export function MasterContractSetup() {
             <FormGroup>
               <FormLabel>{t('master.partAAddress')}</FormLabel>
               <FormInput
-                value={partAAddress}
+                value={locked ? store.participantAddresses.partA : partAAddress}
                 onChange={e => setPartAAddress(e.target.value)}
                 placeholder="Participant A wallet address"
-                style={{ fontFamily: "'DM Mono', monospace", fontSize: 10 }}
+                readOnly={locked}
+                style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, opacity: locked ? 0.6 : 1 }}
               />
             </FormGroup>
             <FormGroup>
               <FormLabel>{t('master.partBAddress')}</FormLabel>
               <FormInput
-                value={partBAddress}
+                value={locked ? store.participantAddresses.partB : partBAddress}
                 onChange={e => setPartBAddress(e.target.value)}
                 placeholder="Participant B wallet address"
-                style={{ fontFamily: "'DM Mono', monospace", fontSize: 10 }}
+                readOnly={locked}
+                style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, opacity: locked ? 0.6 : 1 }}
               />
             </FormGroup>
             <FormGroup>
               <FormLabel>{t('master.reinsurerAddress')}</FormLabel>
               <FormInput
-                value={reinsurerAddress}
+                value={locked ? store.participantAddresses.reinsurer : reinsurerAddress}
                 onChange={e => setReinsurerAddress(e.target.value)}
                 placeholder="Reinsurer wallet address"
-                style={{ fontFamily: "'DM Mono', monospace", fontSize: 10 }}
+                readOnly={locked}
+                style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, opacity: locked ? 0.6 : 1 }}
               />
             </FormGroup>
           </>

@@ -3,8 +3,9 @@ import { useProtocolStore } from '@/store/useProtocolStore';
 import { useTranslation } from 'react-i18next';
 
 export function ShareStructure() {
-  const { shares, setShares } = useProtocolStore();
+  const { shares, setShares, processStep } = useProtocolStore();
   const { t } = useTranslation();
+  const locked = processStep >= 1;
   const total = shares.leader + shares.partA + shares.partB;
   const valid = total === 100;
 
@@ -22,7 +23,8 @@ export function ShareStructure() {
           <FormInput
             type="number" min={1} max={100} value={shares.leader}
             onChange={e => setShares({ leader: parseInt(e.target.value) || 0 })}
-            style={{ fontFamily: "'DM Mono', monospace" }}
+            readOnly={locked}
+            style={{ fontFamily: "'DM Mono', monospace", opacity: locked ? 0.6 : 1 }}
           />
         </FormGroup>
         <FormGroup>
@@ -30,7 +32,8 @@ export function ShareStructure() {
           <FormInput
             type="number" min={1} max={100} value={shares.partA}
             onChange={e => setShares({ partA: parseInt(e.target.value) || 0 })}
-            style={{ fontFamily: "'DM Mono', monospace" }}
+            readOnly={locked}
+            style={{ fontFamily: "'DM Mono', monospace", opacity: locked ? 0.6 : 1 }}
           />
         </FormGroup>
         <FormGroup>
@@ -38,7 +41,8 @@ export function ShareStructure() {
           <FormInput
             type="number" min={1} max={100} value={shares.partB}
             onChange={e => setShares({ partB: parseInt(e.target.value) || 0 })}
-            style={{ fontFamily: "'DM Mono', monospace" }}
+            readOnly={locked}
+            style={{ fontFamily: "'DM Mono', monospace", opacity: locked ? 0.6 : 1 }}
           />
         </FormGroup>
         <div style={{ fontSize: 10, color: valid ? 'var(--success)' : 'var(--danger)', fontFamily: "'DM Mono', monospace", marginBottom: 6 }}>

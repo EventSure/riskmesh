@@ -187,12 +187,17 @@ interface ProtocolState {
   poolHist: PoolHistEntry[];
 
   // Master policy terms (USDC display units)
+  coverageStart: string;
+  coverageEnd: string;
   premiumPerPolicy: number;
   payoutTiers: { delay2h: number; delay3h: number; delay4to5h: number; delay6hOrCancelled: number };
 
   // Reinsurance ratios (bps, 10000 = 100%)
   cededRatioBps: number;
   reinsCommissionBps: number;
+
+  // Participant addresses (on-chain mode)
+  participantAddresses: { partA: string; partB: string; reinsurer: string };
 
   // On-chain state
   poolRefreshKey: number;
@@ -205,6 +210,8 @@ interface ProtocolState {
   setMode: (m: ProtocolMode) => void;
   setRole: (r: Role) => void;
   setShares: (s: Partial<Shares>) => void;
+  setCoverage: (c: { start?: string; end?: string }) => void;
+  setParticipantAddresses: (a: Partial<{ partA: string; partB: string; reinsurer: string }>) => void;
   setTerms: () => { ok: boolean; msg?: string };
   confirmParty: (key: 'partA' | 'partB' | 'rein') => void;
   activateMaster: () => { ok: boolean; msg?: string };
@@ -217,7 +224,7 @@ interface ProtocolState {
   setMasterAgreementPDA: (pda: string | null) => void;
   setMasterAgreements: (list: MasterAgreementSummary[]) => void;
   selectMasterAgreement: (pda: string | null) => void;
-  onChainSetTerms: (txSignature: string, cededRatioBps?: number, reinsCommissionBps?: number, premium?: number, payoutTiers?: { delay2h: number; delay3h: number; delay4to5h: number; delay6hOrCancelled: number }) => void;
+  onChainSetTerms: (txSignature: string, cededRatioBps?: number, reinsCommissionBps?: number, premium?: number, payoutTiers?: { delay2h: number; delay3h: number; delay4to5h: number; delay6hOrCancelled: number }, coverageDates?: { start: string; end: string }, addresses?: { partA: string; partB: string; reinsurer: string }) => void;
   onChainConfirm: (key: 'partA' | 'partB' | 'rein', txSignature: string) => void;
   onChainActivate: (txSignature: string, pda: string) => void;
   onChainAddContract: (id: number, name: string, flight: string, date: string, txSignature: string) => void;
@@ -255,12 +262,17 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
   poolHist: [{ t: 'init', v: 10000 }],
 
   // Master policy terms
+  coverageStart: '2026-01-01',
+  coverageEnd: '2026-12-31',
   premiumPerPolicy: 3,
   payoutTiers: { delay2h: 5, delay3h: 8, delay4to5h: 12, delay6hOrCancelled: 15 },
 
   // Reinsurance ratios (bps)
   cededRatioBps: 5000,       // 50%
   reinsCommissionBps: 1000,  // 10%
+
+  // Participant addresses
+  participantAddresses: { partA: '', partB: '', reinsurer: '' },
 
   // On-chain state
   poolRefreshKey: 0,
@@ -280,6 +292,8 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
   },
 
   setShares: (s) => set(st => ({ shares: { ...st.shares, ...s } })),
+  setCoverage: (c) => set(st => ({ coverageStart: c.start ?? st.coverageStart, coverageEnd: c.end ?? st.coverageEnd })),
+  setParticipantAddresses: (a) => set(st => ({ participantAddresses: { ...st.participantAddresses, ...a } })),
 
   setTerms: () => {
     const { role, shares } = get();
@@ -493,7 +507,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
 
   /* ── On-chain action callbacks (called by components after successful tx) ── */
 
-  onChainSetTerms: (txSignature, cededBps, commBps, premium, payoutTiers) => {
+  onChainSetTerms: (txSignature, cededBps, commBps, premium, payoutTiers, coverageDates, addresses) => {
     const { shares } = get();
     set({
       processStep: 1,
@@ -502,6 +516,8 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       ...(commBps != null && { reinsCommissionBps: commBps }),
       ...(premium != null && { premiumPerPolicy: premium }),
       ...(payoutTiers != null && { payoutTiers }),
+      ...(coverageDates != null && { coverageStart: coverageDates.start, coverageEnd: coverageDates.end }),
+      ...(addresses != null && { participantAddresses: addresses }),
     });
     get().addLog(
       i18n.t('store.termsSet'), '#9945FF', 'create_master_policy',
@@ -656,8 +672,10 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       masterActive: false, policyStateIdx: -1, processStep: 0,
       confirms: { partA: false, partB: false, rein: false },
       shares: { leader: 50, partA: 30, partB: 20 },
+      coverageStart: '2026-01-01', coverageEnd: '2026-12-31',
       premiumPerPolicy: 3, payoutTiers: { delay2h: 5, delay3h: 8, delay4to5h: 12, delay6hOrCancelled: 15 },
       cededRatioBps: 5000, reinsCommissionBps: 1000,
+      participantAddresses: { partA: '', partB: '', reinsurer: '' },
       poolBalance: 10000, totalPremium: 0, totalClaim: 0,
       contracts: [], claims: [], contractCount: 0, claimCount: 0,
       acc: { ...INITIAL_ACC },
@@ -687,6 +705,17 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       partB: Math.round((data.participants[2]?.shareBps ?? 0) / 100),
     };
 
+    const toDateStr = (ts: import('@coral-xyz/anchor').BN) => {
+      const d = new Date(ts.toNumber() * 1000);
+      return d.toISOString().slice(0, 10);
+    };
+
+    const participantAddresses = {
+      partA: data.participants[1]?.insurer?.toBase58() ?? '',
+      partB: data.participants[2]?.insurer?.toBase58() ?? '',
+      reinsurer: data.reinsurer?.toBase58() ?? '',
+    };
+
     set({
       masterActive: isActive,
       confirms,
@@ -703,6 +732,9 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
           delay6hOrCancelled: data.payoutDelay6hOrCancelled.toNumber() / 1_000_000,
         },
       }),
+      ...(data.coverageStartTs && { coverageStart: toDateStr(data.coverageStartTs) }),
+      ...(data.coverageEndTs && { coverageEnd: toDateStr(data.coverageEndTs) }),
+      participantAddresses,
       policyStateIdx: isActive ? 3 : processStep > 0 ? 0 : -1,
     });
   },
