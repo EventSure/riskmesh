@@ -8,7 +8,7 @@
  *   CHILD_POLICY_ID  FlightPolicy child ID (기본값: 4)
  *   DELAY_MINUTES    지연 분 (기본값: 150 → Claimable)
  *   CANCELLED        결항 여부 "true" / "false" (기본값: false)
- *   KEYPAIR_PATH     leader 키페어 경로 (기본값: ~/.config/solana/id.json)
+ *   KEYPAIR_PATH     leader 키페어 경로 (기본값: ~/.config/solana/riskmesh-leader.json)
  */
 import * as anchor from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
@@ -23,7 +23,7 @@ const CHILD_ID     = parseInt(process.env.CHILD_POLICY_ID ?? "4");
 const DELAY_MIN    = parseInt(process.env.DELAY_MINUTES   ?? "150");
 const CANCELLED    = process.env.CANCELLED === "true";
 const KEYPAIR_PATH = process.env.KEYPAIR_PATH
-  ?? path.join(process.env.HOME ?? "~", ".config/solana/id.json");
+  ?? path.join(process.env.HOME ?? "~", ".config/solana/riskmesh-leader.json");
 
 function loadKeypair(p: string): Keypair {
   const expanded = p.replace(/^~/, process.env.HOME ?? "");
