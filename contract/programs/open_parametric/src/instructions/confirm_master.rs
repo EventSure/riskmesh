@@ -19,27 +19,35 @@ pub fn handler(ctx: Context<ConfirmMaster>, role: u8) -> Result<()> {
     );
 
     if role == ConfirmRole::Participant as u8 {
-        // 참여사는 본인 슬롯을 찾아 지갑 등록 여부 확인 후 confirmed 처리한다.
-        let idx = master
-            .participants
-            .iter()
-            .position(|p| p.insurer == ctx.accounts.actor.key())
-            .ok_or(OpenParamError::Unauthorized)?;
+        if ctx.accounts.actor.key() == master.leader {
+            require!(
+                master.leader_pool_wallet != Pubkey::default(),
+                OpenParamError::InvalidInput
+            );
+        } else {
+            // 참여사는 본인 슬롯을 찾아 지갑 등록 여부 확인 후 confirmed 처리한다.
+            let idx = master
+                .participants
+                .iter()
+                .position(|p| p.insurer == ctx.accounts.actor.key())
+                .ok_or(OpenParamError::Unauthorized)?;
 
-        let p = &mut master.participants[idx];
-        require!(
-            p.pool_wallet != Pubkey::default(),
-            OpenParamError::InvalidInput
-        );
-        require!(
-            p.deposit_wallet != Pubkey::default(),
-            OpenParamError::InvalidInput
-        );
-        p.confirmed = true;
+            let p = &mut master.participants[idx];
+            require!(
+                p.pool_wallet != Pubkey::default(),
+                OpenParamError::InvalidInput
+            );
+            require!(
+                p.deposit_wallet != Pubkey::default(),
+                OpenParamError::InvalidInput
+            );
+            p.confirmed = true;
+        }
     } else if role == ConfirmRole::Reinsurer as u8 {
         // 재보험사는 지정된 reinsurer 계정만 승인 가능하다.
+        let reinsurer = master.reinsurer.ok_or(OpenParamError::InvalidRole)?;
         require!(
-            ctx.accounts.actor.key() == master.reinsurer,
+            ctx.accounts.actor.key() == reinsurer,
             OpenParamError::Unauthorized
         );
         master.reinsurer_confirmed = true;

@@ -59,7 +59,7 @@ export function ClaimApproval() {
     // (Step 4: 데모 풀 충전 기능 구현 후 해결)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const masterData = await (program as any).account.masterPolicy.fetch(masterPK);
-    const { participantPoolWallets, reinsurerPoolWallet, leaderDepositWallet } = buildSettleAccounts(masterData);
+    const { participantPoolWallets, reinsurerPoolWallet, leaderDepositWallet, leaderPoolWallet } = buildSettleAccounts(masterData);
 
     let settled = 0;
 
@@ -69,6 +69,7 @@ export function ClaimApproval() {
         masterPolicy: masterPK,
         flightPolicy: flightPolicyPDA,
         leaderDepositToken: leaderDepositWallet,
+        leaderPoolToken: leaderPoolWallet,
         reinsurerPoolToken: reinsurerPoolWallet,
         participantPoolWallets,
       });

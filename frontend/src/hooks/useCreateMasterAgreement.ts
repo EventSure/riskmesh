@@ -15,6 +15,7 @@ export interface CreateMasterAgreementInput {
   payoutDelay3h: number;
   payoutDelay4to5h: number;
   payoutDelay6hOrCancelled: number;
+  leaderShareBps: number;
   cededRatioBps: number;
   reinsCommissionBps: number;
   operator: PublicKey;
@@ -47,10 +48,11 @@ export function useCreateMasterAgreement() {
           coverageStartTs: new BN(input.coverageStartTs),
           coverageEndTs: new BN(input.coverageEndTs),
           premiumPerPolicy: new BN(input.premiumPerPolicy),
-          payoutDelay2h: new BN(input.payoutDelay2h),
-          payoutDelay3h: new BN(input.payoutDelay3h),
-          payoutDelay4to5h: new BN(input.payoutDelay4to5h),
-          payoutDelay6hOrCancelled: new BN(input.payoutDelay6hOrCancelled),
+          payoutDelay2H: new BN(input.payoutDelay2h),
+          payoutDelay3H: new BN(input.payoutDelay3h),
+          payoutDelay4To5H: new BN(input.payoutDelay4to5h),
+          payoutDelay6HOrCancelled: new BN(input.payoutDelay6hOrCancelled),
+          leaderShareBps: input.leaderShareBps,
           cededRatioBps: input.cededRatioBps,
           reinsCommissionBps: input.reinsCommissionBps,
           participants: input.participants.map(
@@ -59,6 +61,7 @@ export function useCreateMasterAgreement() {
               shareBps: p.shareBps,
             }),
           ),
+          oracleFeed: PublicKey.default,
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

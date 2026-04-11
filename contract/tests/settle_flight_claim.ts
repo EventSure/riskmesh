@@ -25,7 +25,6 @@ describe("settle_flight_claim", () => {
   const premiumAmount = 5n * UNIT; // 5 USDC
 
   const reinsurerAmount = 36n * UNIT; // 80 * 0.45
-  const insurerTotal = 44n * UNIT;
   const leaderShare = 22n * UNIT; // 44 * 0.5
   const aShare = 13_200_000n; // 44 * 0.3
   const bShare = 8_800_000n; // 44 * 0.2
@@ -63,8 +62,8 @@ describe("settle_flight_claim", () => {
       program.programId
     );
 
-    // PDA owner는 off-curve이므로 반드시 명시적 Keypair를 전달해 non-ATA 계정으로 생성한다.
-    const leaderDeposit = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
+    // leaderDeposit은 리더(payer) 소유 ATA 역할의 계정(정산 목적지), 풀 지갑은 PDA 소유.
+    const leaderDeposit = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
     const reinsurerPool = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
     const reinsurerDeposit = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
 
@@ -95,10 +94,10 @@ describe("settle_flight_claim", () => {
         payoutDelay3H: new anchor.BN(0),
         payoutDelay4To5H: new anchor.BN(0),
         payoutDelay6HOrCancelled: new anchor.BN(payoutAmount.toString()),
+        leaderShareBps: 5_000,
         cededRatioBps: 5_000,
         reinsCommissionBps: 1_000,
         participants: [
-          { insurer: payer.publicKey, shareBps: 5_000 },
           { insurer: participantA.publicKey, shareBps: 3_000 },
           { insurer: participantB.publicKey, shareBps: 2_000 },
         ],
@@ -215,7 +214,7 @@ describe("settle_flight_claim", () => {
         masterPolicy: masterPolicyPda,
         flightPolicy: flightPolicyPda,
         payerToken: payerToken,
-        leaderDepositToken: leaderDeposit,
+        leaderPoolToken: leaderPool,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
@@ -237,11 +236,11 @@ describe("settle_flight_claim", () => {
         masterPolicy: masterPolicyPda,
         flightPolicy: flightPolicyPda,
         leaderDepositToken: leaderDeposit,
+        leaderPoolToken: leaderPool,
         reinsurerPoolToken: reinsurerPool,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .remainingAccounts([
-        { pubkey: leaderPool, isWritable: true, isSigner: false },
         { pubkey: aPool, isWritable: true, isSigner: false },
         { pubkey: bPool, isWritable: true, isSigner: false },
       ])
@@ -253,9 +252,11 @@ describe("settle_flight_claim", () => {
     const aPoolAcct = await getAccount(connection, aPool);
     const bPoolAcct = await getAccount(connection, bPool);
 
-    assert.equal(leaderDepositAcct.amount, premiumAmount + payoutAmount);
+    // leaderPool에 쌓여있던 leaderShare(22)는 leaderDeposit으로 이체, 재보험사/참여사 풀도 전액 소진.
+    // createFlight 시 지급된 premium(5)은 leaderPool에 잔류.
+    assert.equal(leaderDepositAcct.amount, payoutAmount);
+    assert.equal(leaderPoolAcct.amount, premiumAmount);
     assert.equal(reinsurerPoolAcct.amount, 0n);
-    assert.equal(leaderPoolAcct.amount, 0n);
     assert.equal(aPoolAcct.amount, 0n);
     assert.equal(bPoolAcct.amount, 0n);
 

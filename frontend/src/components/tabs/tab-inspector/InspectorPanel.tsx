@@ -107,11 +107,12 @@ const ModeBadge = styled.span<{ isOnChain: boolean }>`
 
 export function InspectorPanel() {
   const { t } = useTranslation();
-  const { mode, masterActive, policyStateIdx, contracts, poolBalance, totalPremium, totalClaim, acc, shares, masterAgreementPDA, lastTxSignature } = useProtocolStore(
+  const { mode, masterActive, policyStateIdx, contracts, poolBalance, totalPremium, totalClaim, acc, leaderShare, participants, reinsurer, masterAgreementPDA, lastTxSignature } = useProtocolStore(
     useShallow(s => ({
       mode: s.mode, masterActive: s.masterActive, policyStateIdx: s.policyStateIdx,
       contracts: s.contracts, poolBalance: s.poolBalance, totalPremium: s.totalPremium,
-      totalClaim: s.totalClaim, acc: s.acc, shares: s.shares,
+      totalClaim: s.totalClaim, acc: s.acc, leaderShare: s.leaderShare,
+      participants: s.participants, reinsurer: s.reinsurer,
       masterAgreementPDA: s.masterAgreementPDA, lastTxSignature: s.lastTxSignature,
     })),
   );
@@ -146,7 +147,7 @@ export function InspectorPanel() {
       fields: [
         { k: 'coverage', v: '2026-01-01 ~ 2026-12-31', c: '' },
         { k: 'premium_per_policy', v: '1 USDC', c: 'ac' },
-        { k: 'shares', v: `L${shares.leader}% / A${shares.partA}% / B${shares.partB}%`, c: 'ac' },
+        { k: 'shares', v: `L${leaderShare}%/${participants.map((p, i) => `P${i + 1}:${p.share}%`).join('/')}`, c: 'ac' },
         { k: 'ceded_ratio', v: '50% (5000 bps)', c: 'in' },
         { k: 'reins_commission', v: '10% (1000 bps)', c: '' },
         { k: 'state', v: POLICY_STATES[policyStateIdx] || '—', c: 'ac' },
@@ -173,9 +174,11 @@ export function InspectorPanel() {
         { k: 'total_premium', v: formatNum(totalPremium, 4) + ' USDC', c: 'ac' },
         { k: 'total_claims', v: formatNum(totalClaim, 2) + ' USDC', c: 'dn' },
         { k: 'leader_net', v: formatNum(acc.leaderPrem - acc.leaderClaim, 4) + ' USDC', c: acc.leaderPrem - acc.leaderClaim >= 0 ? 'ac' : 'dn' },
-        { k: 'partA_net', v: formatNum(acc.partAPrem - acc.partAClaim, 4) + ' USDC', c: acc.partAPrem - acc.partAClaim >= 0 ? 'ac' : 'dn' },
-        { k: 'partB_net', v: formatNum(acc.partBPrem - acc.partBClaim, 4) + ' USDC', c: acc.partBPrem - acc.partBClaim >= 0 ? 'ac' : 'dn' },
-        { k: 'rein_net', v: formatNum(acc.reinPrem - acc.reinClaim, 4) + ' USDC', c: 'in' },
+        ...participants.map((pt, i) => {
+          const net = (acc.participantPrems[i] ?? 0) - (acc.participantClaims[i] ?? 0);
+          return { k: `${pt.name || `P${i + 1}`}_net`, v: formatNum(net, 4) + ' USDC', c: net >= 0 ? 'ac' : 'dn' };
+        }),
+        ...(reinsurer.enabled ? [{ k: 'rein_net', v: formatNum(acc.reinPrem - acc.reinClaim, 4) + ' USDC', c: 'in' }] : []),
       ],
     },
   ];

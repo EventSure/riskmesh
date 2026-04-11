@@ -15,7 +15,7 @@ export interface CreateFlightPolicyInput {
   route: string;
   departureTs: number; // unix seconds
   payerToken: PublicKey;
-  leaderDepositToken: PublicKey;
+  leaderPoolToken: PublicKey;
 }
 
 export function useCreateFlightPolicy() {
@@ -51,7 +51,7 @@ export function useCreateFlightPolicy() {
               masterPolicy: input.masterPolicy,
               flightPolicy: flightPolicyPDA,
               payerToken: input.payerToken,
-              leaderDepositToken: input.leaderDepositToken,
+              leaderPoolToken: input.leaderPoolToken,
               tokenProgram: TOKEN_PROGRAM_ID,
             })
             .rpc(),

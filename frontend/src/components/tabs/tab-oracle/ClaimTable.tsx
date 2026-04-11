@@ -1,10 +1,11 @@
 import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, DataTable } from '@/components/common';
-import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
+import { useProtocolStore, formatNum, PARTICIPANT_COLORS } from '@/store/useProtocolStore';
 
 export function ClaimTable() {
   const { t } = useTranslation();
   const claims = useProtocolStore(s => s.claims);
+  const participants = useProtocolStore(s => s.participants);
 
   return (
     <Card>
@@ -19,7 +20,11 @@ export function ClaimTable() {
           <thead>
             <tr>
               <th>#</th><th>{t('claim.th.policyholder')}</th><th>{t('claim.th.flight')}</th><th>{t('claim.th.delay')}</th><th>{t('claim.th.tier')}</th><th>{t('claim.th.payout')}</th>
-              <th>{t('claim.th.leader')}</th><th>{t('claim.th.partA')}</th><th>{t('claim.th.partB')}</th><th>{t('claim.th.reinBurden')}</th><th>{t('claim.th.status')}</th><th>{t('claim.th.time')}</th>
+              <th>{t('claim.th.leader')}</th>
+              {participants.map((p, i) => (
+                <th key={p.id}>{p.name || `${t('claim.th.participant')}${i + 1}`}</th>
+              ))}
+              <th>{t('claim.th.reinBurden')}</th><th>{t('claim.th.status')}</th><th>{t('claim.th.time')}</th>
             </tr>
           </thead>
           <tbody>
@@ -45,8 +50,9 @@ export function ClaimTable() {
                   </td>
                   <td style={{ color: 'var(--danger)', fontWeight: 700 }}>{formatNum(c.payout, 0)}</td>
                   <td style={{ color: '#9945FF' }}>{formatNum(c.lNet, 2)}</td>
-                  <td style={{ color: '#14F195' }}>{formatNum(c.aNet, 2)}</td>
-                  <td style={{ color: '#F59E0B' }}>{formatNum(c.bNet, 2)}</td>
+                  {participants.map((p, i) => (
+                    <td key={p.id} style={{ color: PARTICIPANT_COLORS[i] }}>{formatNum(c.participantNets[i] ?? 0, 2)}</td>
+                  ))}
                   <td style={{ color: '#38BDF8' }}>{formatNum(c.totRC, 2)}</td>
                   <td>
                     <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 6px', borderRadius: 4, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', fontFamily: "'DM Mono', monospace",

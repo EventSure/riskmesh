@@ -93,7 +93,8 @@ async function main() {
         masterPolicy:       masterPda,
         flightPolicy:       flightPda,
         leaderDepositToken: master.leaderDepositWallet,
-        reinsurerPoolToken: master.reinsurerPoolWallet,
+        leaderPoolToken:    master.leaderPoolWallet,
+        reinsurerPoolToken: master.reinsurerPoolWallet ?? master.leaderPoolWallet,
         tokenProgram:       TOKEN_PROGRAM_ID,
       })
       .remainingAccounts(participantPoolWallets)
@@ -122,8 +123,9 @@ async function main() {
         executor:              leader.publicKey,
         masterPolicy:          masterPda,
         flightPolicy:          flightPda,
+        leaderPoolToken:       master.leaderPoolWallet,
         leaderDepositToken:    master.leaderDepositWallet,
-        reinsurerDepositToken: master.reinsurerDepositWallet,
+        reinsurerDepositToken: master.reinsurerDepositWallet ?? master.leaderPoolWallet,
         tokenProgram:          TOKEN_PROGRAM_ID,
       })
       .remainingAccounts(participantDepositWallets)

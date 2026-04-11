@@ -35,6 +35,7 @@ pub struct CreateMasterPolicy<'info> {
 
 pub fn handler(ctx: Context<CreateMasterPolicy>, params: CreateMasterPolicyParams) -> Result<()> {
     let master = &mut ctx.accounts.master_policy;
+    let has_reinsurer = params.ceded_ratio_bps > 0;
 
     // 마스터 계약 생성 시점 기본 유효성 검증.
     require!(
@@ -42,20 +43,26 @@ pub fn handler(ctx: Context<CreateMasterPolicy>, params: CreateMasterPolicyParam
         OpenParamError::InvalidTimeWindow
     );
     require!(params.premium_per_policy > 0, OpenParamError::InvalidAmount);
-    validate_master_participants(&params.participants, ctx.accounts.leader.key())?;
+    validate_master_participants(
+        params.leader_share_bps,
+        &params.participants,
+        ctx.accounts.leader.key(),
+    )?;
 
     require!(
         ctx.accounts.leader_deposit_wallet.mint == ctx.accounts.currency_mint.key(),
         OpenParamError::InvalidInput
     );
-    require!(
-        ctx.accounts.reinsurer_pool_wallet.mint == ctx.accounts.currency_mint.key(),
-        OpenParamError::InvalidInput
-    );
-    require!(
-        ctx.accounts.reinsurer_deposit_wallet.mint == ctx.accounts.currency_mint.key(),
-        OpenParamError::InvalidInput
-    );
+    if has_reinsurer {
+        require!(
+            ctx.accounts.reinsurer_pool_wallet.mint == ctx.accounts.currency_mint.key(),
+            OpenParamError::InvalidInput
+        );
+        require!(
+            ctx.accounts.reinsurer_deposit_wallet.mint == ctx.accounts.currency_mint.key(),
+            OpenParamError::InvalidInput
+        );
+    }
 
     // 재보험 실효 지분율(출재율 - 수수료 반영)을 사전에 계산해 저장한다.
     let eff_reinsurer_bps =
@@ -72,13 +79,17 @@ pub fn handler(ctx: Context<CreateMasterPolicy>, params: CreateMasterPolicyParam
     master.payout_delay_3h = params.payout_delay_3h;
     master.payout_delay_4to5h = params.payout_delay_4to5h;
     master.payout_delay_6h_or_cancelled = params.payout_delay_6h_or_cancelled;
+    master.leader_share_bps = params.leader_share_bps;
     master.ceded_ratio_bps = params.ceded_ratio_bps;
     master.reins_commission_bps = params.reins_commission_bps;
     master.reinsurer_effective_bps = eff_reinsurer_bps;
-    master.reinsurer = ctx.accounts.reinsurer.key();
-    master.reinsurer_confirmed = false;
-    master.reinsurer_pool_wallet = ctx.accounts.reinsurer_pool_wallet.key();
-    master.reinsurer_deposit_wallet = ctx.accounts.reinsurer_deposit_wallet.key();
+    master.reinsurer = has_reinsurer.then_some(ctx.accounts.reinsurer.key());
+    master.reinsurer_confirmed = !has_reinsurer;
+    master.reinsurer_pool_wallet =
+        has_reinsurer.then_some(ctx.accounts.reinsurer_pool_wallet.key());
+    master.reinsurer_deposit_wallet =
+        has_reinsurer.then_some(ctx.accounts.reinsurer_deposit_wallet.key());
+    master.leader_pool_wallet = Pubkey::default();
     master.leader_deposit_wallet = ctx.accounts.leader_deposit_wallet.key();
     master.oracle_feed = params.oracle_feed;
     master.status = MasterPolicyStatus::PendingConfirm as u8;
@@ -91,7 +102,7 @@ pub fn handler(ctx: Context<CreateMasterPolicy>, params: CreateMasterPolicyParam
         .map(|p| MasterParticipant {
             insurer: p.insurer,
             share_bps: p.share_bps,
-            confirmed: p.insurer == master.leader,
+            confirmed: false,
             pool_wallet: Pubkey::default(),
             deposit_wallet: Pubkey::default(),
         })
@@ -101,30 +112,27 @@ pub fn handler(ctx: Context<CreateMasterPolicy>, params: CreateMasterPolicyParam
 }
 
 pub(crate) fn validate_master_participants(
+    leader_share_bps: u16,
     participants: &[MasterParticipantInit],
     leader: Pubkey,
 ) -> std::result::Result<(), OpenParamError> {
-    // 참여자 수, 총 지분 10000bps, 리더 포함 여부를 검증한다.
+    // 리더 지분 + 참여자 지분 합계가 10000bps인지, 참여자 수/중복/리더 포함 여부를 검증한다.
     if participants.is_empty() || participants.len() > MAX_MASTER_PARTICIPANTS {
         return Err(OpenParamError::InvalidInput);
     }
 
-    let mut total_share: u32 = 0;
-    let mut has_leader = false;
+    let mut total_share: u32 = leader_share_bps as u32;
     for p in participants {
         total_share = total_share
             .checked_add(p.share_bps as u32)
             .ok_or(OpenParamError::MathOverflow)?;
-        if p.insurer == leader {
-            has_leader = true;
+        if p.insurer == leader || p.share_bps == 0 {
+            return Err(OpenParamError::InvalidInput);
         }
     }
 
     if total_share != 10_000 {
         return Err(OpenParamError::InvalidRatio);
-    }
-    if !has_leader {
-        return Err(OpenParamError::InvalidInput);
     }
     Ok(())
 }

@@ -43,7 +43,7 @@ export function ContractForm() {
     // MasterPolicy에서 leader_deposit_wallet, currency_mint를 읽어서 사용
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const masterData = await (program as any).account.masterPolicy.fetch(masterPK);
-    const leaderDepositToken: PublicKey = masterData.leaderDepositWallet;
+    const leaderPoolToken: PublicKey = masterData.leaderPoolWallet;
     const currencyMint: PublicKey = masterData.currencyMint;
     const walletATA = await getAssociatedTokenAddress(currencyMint, wallet.publicKey);
 
@@ -55,7 +55,7 @@ export function ContractForm() {
       route,
       departureTs,
       payerToken: walletATA,
-      leaderDepositToken,
+      leaderPoolToken,
     });
 
     if (!result.success) {

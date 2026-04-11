@@ -1,7 +1,7 @@
 import styled from '@emotion/styled';
 import { PublicKey } from '@solana/web3.js';
 import { Card, CardHeader, CardTitle, CardBody, Button, Tag } from '@/components/common';
-import { useProtocolStore } from '@/store/useProtocolStore';
+import { useProtocolStore, PARTICIPANT_COLORS, REINSURER_COLOR } from '@/store/useProtocolStore';
 import { useShallow } from 'zustand/shallow';
 import { useToast } from '@/components/common';
 import { useTranslation } from 'react-i18next';
@@ -39,30 +39,33 @@ const PtDot = styled.div`
 `;
 
 export function ParticipantConfirm() {
-  const { mode, role, confirms, shares, masterActive, masterAgreementPDA, confirmParty, activateMaster, onChainActivate } = useProtocolStore(
+  const { mode, role, participants, reinsurer, masterActive, masterAgreementPDA, confirmParticipant, confirmReinsurer, activateMaster, onChainActivate } = useProtocolStore(
     useShallow(s => ({
-      mode: s.mode, role: s.role, confirms: s.confirms, shares: s.shares,
+      mode: s.mode, role: s.role, participants: s.participants, reinsurer: s.reinsurer,
       masterActive: s.masterActive, masterAgreementPDA: s.masterAgreementPDA,
-      confirmParty: s.confirmParty, activateMaster: s.activateMaster,
-      onChainActivate: s.onChainActivate,
+      confirmParticipant: s.confirmParticipant, confirmReinsurer: s.confirmReinsurer,
+      activateMaster: s.activateMaster, onChainActivate: s.onChainActivate,
     })),
   );
   const { toast } = useToast();
   const { t } = useTranslation();
   const { activateMaster: activateMasterOnChain, loading: activateLoading } = useActivateMaster();
 
-  const PT_DEF = [
-    { key: 'partA' as const, name: t('confirm.partAName'), color: '#14F195' },
-    { key: 'partB' as const, name: t('confirm.partBName'), color: '#F59E0B' },
-    { key: 'rein' as const, name: t('confirm.reinName'), color: '#38BDF8' },
-  ];
-
-  const allConfirmed = confirms.partA && confirms.partB && confirms.rein;
+  const allParticipantsConfirmed = participants.every(p => p.confirmed);
+  const reinOk = !reinsurer.enabled || reinsurer.confirmed;
+  const allConfirmed = allParticipantsConfirmed && reinOk;
   const canActivate = allConfirmed && !masterActive && (role === 'leader' || role === 'operator');
 
-  const handleSimConfirm = (key: 'partA' | 'partB' | 'rein') => {
-    confirmParty(key);
-    toast(t('toast.confirmDone', { role: t(`role.${key}Short`) }), 's');
+  const handleSimConfirmParticipant = (id: string) => {
+    confirmParticipant(id);
+    const p = participants.find(p => p.id === id);
+    const idx = participants.findIndex(p => p.id === id);
+    toast(t('toast.confirmDone', { role: p?.name || `참여사 ${idx + 1}` }), 's');
+  };
+
+  const handleSimConfirmReinsurer = () => {
+    confirmReinsurer();
+    toast(t('toast.confirmDone', { role: t('role.reinShort') }), 's');
   };
 
   const handleActivate = async () => {
@@ -95,30 +98,45 @@ export function ParticipantConfirm() {
             {t('confirm.portalGuide')}
           </div>
         )}
-        {PT_DEF.map(pt => {
-          const cf = confirms[pt.key];
-          const shareInfo = pt.key === 'rein'
-            ? t('confirm.reinInfo')
-            : t('confirm.shareInfo', { share: shares[pt.key] });
-
+        {participants.map((p, i) => {
+          const color = PARTICIPANT_COLORS[i] || '#14F195';
+          const name = p.name || `${t('confirm.participant')} ${i + 1}`;
+          const shareInfo = t('confirm.shareInfo', { share: p.share });
           return (
-            <ParticipantRow key={pt.key} confirmed={cf}>
+            <ParticipantRow key={p.id} confirmed={p.confirmed}>
               <PtHeader>
                 <PtName>
-                  <PtDot style={{ background: pt.color, boxShadow: `0 0 4px ${pt.color}` }} />
-                  {pt.name}
+                  <PtDot style={{ background: color, boxShadow: `0 0 4px ${color}` }} />
+                  {name}
                 </PtName>
-                <Tag variant={cf ? 'accent' : 'subtle'}>{cf ? t('common.confirmed') : t('common.pending')}</Tag>
+                <Tag variant={p.confirmed ? 'accent' : 'subtle'}>{p.confirmed ? t('common.confirmed') : t('common.pending')}</Tag>
               </PtHeader>
               <div style={{ fontSize: 9, color: 'var(--sub)', marginBottom: 5 }}>{shareInfo}</div>
-              {mode === 'simulation' && !cf && (
-                <Button variant="accent" fullWidth size="sm" onClick={() => handleSimConfirm(pt.key)} data-guide={`confirm-${pt.key}`}>
+              {mode === 'simulation' && !p.confirmed && (
+                <Button variant="accent" fullWidth size="sm" onClick={() => handleSimConfirmParticipant(p.id)} data-guide={`confirm-p${i + 1}`}>
                   {t('confirm.btn')}
                 </Button>
               )}
             </ParticipantRow>
           );
         })}
+        {reinsurer.enabled && (
+          <ParticipantRow confirmed={reinsurer.confirmed}>
+            <PtHeader>
+              <PtName>
+                <PtDot style={{ background: REINSURER_COLOR, boxShadow: `0 0 4px ${REINSURER_COLOR}` }} />
+                {t('confirm.reinName')}
+              </PtName>
+              <Tag variant={reinsurer.confirmed ? 'accent' : 'subtle'}>{reinsurer.confirmed ? t('common.confirmed') : t('common.pending')}</Tag>
+            </PtHeader>
+            <div style={{ fontSize: 9, color: 'var(--sub)', marginBottom: 5 }}>{t('confirm.reinInfo')}</div>
+            {mode === 'simulation' && !reinsurer.confirmed && (
+              <Button variant="accent" fullWidth size="sm" onClick={handleSimConfirmReinsurer} data-guide="confirm-rein">
+                {t('confirm.btn')}
+              </Button>
+            )}
+          </ParticipantRow>
+        )}
         <Button variant="accent" fullWidth onClick={handleActivate} disabled={!canActivate || activateLoading} style={{ marginTop: 4 }} data-guide="activate-btn">
           {activateLoading ? 'Sending TX...' : t('confirm.activateBtn')}
         </Button>

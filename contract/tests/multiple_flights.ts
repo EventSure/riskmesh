@@ -75,7 +75,7 @@ describe("multiple_flights", () => {
       program.programId
     );
 
-    leaderDeposit    = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
+    leaderDeposit    = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
     reinsurerPool    = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
     reinsurerDeposit = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
     leaderPool       = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
@@ -111,10 +111,10 @@ describe("multiple_flights", () => {
         payoutDelay3H:            new anchor.BN(PAYOUT_3H.toString()),
         payoutDelay4To5H:         new anchor.BN(4_000_000),
         payoutDelay6HOrCancelled: new anchor.BN(PAYOUT_MAX.toString()),
+        leaderShareBps:     5_000,
         cededRatioBps:      5_000,
         reinsCommissionBps: 1_000,
         participants: [
-          { insurer: payer.publicKey,         shareBps: 5_000 },
           { insurer: participantA.publicKey,  shareBps: 5_000 },
         ],
         oracleFeed: PublicKey.default,
@@ -165,7 +165,7 @@ describe("multiple_flights", () => {
         })
         .accountsPartial({
           creator: payer.publicKey, masterPolicy: masterPolicyPda, flightPolicy: fpPda,
-          payerToken, leaderDepositToken: leaderDeposit,
+          payerToken, leaderPoolToken: leaderPool,
           tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
         })
         .rpc();
@@ -181,9 +181,9 @@ describe("multiple_flights", () => {
       assert.equal(fp.status, 1); // AwaitingOracle
     }
 
-    // master deposit에 3×premium = 3 USDC 적립됐는지 확인
-    const deposit = await getAccount(connection, leaderDeposit);
-    assert.equal(deposit.amount, 3n * UNIT);
+    // leader pool에 초기 4 USDC 펀딩 + 3×premium = 7 USDC 적립됐는지 확인
+    const pool = await getAccount(connection, leaderPool);
+    assert.equal(pool.amount, 4_000_000n + 3n * UNIT);
   });
 
   it("resolves each flight to correct status independently", async () => {
@@ -223,11 +223,10 @@ describe("multiple_flights", () => {
       .settleFlightClaim()
       .accountsPartial({
         executor: payer.publicKey, masterPolicy: masterPolicyPda, flightPolicy: flight1Pda,
-        leaderDepositToken: leaderDeposit, reinsurerPoolToken: reinsurerPool,
+        leaderDepositToken: leaderDeposit, leaderPoolToken: leaderPool, reinsurerPoolToken: reinsurerPool,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .remainingAccounts([
-        { pubkey: leaderPool, isWritable: true, isSigner: false },
         { pubkey: aPool,      isWritable: true, isSigner: false },
       ])
       .rpc();
@@ -248,11 +247,10 @@ describe("multiple_flights", () => {
       .settleFlightNoClaim()
       .accountsPartial({
         executor: payer.publicKey, masterPolicy: masterPolicyPda, flightPolicy: flight2Pda,
-        leaderDepositToken: leaderDeposit, reinsurerDepositToken: reinsurerDeposit,
+        leaderPoolToken: leaderPool, leaderDepositToken: leaderDeposit, reinsurerDepositToken: reinsurerDeposit,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .remainingAccounts([
-        { pubkey: leaderDeposit, isWritable: true, isSigner: false },
         { pubkey: aDeposit,      isWritable: true, isSigner: false },
       ])
       .rpc();
@@ -272,11 +270,10 @@ describe("multiple_flights", () => {
       .settleFlightClaim()
       .accountsPartial({
         executor: payer.publicKey, masterPolicy: masterPolicyPda, flightPolicy: flight3Pda,
-        leaderDepositToken: leaderDeposit, reinsurerPoolToken: reinsurerPool,
+        leaderDepositToken: leaderDeposit, leaderPoolToken: leaderPool, reinsurerPoolToken: reinsurerPool,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .remainingAccounts([
-        { pubkey: leaderPool, isWritable: true, isSigner: false },
         { pubkey: aPool,      isWritable: true, isSigner: false },
       ])
       .rpc();

@@ -116,7 +116,7 @@ async function main() {
       masterPolicy:       masterPda,
       flightPolicy:       flightPda,
       payerToken:         payerAta,
-      leaderDepositToken: master.leaderDepositWallet,
+      leaderPoolToken:    master.leaderPoolWallet,
       tokenProgram:       TOKEN_PROGRAM_ID,
       systemProgram:      anchor.web3.SystemProgram.programId,
     })

@@ -176,7 +176,7 @@
           "writable": true
         },
         {
-          "name": "leader_deposit_token",
+          "name": "leader_pool_token",
           "writable": true
         },
         {
@@ -384,6 +384,10 @@
           "writable": true
         },
         {
+          "name": "leader_pool_token",
+          "writable": true
+        },
+        {
           "name": "reinsurer_pool_token",
           "writable": true
         },
@@ -416,6 +420,10 @@
         },
         {
           "name": "flight_policy",
+          "writable": true
+        },
+        {
+          "name": "leader_pool_token",
           "writable": true
         },
         {
@@ -480,96 +488,76 @@
     },
     {
       "code": 6003,
-      "name": "AlreadyExists",
-      "msg": "Already exists"
-    },
-    {
-      "code": 6004,
       "name": "NotFound",
       "msg": "Not found"
     },
     {
-      "code": 6005,
-      "name": "InsufficientEscrow",
-      "msg": "Insufficient escrow"
-    },
-    {
-      "code": 6006,
-      "name": "PoolInsufficient",
-      "msg": "Pool has insufficient balance"
-    },
-    {
-      "code": 6007,
+      "code": 6004,
       "name": "OracleStale",
       "msg": "Oracle value is stale"
     },
     {
-      "code": 6008,
+      "code": 6005,
       "name": "OracleFormat",
       "msg": "Oracle value format is invalid"
     },
     {
-      "code": 6009,
+      "code": 6006,
       "name": "InvalidTimeWindow",
       "msg": "Invalid time window"
     },
     {
-      "code": 6010,
+      "code": 6007,
       "name": "InvalidInput",
       "msg": "Invalid input"
     },
     {
-      "code": 6011,
+      "code": 6008,
       "name": "InvalidAmount",
       "msg": "Invalid amount"
     },
     {
-      "code": 6012,
-      "name": "InvalidDelayThreshold",
-      "msg": "Invalid delay threshold"
-    },
-    {
-      "code": 6013,
+      "code": 6009,
       "name": "InputTooLong",
       "msg": "Input too long"
     },
     {
-      "code": 6014,
+      "code": 6010,
       "name": "MathOverflow",
       "msg": "Math overflow"
     },
     {
-      "code": 6015,
+      "code": 6011,
       "name": "MasterNotActive",
       "msg": "Master policy is not active"
     },
     {
-      "code": 6016,
+      "code": 6012,
       "name": "MasterNotConfirmed",
       "msg": "Master policy confirmation is incomplete"
     },
     {
-      "code": 6017,
+      "code": 6013,
       "name": "InvalidRole",
       "msg": "Invalid role for confirmation"
     },
     {
-      "code": 6018,
+      "code": 6014,
       "name": "InvalidPayout",
       "msg": "Invalid payout amount"
     },
     {
-      "code": 6019,
+      "code": 6015,
       "name": "AlreadySettled",
       "msg": "Settlement already completed"
     },
     {
-      "code": 6020,
+      "code": 6016,
       "name": "InvalidSettlementTarget",
       "msg": "Invalid settlement target"
     },
     {
-      "code": 6021,
+      "code": 6017,
       "name": "InvalidAccountList",
       "msg": "Invalid account list"
     }
@@ -639,6 +627,10 @@
           {
             "name": "payout_delay_6h_or_cancelled",
             "type": "u64"
+          },
+          {
+            "name": "leader_share_bps",
+            "type": "u16"
           },
           {
             "name": "ceded_ratio_bps",
@@ -831,6 +823,10 @@
             "type": "u64"
           },
           {
+            "name": "leader_share_bps",
+            "type": "u16"
+          },
+          {
             "name": "ceded_ratio_bps",
             "type": "u16"
           },
@@ -844,7 +840,9 @@
           },
           {
             "name": "reinsurer",
-            "type": "pubkey"
+            "type": {
+              "option": "pubkey"
+            }
           },
           {
             "name": "reinsurer_confirmed",
@@ -852,10 +850,18 @@
           },
           {
             "name": "reinsurer_pool_wallet",
-            "type": "pubkey"
+            "type": {
+              "option": "pubkey"
+            }
           },
           {
             "name": "reinsurer_deposit_wallet",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "leader_pool_wallet",
             "type": "pubkey"
           },
           {

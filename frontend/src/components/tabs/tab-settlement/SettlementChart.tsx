@@ -2,21 +2,25 @@ import { useEffect, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardBody } from '@/components/common';
 import { Chart, registerables } from 'chart.js';
 import { useTranslation } from 'react-i18next';
+import { useProtocolStore } from '@/store/useProtocolStore';
 import { useSettlementData } from '@/hooks/useSettlementData';
 
 Chart.register(...registerables);
 
 export function SettlementChart() {
   const { t, i18n: { language } } = useTranslation();
+  const { participants, reinsurer } = useProtocolStore();
   const { settledAcc: acc } = useSettlementData();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
 
   const rows = [
     { label: t('settle.party.leader'), net: acc.leaderPrem - acc.leaderClaim },
-    { label: t('settle.party.partA'), net: acc.partAPrem - acc.partAClaim },
-    { label: t('settle.party.partB'), net: acc.partBPrem - acc.partBClaim },
-    { label: t('settle.party.reinsurer'), net: acc.reinPrem - acc.reinClaim },
+    ...participants.map((p, i) => ({
+      label: p.name || `${t('settle.party.participant')} ${i + 1}`,
+      net: (acc.participantPrems[i] ?? 0) - (acc.participantClaims[i] ?? 0),
+    })),
+    ...(reinsurer.enabled ? [{ label: t('settle.party.reinsurer'), net: acc.reinPrem - acc.reinClaim }] : []),
   ];
 
   useEffect(() => {
@@ -58,7 +62,7 @@ export function SettlementChart() {
     });
 
     return () => { chartRef.current?.destroy(); chartRef.current = null; };
-  }, [acc, language]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [acc, participants, reinsurer.enabled, language]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <Card>

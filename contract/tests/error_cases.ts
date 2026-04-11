@@ -60,13 +60,17 @@ describe("error_cases", () => {
   /** Active 상태의 Master 생성 (단일 참여사=payer) */
   async function createActiveMaster(masterId: anchor.BN) {
     const reinsurer = Keypair.generate();
+    const participant = Keypair.generate();
     await airdrop(reinsurer.publicKey);
+    await airdrop(participant.publicKey);
     const pda = masterPda(masterId);
 
     const leaderDeposit    = await createAccount(connection, payer, mint, pda, Keypair.generate());
     const reinsurerPool    = await createAccount(connection, payer, mint, pda, Keypair.generate());
     const reinsurerDeposit = await createAccount(connection, payer, mint, pda, Keypair.generate());
     const leaderPool       = await createAccount(connection, payer, mint, pda, Keypair.generate());
+    const participantPool  = await createAccount(connection, payer, mint, pda, Keypair.generate());
+    const participantDeposit = await createAccount(connection, payer, mint, participant.publicKey);
     const now = Math.floor(Date.now() / 1000);
 
     await program.methods
@@ -79,9 +83,10 @@ describe("error_cases", () => {
         payoutDelay3H: new anchor.BN(0),
         payoutDelay4To5H: new anchor.BN(0),
         payoutDelay6HOrCancelled: new anchor.BN(5_000_000),
+        leaderShareBps: 5_000,
         cededRatioBps: 0,
         reinsCommissionBps: 0,
-        participants: [{ insurer: payer.publicKey, shareBps: 10_000 }],
+        participants: [{ insurer: participant.publicKey, shareBps: 5_000 }],
         oracleFeed: PublicKey.default,
       })
       .accountsPartial({
@@ -96,11 +101,16 @@ describe("error_cases", () => {
       .registerParticipantWallets()
       .accounts({ insurer: payer.publicKey, masterPolicy: pda, poolWallet: leaderPool, depositWallet: leaderDeposit })
       .rpc();
+    await program.methods
+      .registerParticipantWallets()
+      .accounts({ insurer: participant.publicKey, masterPolicy: pda, poolWallet: participantPool, depositWallet: participantDeposit })
+      .signers([participant])
+      .rpc();
     await program.methods.confirmMaster(0).accounts({ actor: payer.publicKey, masterPolicy: pda }).rpc();
-    await program.methods.confirmMaster(1).accounts({ actor: reinsurer.publicKey, masterPolicy: pda }).signers([reinsurer]).rpc();
+    await program.methods.confirmMaster(0).accounts({ actor: participant.publicKey, masterPolicy: pda }).signers([participant]).rpc();
     await program.methods.activateMaster().accounts({ operator: payer.publicKey, masterPolicy: pda }).rpc();
 
-    return { pda, leaderDeposit, reinsurerDeposit, leaderPool, reinsurer };
+    return { pda, leaderDeposit, reinsurerDeposit, leaderPool, participantPool, participantDeposit, reinsurer };
   }
 
   before(async () => {
@@ -126,10 +136,10 @@ describe("error_cases", () => {
             premiumPerPolicy: new anchor.BN(1_000_000),
             payoutDelay2H: new anchor.BN(0), payoutDelay3H: new anchor.BN(0),
             payoutDelay4To5H: new anchor.BN(0), payoutDelay6HOrCancelled: new anchor.BN(0),
+            leaderShareBps: 5_000,
             cededRatioBps: 0, reinsCommissionBps: 0,
             // 합계 = 9000 (≠ 10000)
             participants: [
-              { insurer: payer.publicKey, shareBps: 5_000 },
               { insurer: Keypair.generate().publicKey, shareBps: 4_000 },
             ],
             oracleFeed: PublicKey.default,
@@ -147,7 +157,7 @@ describe("error_cases", () => {
       }
     });
 
-    it("rejects when leader is not in the participants list", async () => {
+    it("rejects when leader is included in the participants list", async () => {
       const pda = masterPda(new anchor.BN(201));
       const leaderDeposit    = await createAccount(connection, payer, mint, pda, Keypair.generate());
       const reinsurerPool    = await createAccount(connection, payer, mint, pda, Keypair.generate());
@@ -164,9 +174,12 @@ describe("error_cases", () => {
             premiumPerPolicy: new anchor.BN(1_000_000),
             payoutDelay2H: new anchor.BN(0), payoutDelay3H: new anchor.BN(0),
             payoutDelay4To5H: new anchor.BN(0), payoutDelay6HOrCancelled: new anchor.BN(0),
+            leaderShareBps: 5_000,
             cededRatioBps: 0, reinsCommissionBps: 0,
-            // payer(leader)가 포함되지 않음
-            participants: [{ insurer: stranger.publicKey, shareBps: 10_000 }],
+            participants: [
+              { insurer: payer.publicKey, shareBps: 5_000 },
+              { insurer: stranger.publicKey, shareBps: 5_000 },
+            ],
             oracleFeed: PublicKey.default,
           })
           .accountsPartial({
@@ -206,8 +219,9 @@ describe("error_cases", () => {
           premiumPerPolicy: new anchor.BN(1_000_000),
           payoutDelay2H: new anchor.BN(0), payoutDelay3H: new anchor.BN(0),
           payoutDelay4To5H: new anchor.BN(0), payoutDelay6HOrCancelled: new anchor.BN(5_000_000),
+          leaderShareBps: 5_000,
           cededRatioBps: 0, reinsCommissionBps: 0,
-          participants: [{ insurer: payer.publicKey, shareBps: 10_000 }],
+          participants: [{ insurer: reinsurer.publicKey, shareBps: 5_000 }],
           oracleFeed: PublicKey.default,
         })
         .accountsPartial({
@@ -266,13 +280,17 @@ describe("error_cases", () => {
   describe("activateMaster errors", () => {
     it("rejects activation when not all participants have confirmed", async () => {
       const reinsurer = Keypair.generate();
+      const participantA = Keypair.generate();
       await airdrop(reinsurer.publicKey);
+      await airdrop(participantA.publicKey);
       const masterId = new anchor.BN(220);
       const pda      = masterPda(masterId);
       const leaderDeposit    = await createAccount(connection, payer, mint, pda, Keypair.generate());
       const reinsurerPool    = await createAccount(connection, payer, mint, pda, Keypair.generate());
       const reinsurerDeposit = await createAccount(connection, payer, mint, pda, Keypair.generate());
       const leaderPool       = await createAccount(connection, payer, mint, pda, Keypair.generate());
+      const aPool            = await createAccount(connection, payer, mint, pda, Keypair.generate());
+      const aDeposit         = await createAccount(connection, payer, mint, participantA.publicKey);
       const now = Math.floor(Date.now() / 1000);
 
       await program.methods
@@ -283,8 +301,9 @@ describe("error_cases", () => {
           premiumPerPolicy: new anchor.BN(1_000_000),
           payoutDelay2H: new anchor.BN(0), payoutDelay3H: new anchor.BN(0),
           payoutDelay4To5H: new anchor.BN(0), payoutDelay6HOrCancelled: new anchor.BN(5_000_000),
+          leaderShareBps: 5_000,
           cededRatioBps: 0, reinsCommissionBps: 0,
-          participants: [{ insurer: payer.publicKey, shareBps: 10_000 }],
+          participants: [{ insurer: participantA.publicKey, shareBps: 5_000 }],
           oracleFeed: PublicKey.default,
         })
         .accountsPartial({
@@ -295,13 +314,17 @@ describe("error_cases", () => {
         })
         .rpc();
 
-      // registerParticipantWallets + confirmMaster(0) 완료, 但 confirmMaster(1)은 미완
+      // leader만 등록/승인, participantA는 미승인 상태로 남겨 activation 실패를 확인한다.
       await program.methods
         .registerParticipantWallets()
         .accounts({ insurer: payer.publicKey, masterPolicy: pda, poolWallet: leaderPool, depositWallet: leaderDeposit })
         .rpc();
+      await program.methods
+        .registerParticipantWallets()
+        .accounts({ insurer: participantA.publicKey, masterPolicy: pda, poolWallet: aPool, depositWallet: aDeposit })
+        .signers([participantA])
+        .rpc();
       await program.methods.confirmMaster(0).accounts({ actor: payer.publicKey, masterPolicy: pda }).rpc();
-      // reinsurer confirm 생략
 
       try {
         await program.methods.activateMaster().accounts({ operator: payer.publicKey, masterPolicy: pda }).rpc();
@@ -317,12 +340,12 @@ describe("error_cases", () => {
   describe("resolveFlightDelay errors", () => {
     let pda: PublicKey;
     let flightPolicyPda: PublicKey;
-    let leaderDeposit: PublicKey;
+    let leaderPool: PublicKey;
 
     before(async () => {
-      const { pda: masterPolicyPda, leaderDeposit: ld } = await createActiveMaster(new anchor.BN(230));
+      const { pda: masterPolicyPda, leaderPool: lp } = await createActiveMaster(new anchor.BN(230));
       pda = masterPolicyPda;
-      leaderDeposit = ld;
+      leaderPool = lp;
 
       const childPolicyId = new anchor.BN(1);
       flightPolicyPda = flightPda(pda, childPolicyId);
@@ -336,7 +359,7 @@ describe("error_cases", () => {
         })
         .accountsPartial({
           creator: payer.publicKey, masterPolicy: pda, flightPolicy: flightPolicyPda,
-          payerToken, leaderDepositToken: leaderDeposit,
+          payerToken, leaderPoolToken: leaderPool,
           tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
         })
         .rpc();
@@ -382,7 +405,7 @@ describe("error_cases", () => {
 
   describe("settleFlightClaim errors", () => {
     it("rejects settleFlightClaim when flight is not Claimable", async () => {
-      const { pda, leaderDeposit, reinsurerDeposit, leaderPool } = await createActiveMaster(new anchor.BN(240));
+      const { pda, leaderDeposit, reinsurerDeposit, leaderPool, participantPool } = await createActiveMaster(new anchor.BN(240));
       const payerToken = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
       await mintTo(connection, payer, mint, payerToken, payer, 1_000_000);
 
@@ -396,7 +419,7 @@ describe("error_cases", () => {
         })
         .accountsPartial({
           creator: payer.publicKey, masterPolicy: pda, flightPolicy: flightPolicyPda,
-          payerToken, leaderDepositToken: leaderDeposit,
+          payerToken, leaderPoolToken: leaderPool,
           tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
         })
         .rpc();
@@ -407,10 +430,10 @@ describe("error_cases", () => {
           .settleFlightClaim()
           .accountsPartial({
             executor: payer.publicKey, masterPolicy: pda, flightPolicy: flightPolicyPda,
-            leaderDepositToken: leaderDeposit, reinsurerPoolToken: reinsurerDeposit,
+            leaderDepositToken: leaderDeposit, leaderPoolToken: leaderPool, reinsurerPoolToken: reinsurerDeposit,
             tokenProgram: TOKEN_PROGRAM_ID,
           })
-          .remainingAccounts([{ pubkey: leaderPool, isWritable: true, isSigner: false }])
+          .remainingAccounts([{ pubkey: participantPool, isWritable: true, isSigner: false }])
           .rpc();
         assert.fail("실패해야 하는데 성공함");
       } catch (err) {
@@ -423,7 +446,7 @@ describe("error_cases", () => {
 
   describe("settleFlightNoClaim errors", () => {
     it("rejects double settlement (AlreadySettled)", async () => {
-      const { pda, leaderDeposit, reinsurerDeposit, leaderPool } = await createActiveMaster(new anchor.BN(250));
+      const { pda, leaderDeposit, leaderPool, reinsurerDeposit, participantDeposit } = await createActiveMaster(new anchor.BN(250));
       const payerToken = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
       await mintTo(connection, payer, mint, payerToken, payer, 1_000_000);
 
@@ -437,7 +460,7 @@ describe("error_cases", () => {
         })
         .accountsPartial({
           creator: payer.publicKey, masterPolicy: pda, flightPolicy: flightPolicyPda,
-          payerToken, leaderDepositToken: leaderDeposit,
+          payerToken, leaderPoolToken: leaderPool,
           tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
         })
         .rpc();
@@ -453,10 +476,10 @@ describe("error_cases", () => {
         .settleFlightNoClaim()
         .accountsPartial({
           executor: payer.publicKey, masterPolicy: pda, flightPolicy: flightPolicyPda,
-          leaderDepositToken: leaderDeposit, reinsurerDepositToken: reinsurerDeposit,
+          leaderPoolToken: leaderPool, leaderDepositToken: leaderDeposit, reinsurerDepositToken: reinsurerDeposit,
           tokenProgram: TOKEN_PROGRAM_ID,
         })
-        .remainingAccounts([{ pubkey: leaderDeposit, isWritable: true, isSigner: false }])
+        .remainingAccounts([{ pubkey: participantDeposit, isWritable: true, isSigner: false }])
         .rpc();
 
       // 두 번째 settle: 첫 settle 후 status=Expired(5)이므로 NoClaim 상태 체크가 먼저 실패
@@ -465,10 +488,11 @@ describe("error_cases", () => {
           .settleFlightNoClaim()
           .accountsPartial({
             executor: payer.publicKey, masterPolicy: pda, flightPolicy: flightPolicyPda,
-            leaderDepositToken: leaderDeposit, reinsurerDepositToken: reinsurerDeposit,
+            leaderPoolToken: leaderPool, leaderDepositToken: leaderDeposit,
+            reinsurerDepositToken: reinsurerDeposit,
             tokenProgram: TOKEN_PROGRAM_ID,
           })
-          .remainingAccounts([{ pubkey: leaderDeposit, isWritable: true, isSigner: false }])
+          .remainingAccounts([{ pubkey: participantDeposit, isWritable: true, isSigner: false }])
           .rpc();
         assert.fail("실패해야 하는데 성공함");
       } catch (err) {

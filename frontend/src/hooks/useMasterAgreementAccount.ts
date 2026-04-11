@@ -29,14 +29,16 @@ interface BackendMasterPolicy {
   payout_delay_3h: number;
   payout_delay_4to5h: number;
   payout_delay_6h_or_cancelled: number;
+  leader_share_bps: number;
   coverage_end_ts: number;
   coverage_start_ts: number;
   leader: string;
   operator: string;
   currency_mint: string;
-  reinsurer: string;
-  reinsurer_pool_wallet: string;
-  reinsurer_deposit_wallet: string;
+  reinsurer: string | null;
+  reinsurer_pool_wallet: string | null;
+  reinsurer_deposit_wallet: string | null;
+  leader_pool_wallet: string;
   leader_deposit_wallet: string;
   created_at: number;
   status_label: string;
@@ -46,6 +48,8 @@ function toMasterPolicyAccount(data: BackendMasterPolicy): MasterPolicyAccount {
   const SYSTEM_PROGRAM = '11111111111111111111111111111111';
   const safePubkey = (s: string | undefined | null) =>
     new PublicKey(s && s.length > 0 ? s : SYSTEM_PROGRAM);
+  const optionalPubkey = (s: string | undefined | null) =>
+    s && s.length > 0 ? new PublicKey(s) : null;
 
   return {
     masterId: fakeBN(data.master_id) as unknown as import('@coral-xyz/anchor').BN,
@@ -61,13 +65,15 @@ function toMasterPolicyAccount(data: BackendMasterPolicy): MasterPolicyAccount {
     payoutDelay6hOrCancelled: fakeBN(
       data.payout_delay_6h_or_cancelled,
     ) as unknown as import('@coral-xyz/anchor').BN,
+    leaderShareBps: data.leader_share_bps,
     cededRatioBps: data.ceded_ratio_bps,
     reinsCommissionBps: data.reins_commission_bps,
     reinsurerEffectiveBps: data.reinsurer_effective_bps,
-    reinsurer: safePubkey(data.reinsurer),
+    reinsurer: optionalPubkey(data.reinsurer),
     reinsurerConfirmed: data.reinsurer_confirmed,
-    reinsurerPoolWallet: safePubkey(data.reinsurer_pool_wallet),
-    reinsurerDepositWallet: safePubkey(data.reinsurer_deposit_wallet),
+    reinsurerPoolWallet: optionalPubkey(data.reinsurer_pool_wallet),
+    reinsurerDepositWallet: optionalPubkey(data.reinsurer_deposit_wallet),
+    leaderPoolWallet: safePubkey(data.leader_pool_wallet),
     leaderDepositWallet: safePubkey(data.leader_deposit_wallet),
     participants: data.participants.map((p) => ({
       insurer: safePubkey(p.insurer),

@@ -9,8 +9,9 @@ export interface SettleFlightClaimInput {
   masterPolicy: PublicKey;
   flightPolicy: PublicKey;
   leaderDepositToken: PublicKey;
+  leaderPoolToken: PublicKey;
   reinsurerPoolToken: PublicKey;
-  /** Pool wallet accounts for each participant (same order as master.participants) */
+  /** Pool wallet accounts for each non-leader participant (same order as master.participants) */
   participantPoolWallets: PublicKey[];
 }
 
@@ -45,6 +46,7 @@ export function useSettleFlight() {
               masterPolicy: input.masterPolicy,
               flightPolicy: input.flightPolicy,
               leaderDepositToken: input.leaderDepositToken,
+              leaderPoolToken: input.leaderPoolToken,
               reinsurerPoolToken: input.reinsurerPoolToken,
               tokenProgram: TOKEN_PROGRAM_ID,
             })
@@ -113,9 +115,10 @@ export function useSettleFlight() {
   const buildSettleAccounts = (master: MasterPolicyAccount) => ({
     participantPoolWallets: master.participants.map((p) => p.poolWallet),
     participantDepositWallets: master.participants.map((p) => p.depositWallet),
+    leaderPoolWallet: master.leaderPoolWallet,
     leaderDepositWallet: master.leaderDepositWallet,
-    reinsurerPoolWallet: master.reinsurerPoolWallet,
-    reinsurerDepositWallet: master.reinsurerDepositWallet,
+    reinsurerPoolWallet: master.reinsurerPoolWallet ?? master.leaderPoolWallet,
+    reinsurerDepositWallet: master.reinsurerDepositWallet ?? master.leaderDepositWallet,
   });
 
   return { settleFlightClaim, settleFlightNoClaim, buildSettleAccounts, loading };

@@ -2,13 +2,16 @@
   "license": "UNLICENSED",
   "scripts": {
     "test": "ts-mocha -p ./tsconfig.json -t 1000000 tests/*.ts",
-    "demo:1-setup":        "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/01-setup.ts",
-    "demo:2-feed-create":  "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/02-feed-create.ts",
+    "demo:1-setup": "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/01-setup.ts",
+    "demo:2-feed-create": "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/02-feed-create.ts",
     "demo:3-master-setup": "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/03-master-setup.ts",
-    "demo:4-flight-create":"ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/04-flight-create.ts",
-    "demo:5a-resolve":     "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/05a-resolve.ts",
-    "demo:5b-claim":       "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/05b-claim.ts",
-    "demo:6-settle":       "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/06-settle.ts"
+    "demo:4-flight-create": "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/04-flight-create.ts",
+    "demo:5a-resolve": "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/05a-resolve.ts",
+    "demo:5b-claim": "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/05b-claim.ts",
+    "demo:6-settle": "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/06-settle.ts",
+    "demo:manual-list": "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/manual-list.ts",
+    "demo:manual-create-flight": "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/manual-create-flight.ts",
+    "demo:manual-settle": "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/manual-settle.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.32.1",
@@ -24,5 +27,6 @@
     "ts-mocha": "^10",
     "ts-node": "^10",
     "typescript": "^5"
-  }
+  },
+  "packageManager": "yarn@4.1.0+sha512.5b7bc055cad63273dda27df1570a5d2eb4a9f03b35b394d3d55393c2a5560a17f5cef30944b11d6a48bcbcfc1c3a26d618aae77044774c529ba36cb771ad5b0f"
 }

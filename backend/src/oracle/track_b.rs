@@ -38,9 +38,10 @@ const FLIGHT_POLICY_STATUS_NO_CLAIM: u8 = 4;
 struct MasterPolicyInfo {
     pub pubkey: Pubkey,
     pub oracle_feed: Pubkey,
+    pub leader_pool_wallet: Pubkey,
     pub leader_deposit_wallet: Pubkey,
-    pub reinsurer_pool_wallet: Pubkey,
-    pub reinsurer_deposit_wallet: Pubkey,
+    pub reinsurer_pool_wallet: Option<Pubkey>,
+    pub reinsurer_deposit_wallet: Option<Pubkey>,
     /// settle_flight_claim remaining_accounts 순서와 일치
     pub participant_pool_wallets: Vec<Pubkey>,
     /// settle_flight_no_claim remaining_accounts 순서와 일치
@@ -228,7 +229,8 @@ async fn do_settle(
                 &master.pubkey,
                 flight_pubkey,
                 &master.leader_deposit_wallet,
-                &master.reinsurer_pool_wallet,
+                &master.leader_pool_wallet,
+                master.reinsurer_pool_wallet.as_ref().unwrap_or(&master.leader_pool_wallet),
                 &master.participant_pool_wallets,
             )?;
             let sig = client
@@ -243,8 +245,12 @@ async fn do_settle(
                 &payer.pubkey(),
                 &master.pubkey,
                 flight_pubkey,
+                &master.leader_pool_wallet,
                 &master.leader_deposit_wallet,
-                &master.reinsurer_deposit_wallet,
+                master
+                    .reinsurer_deposit_wallet
+                    .as_ref()
+                    .unwrap_or(&master.leader_pool_wallet),
                 &master.participant_deposit_wallets,
             )?;
             let sig = client
@@ -273,9 +279,9 @@ fn fetch_master_policy(client: &SolanaClient, master_key: &Pubkey) -> Result<Mas
 ///   discriminator[8], master_id[8], leader[32], operator[32], currency_mint[32],
 ///   coverage_start_ts[8], coverage_end_ts[8], premium_per_policy[8],
 ///   payout_delay_2h[8], payout_delay_3h[8], payout_delay_4to5h[8],
-///   payout_delay_6h_or_cancelled[8], ceded_ratio_bps[2], reins_commission_bps[2],
-///   reinsurer_effective_bps[2], reinsurer[32], reinsurer_confirmed[1],
-///   reinsurer_pool_wallet[32], reinsurer_deposit_wallet[32], leader_deposit_wallet[32],
+///   payout_delay_6h_or_cancelled[8], leader_share_bps[2], ceded_ratio_bps[2], reins_commission_bps[2],
+///   reinsurer_effective_bps[2], reinsurer[1+32?], reinsurer_confirmed[1],
+///   reinsurer_pool_wallet[1+32?], reinsurer_deposit_wallet[1+32?], leader_pool_wallet[32], leader_deposit_wallet[32],
 ///   participants: Vec (u32 len [4] + n × MasterParticipant [99 each]),
 ///   oracle_feed[32], status[1], created_at[8], bump[1]
 ///
@@ -294,13 +300,15 @@ fn parse_master_policy(pubkey: &Pubkey, data: &[u8]) -> Result<MasterPolicyInfo>
     let _payout_delay_3h = read_u64(data, &mut offset)?;
     let _payout_delay_4to5h = read_u64(data, &mut offset)?;
     let _payout_delay_6h_or_cancelled = read_u64(data, &mut offset)?;
+    let _leader_share_bps = read_u16(data, &mut offset)?;
     let _ceded_ratio_bps = read_u16(data, &mut offset)?;
     let _reins_commission_bps = read_u16(data, &mut offset)?;
     let _reinsurer_effective_bps = read_u16(data, &mut offset)?;
-    let _reinsurer = read_pubkey(data, &mut offset)?;
+    let _reinsurer = read_optional_pubkey(data, &mut offset)?;
     let _reinsurer_confirmed = read_u8(data, &mut offset)?;
-    let reinsurer_pool_wallet = read_pubkey(data, &mut offset)?;
-    let reinsurer_deposit_wallet = read_pubkey(data, &mut offset)?;
+    let reinsurer_pool_wallet = read_optional_pubkey(data, &mut offset)?;
+    let reinsurer_deposit_wallet = read_optional_pubkey(data, &mut offset)?;
+    let leader_pool_wallet = read_pubkey(data, &mut offset)?;
     let leader_deposit_wallet = read_pubkey(data, &mut offset)?;
 
     // Vec<MasterParticipant>: borsh 직렬화는 u32 길이 접두사 + 요소 배열
@@ -330,6 +338,7 @@ fn parse_master_policy(pubkey: &Pubkey, data: &[u8]) -> Result<MasterPolicyInfo>
     Ok(MasterPolicyInfo {
         pubkey: *pubkey,
         oracle_feed,
+        leader_pool_wallet,
         leader_deposit_wallet,
         reinsurer_pool_wallet,
         reinsurer_deposit_wallet,
@@ -390,6 +399,7 @@ fn build_settle_flight_claim_ix(
     master_policy: &Pubkey,
     flight_policy: &Pubkey,
     leader_deposit_wallet: &Pubkey,
+    leader_pool_wallet: &Pubkey,
     reinsurer_pool_wallet: &Pubkey,
     participant_pool_wallets: &[Pubkey],
 ) -> Result<Instruction> {
@@ -399,6 +409,7 @@ fn build_settle_flight_claim_ix(
         AccountMeta::new_readonly(*master_policy, false),
         AccountMeta::new(*flight_policy, false),
         AccountMeta::new(*leader_deposit_wallet, false),
+        AccountMeta::new(*leader_pool_wallet, false),
         AccountMeta::new(*reinsurer_pool_wallet, false),
         AccountMeta::new_readonly(spl_token_program_id(), false),
     ];
@@ -418,15 +429,17 @@ fn build_settle_flight_claim_ix(
 ///   [0] executor               (signer)
 ///   [1] master_policy           (readonly)
 ///   [2] flight_policy           (mut)
-///   [3] leader_deposit_token    (mut)
-///   [4] reinsurer_deposit_token (mut)
-///   [5] token_program           (readonly)
+///   [3] leader_pool_token       (mut)
+///   [4] leader_deposit_token    (mut)
+///   [5] reinsurer_deposit_token (mut)
+///   [6] token_program           (readonly)
 ///   remaining: participant deposit_wallets (mut) — master.participants 순서와 동일
 fn build_settle_flight_no_claim_ix(
     program_id: &Pubkey,
     executor: &Pubkey,
     master_policy: &Pubkey,
     flight_policy: &Pubkey,
+    leader_pool_wallet: &Pubkey,
     leader_deposit_wallet: &Pubkey,
     reinsurer_deposit_wallet: &Pubkey,
     participant_deposit_wallets: &[Pubkey],
@@ -436,6 +449,7 @@ fn build_settle_flight_no_claim_ix(
         AccountMeta::new_readonly(*executor, true),
         AccountMeta::new_readonly(*master_policy, false),
         AccountMeta::new(*flight_policy, false),
+        AccountMeta::new(*leader_pool_wallet, false),
         AccountMeta::new(*leader_deposit_wallet, false),
         AccountMeta::new(*reinsurer_deposit_wallet, false),
         AccountMeta::new_readonly(spl_token_program_id(), false),
@@ -453,4 +467,13 @@ fn build_settle_flight_no_claim_ix(
 /// SPL Token 프로그램 ID (모든 클러스터 공통)
 fn spl_token_program_id() -> Pubkey {
     Pubkey::from_str("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA").expect("valid pubkey")
+}
+
+fn read_optional_pubkey(data: &[u8], offset: &mut usize) -> Result<Option<Pubkey>> {
+    let tag = read_u8(data, offset)?;
+    match tag {
+        0 => Ok(None),
+        1 => Ok(Some(read_pubkey(data, offset)?)),
+        _ => anyhow::bail!("invalid Option<Pubkey> tag: {tag}"),
+    }
 }

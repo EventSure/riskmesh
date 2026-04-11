@@ -31,9 +31,17 @@ export function PoolStatus() {
     try {
       let total = 0;
       // reinsurer pool 잔액
+      if (masterData.reinsurerPoolWallet) {
+        try {
+          const reinBal = await connection.getTokenAccountBalance(masterData.reinsurerPoolWallet);
+          total += Number(reinBal.value.uiAmount ?? 0);
+        } catch { /* not funded yet */ }
+      }
+
+      // leader pool 잔액
       try {
-        const reinBal = await connection.getTokenAccountBalance(masterData.reinsurerPoolWallet);
-        total += Number(reinBal.value.uiAmount ?? 0);
+        const leaderBal = await connection.getTokenAccountBalance(masterData.leaderPoolWallet);
+        total += Number(leaderBal.value.uiAmount ?? 0);
       } catch { /* not funded yet */ }
 
       // 각 참여사 pool 잔액

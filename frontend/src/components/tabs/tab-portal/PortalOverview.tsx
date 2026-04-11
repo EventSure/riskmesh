@@ -55,7 +55,7 @@ export function PortalOverview({ participantInfo, allRoles, masterPDA }: PortalO
   const [fundLoading, setFundLoading] = useState(false);
 
   const roles = allRoles && allRoles.length > 0 ? allRoles : [participantInfo];
-  // Sum shareBps across participant roles only (partA/partB/rein) — leader 10000 is not additive
+  // Sum shareBps across non-leader roles (participant/rein) — leader 10000 is not additive
   const participantRoles = roles.filter(r => r.role !== 'leader');
   const effectiveRoles = participantRoles.length > 0 ? participantRoles : roles;
   const totalShareBps = effectiveRoles.reduce((sum, r) => sum + r.shareBps, 0);
@@ -88,6 +88,10 @@ export function PortalOverview({ participantInfo, allRoles, masterPDA }: PortalO
       const walletKey = wallet.publicKey;
       let myPoolWallet: PublicKey | null = null;
 
+      if (masterData.leader.equals(walletKey) && masterData.leaderPoolWallet) {
+        myPoolWallet = masterData.leaderPoolWallet;
+      }
+
       // participants 배열에서 찾기
       for (const p of masterData.participants) {
         if (p.insurer.equals(walletKey) && p.poolWallet) {
@@ -96,7 +100,7 @@ export function PortalOverview({ participantInfo, allRoles, masterPDA }: PortalO
         }
       }
       // reinsurer인 경우
-      if (!myPoolWallet && masterData.reinsurer.equals(walletKey)) {
+      if (!myPoolWallet && masterData.reinsurer?.equals(walletKey)) {
         myPoolWallet = masterData.reinsurerPoolWallet;
       }
 
