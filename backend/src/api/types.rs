@@ -63,15 +63,6 @@ pub(super) struct CreateFlightPolicyResponse {
     pub tx_signature: String,
 }
 
-#[derive(Serialize)]
-pub(super) struct FirebaseTestDocumentResponse {
-    pub firebase_saved: bool,
-    pub collection_id: String,
-    pub document_id: String,
-    pub firebase_document_path: String,
-    pub auth_principal: String,
-}
-
 #[derive(BorshSerialize)]
 pub(super) struct CreateFlightPolicyParamsWire {
     pub child_policy_id: u64,
@@ -84,6 +75,8 @@ pub(super) struct CreateFlightPolicyParamsWire {
 #[derive(Deserialize, Default)]
 pub(super) struct MasterPoliciesQuery {
     pub leader: Option<String>,
+    /// Filter by any role (leader, participant, or reinsurer)
+    pub wallet: Option<String>,
 }
 
 #[derive(Deserialize, Default)]

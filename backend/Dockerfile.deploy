@@ -1,17 +1,4 @@
-FROM rust:1.88-bookworm AS builder
-
-WORKDIR /app
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends pkg-config libssl-dev ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY Cargo.toml Cargo.lock ./
-COPY src ./src
-
-RUN cargo build --release --locked --bin oracle-daemon
-
-FROM debian:bookworm-slim AS runtime
+FROM debian:bookworm-slim
 
 WORKDIR /app
 
@@ -22,15 +9,14 @@ RUN apt-get update \
     && mkdir -p /app/data /run/secrets/firebase /run/secrets/solana \
     && chown -R appuser:appuser /app /run/secrets
 
-COPY --from=builder /app/target/release/oracle-daemon /usr/local/bin/oracle-daemon
+COPY oracle-daemon /usr/local/bin/oracle-daemon
+RUN chmod +x /usr/local/bin/oracle-daemon
 
 ENV RUST_LOG=info
 ENV WEB_BIND_ADDR=0.0.0.0:3000
 ENV LEADER_KEYPAIR_PATH=/run/secrets/solana/id.json
-# DB_BACKEND=sqlite (default) or firebase
 ENV DB_BACKEND=sqlite
 ENV DATABASE_PATH=/app/data/riskmesh.db
-# Firebase 사용 시에만 필요
 ENV FIREBASE_SERVICE_ACCOUNT_PATH=/run/secrets/firebase/service-account.json
 
 VOLUME ["/app/data"]

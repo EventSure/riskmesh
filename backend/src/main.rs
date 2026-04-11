@@ -1,5 +1,6 @@
 mod api;
 mod config;
+mod db;
 mod events;
 mod firebase;
 mod flight_api;
@@ -12,30 +13,46 @@ use anyhow::Result;
 use std::sync::Arc;
 use tracing_subscriber::EnvFilter;
 
+use crate::api::repository::PolicyRepository;
+use crate::config::DbBackend;
+
 #[tokio::main]
 async fn main() -> Result<()> {
-    // 로깅 초기화 (RUST_LOG 환경변수로 레벨 제어, 기본 info)
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
         )
         .init();
 
-    // 설정 로드
     let config = Arc::new(config::Config::from_env()?);
     tracing::info!(
-        "RiskMesh Backend 시작\n  RPC: {}\n  Program: {}\n  Leader: {}\n  Web: {}",
+        "RiskMesh Backend 시작\n  RPC: {}\n  Program: {}\n  Leader: {}\n  Web: {}\n  DB backend: {:?}",
         config.rpc_url,
         config.program_id,
         config.leader_pubkey,
-        config.web_bind_addr
+        config.web_bind_addr,
+        config.db_backend,
     );
+
+    let repository: Arc<dyn PolicyRepository> = match config.db_backend {
+        DbBackend::Sqlite => {
+            tracing::info!("[db] SQLite 경로: {}", config.database_path);
+            Arc::new(db::SqliteRepository::open(&config.database_path)?)
+        }
+        DbBackend::Firebase => {
+            tracing::info!("[db] Firebase Firestore 사용");
+            Arc::new(firebase::FirebaseRepository::from_env()?)
+        }
+    };
 
     let event_bus = Arc::new(events::EventBus::new(256));
 
-    // 스케줄러와 API 서버를 함께 실행한다.
-    let _scheduler_task = tokio::spawn(scheduler::start(config.clone(), event_bus.clone()));
-    api::start(config.clone(), event_bus).await?;
+    let _scheduler_task = tokio::spawn(scheduler::start(
+        config.clone(),
+        repository.clone(),
+        event_bus.clone(),
+    ));
+    api::start(config.clone(), repository, event_bus).await?;
 
     Ok(())
 }

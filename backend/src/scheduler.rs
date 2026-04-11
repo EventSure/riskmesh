@@ -2,15 +2,18 @@ use anyhow::{Context, Result};
 use std::sync::Arc;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
-use crate::{api::repository::FirebaseRepository, config::Config, events::EventBus};
+use crate::{api::repository::PolicyRepository, config::Config, events::EventBus};
 
 /// 스케줄러를 시작하고 cron 표현식에 따라 오라클 체크 잡을 등록한다.
-pub async fn start(config: Arc<Config>, event_bus: Arc<EventBus>) -> Result<()> {
+pub async fn start(
+    config: Arc<Config>,
+    repository: Arc<dyn PolicyRepository>,
+    event_bus: Arc<EventBus>,
+) -> Result<()> {
     let sched = JobScheduler::new().await?;
-    let repository = Arc::new(FirebaseRepository::from_env()?);
 
-    if let Err(e) = run_firebase_sync(&config, &repository, &event_bus).await {
-        tracing::error!("[scheduler] 초기 Firebase 동기화 실패: {e:#}");
+    if let Err(e) = run_db_sync(&config, &*repository, &event_bus).await {
+        tracing::error!("[scheduler] 초기 DB 동기화 실패: {e:#}");
     }
 
     let cfg = config.clone();
@@ -26,13 +29,13 @@ pub async fn start(config: Arc<Config>, event_bus: Arc<EventBus>) -> Result<()> 
     let sync_cfg = config.clone();
     let sync_repo = repository.clone();
     let sync_events = event_bus.clone();
-    let sync_job = Job::new_async(config.firebase_sync_cron.as_str(), move |_uuid, _lock| {
+    let sync_job = Job::new_async(config.db_sync_cron.as_str(), move |_uuid, _lock| {
         let sync_cfg = sync_cfg.clone();
         let sync_repo = sync_repo.clone();
         let sync_events = sync_events.clone();
         Box::pin(async move {
-            if let Err(e) = run_firebase_sync(&sync_cfg, &sync_repo, &sync_events).await {
-                tracing::error!("[scheduler] Firebase 동기화 실패: {e:#}");
+            if let Err(e) = run_db_sync(&sync_cfg, &*sync_repo, &sync_events).await {
+                tracing::error!("[scheduler] DB 동기화 실패: {e:#}");
             }
         })
     })?;
@@ -41,20 +44,19 @@ pub async fn start(config: Arc<Config>, event_bus: Arc<EventBus>) -> Result<()> 
     sched.add(sync_job).await?;
     sched.start().await?;
     tracing::info!(
-        "[scheduler] 시작. oracle_cron='{}' firebase_sync_cron='{}'",
+        "[scheduler] 시작. oracle_cron='{}' db_sync_cron='{}'",
         config.oracle_check_cron,
-        config.firebase_sync_cron
+        config.db_sync_cron
     );
 
-    // 스케줄러가 계속 실행되도록 대기
     loop {
         tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
     }
 }
 
-async fn run_firebase_sync(
+async fn run_db_sync(
     config: &Config,
-    repository: &FirebaseRepository,
+    repository: &dyn PolicyRepository,
     event_bus: &EventBus,
 ) -> Result<()> {
     use crate::{
@@ -62,11 +64,19 @@ async fn run_firebase_sync(
         solana::client::SolanaClient,
     };
 
-    let client = SolanaClient::new(&config.rpc_url);
-    let master_policies = scan_master_policies(&client, &config.program_id)
-        .context("MasterPolicy RPC 스캔 실패")?;
-    let flight_policies = scan_flight_policies(&client, &config.program_id)
-        .context("FlightPolicy RPC 스캔 실패")?;
+    // RpcClient는 blocking HTTP를 사용하므로 spawn_blocking으로 tokio thread를 보호한다.
+    let rpc_url = config.rpc_url.clone();
+    let program_id = config.program_id;
+    let (master_policies, flight_policies) = tokio::task::spawn_blocking(move || {
+        let client = SolanaClient::new(&rpc_url);
+        let master = scan_master_policies(&client, &program_id)
+            .context("MasterPolicy RPC 스캔 실패")?;
+        let flight = scan_flight_policies(&client, &program_id)
+            .context("FlightPolicy RPC 스캔 실패")?;
+        Ok::<_, anyhow::Error>((master, flight))
+    })
+    .await
+    .context("RPC 스캔 spawn_blocking 실패")??;
 
     event_bus
         .publish_policy_updates(&master_policies, &flight_policies)
@@ -75,10 +85,10 @@ async fn run_firebase_sync(
     let summary = repository
         .sync_policy_snapshots(config, &master_policies, &flight_policies)
         .await
-        .context("Firebase 정책 스냅샷 저장 실패")?;
+        .context("정책 스냅샷 저장 실패")?;
 
     tracing::info!(
-        "[scheduler] Firebase 동기화 완료. master_policies={} flight_policies={} synced_at={}",
+        "[scheduler] DB 동기화 완료. master_policies={} flight_policies={} synced_at={}",
         summary.master_policy_count,
         summary.flight_policy_count,
         summary.synced_at
