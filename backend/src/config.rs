@@ -11,8 +11,16 @@ pub struct Config {
     pub aviationstack_api_key: String,
     pub switchboard_queue: Pubkey,
     pub oracle_check_cron: String,
-    pub firebase_sync_cron: String,
+    pub db_sync_cron: String,
+    pub db_backend: DbBackend,
+    pub database_path: String,
     pub web_bind_addr: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum DbBackend {
+    Sqlite,
+    Firebase,
 }
 
 impl Config {
@@ -34,7 +42,12 @@ impl Config {
             switchboard_queue: pubkey_env("SWITCHBOARD_QUEUE")
                 .context("SWITCHBOARD_QUEUE 환경변수 필요")?,
             oracle_check_cron: env("ORACLE_CHECK_CRON", "0 */15 * * * *"),
-            firebase_sync_cron: env("FIREBASE_SYNC_CRON", "0/30 * * * * *"),
+            db_sync_cron: env("DB_SYNC_CRON", "0/30 * * * * *"),
+            db_backend: match env("DB_BACKEND", "sqlite").as_str() {
+                "firebase" => DbBackend::Firebase,
+                _ => DbBackend::Sqlite,
+            },
+            database_path: env("DATABASE_PATH", "data/riskmesh.db"),
             web_bind_addr: env("WEB_BIND_ADDR", "0.0.0.0:3000"),
         })
     }
