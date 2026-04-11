@@ -10,9 +10,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::{
     api::repository::{PolicyRepository, SyncSummary},
     config::Config,
-    oracle::program_accounts::{FlightPolicyInfo, MasterPolicyInfo},
+    oracle::program_accounts::{FlightPolicyInfo, MasterAgreementInfo},
 };
 
+// TODO: persisted collection names are consumed outside backend; rename with frontend/data migration work.
 const MASTER_POLICIES: &str = "master_policies";
 const FLIGHT_POLICIES: &str = "flight_policies";
 const SYNC_METADATA: &str = "sync_metadata";
@@ -125,25 +126,26 @@ impl SqliteRepository {
 
 #[async_trait]
 impl PolicyRepository for SqliteRepository {
-    async fn sync_policy_snapshots(
+    async fn sync_agreement_snapshots(
         &self,
         config: &Config,
-        master_policies: &[MasterPolicyInfo],
+        master_agreements: &[MasterAgreementInfo],
         flight_policies: &[FlightPolicyInfo],
     ) -> Result<SyncSummary> {
         let synced_at = current_unix_seconds()?;
 
         let repo = self.clone();
-        let master_policies = master_policies.to_vec();
+        let master_agreements = master_agreements.to_vec();
         let flight_policies = flight_policies.to_vec();
         let program_id = config.program_id.to_string();
         let rpc_url = config.rpc_url.clone();
 
         tokio::task::spawn_blocking(move || {
-            for mp in &master_policies {
-                let payload = serde_json::to_string(mp).context("MasterPolicy JSON 직렬화 실패")?;
-                repo.upsert(MASTER_POLICIES, &mp.pubkey, &payload)
-                    .with_context(|| format!("MasterPolicy 저장 실패: {}", mp.pubkey))?;
+            for agreement in &master_agreements {
+                let payload =
+                    serde_json::to_string(agreement).context("MasterAgreement JSON 직렬화 실패")?;
+                repo.upsert(MASTER_POLICIES, &agreement.pubkey, &payload)
+                    .with_context(|| format!("MasterAgreement 저장 실패: {}", agreement.pubkey))?;
             }
             for fp in &flight_policies {
                 let payload = serde_json::to_string(fp).context("FlightPolicy JSON 직렬화 실패")?;
@@ -155,14 +157,14 @@ impl PolicyRepository for SqliteRepository {
                 "program_id": program_id,
                 "rpc_url": rpc_url,
                 "synced_at": synced_at,
-                "master_policy_count": master_policies.len(),
+                "master_policy_count": master_agreements.len(),
                 "flight_policy_count": flight_policies.len(),
             });
             repo.upsert(SYNC_METADATA, "current", &metadata.to_string())
                 .context("동기화 메타데이터 저장 실패")?;
             Ok(SyncSummary {
                 synced_at,
-                master_policy_count: master_policies.len(),
+                master_agreement_count: master_agreements.len(),
                 flight_policy_count: flight_policies.len(),
             })
         })
@@ -170,22 +172,22 @@ impl PolicyRepository for SqliteRepository {
         .context("spawn_blocking 실패")?
     }
 
-    async fn list_master_policies(&self) -> Result<Vec<MasterPolicyInfo>> {
+    async fn list_master_agreements(&self) -> Result<Vec<MasterAgreementInfo>> {
         let repo = self.clone();
         tokio::task::spawn_blocking(move || {
             repo.list_parsed(MASTER_POLICIES)
-                .context("MasterPolicy 목록 조회 실패")
+                .context("MasterAgreement 목록 조회 실패")
         })
         .await
         .context("spawn_blocking 실패")?
     }
 
-    async fn get_master_policy(&self, pubkey: &str) -> Result<Option<MasterPolicyInfo>> {
+    async fn get_master_agreement(&self, pubkey: &str) -> Result<Option<MasterAgreementInfo>> {
         let repo = self.clone();
         let pubkey = pubkey.to_string();
         tokio::task::spawn_blocking(move || {
             repo.get_parsed(MASTER_POLICIES, &pubkey)
-                .with_context(|| format!("MasterPolicy 조회 실패: {pubkey}"))
+                .with_context(|| format!("MasterAgreement 조회 실패: {pubkey}"))
         })
         .await
         .context("spawn_blocking 실패")?

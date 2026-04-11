@@ -60,17 +60,17 @@ async fn run_db_sync(
     event_bus: &EventBus,
 ) -> Result<()> {
     use crate::{
-        oracle::program_accounts::{scan_flight_policies, scan_master_policies},
+        oracle::program_accounts::{scan_flight_policies, scan_master_agreements},
         solana::client::SolanaClient,
     };
 
     // RpcClient는 blocking HTTP를 사용하므로 spawn_blocking으로 tokio thread를 보호한다.
     let rpc_url = config.rpc_url.clone();
     let program_id = config.program_id;
-    let (master_policies, flight_policies) = tokio::task::spawn_blocking(move || {
+    let (master_agreements, flight_policies) = tokio::task::spawn_blocking(move || {
         let client = SolanaClient::new(&rpc_url);
-        let master = scan_master_policies(&client, &program_id)
-            .context("MasterPolicy RPC 스캔 실패")?;
+        let master = scan_master_agreements(&client, &program_id)
+            .context("MasterAgreement RPC 스캔 실패")?;
         let flight = scan_flight_policies(&client, &program_id)
             .context("FlightPolicy RPC 스캔 실패")?;
         Ok::<_, anyhow::Error>((master, flight))
@@ -79,17 +79,17 @@ async fn run_db_sync(
     .context("RPC 스캔 spawn_blocking 실패")??;
 
     event_bus
-        .publish_policy_updates(&master_policies, &flight_policies)
+        .publish_agreement_updates(&master_agreements, &flight_policies)
         .await;
 
     let summary = repository
-        .sync_policy_snapshots(config, &master_policies, &flight_policies)
+        .sync_agreement_snapshots(config, &master_agreements, &flight_policies)
         .await
         .context("정책 스냅샷 저장 실패")?;
 
     tracing::info!(
-        "[scheduler] DB 동기화 완료. master_policies={} flight_policies={} synced_at={}",
-        summary.master_policy_count,
+        "[scheduler] DB 동기화 완료. master_agreements={} flight_policies={} synced_at={}",
+        summary.master_agreement_count,
         summary.flight_policy_count,
         summary.synced_at
     );
