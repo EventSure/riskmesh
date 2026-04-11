@@ -10,9 +10,9 @@ use crate::{
 /// 정책 데이터 저장소 추상화.
 /// Firebase, SQLite 등 백엔드를 갈아끼울 수 있다.
 #[async_trait]
-pub(crate) trait PolicyRepository: Send + Sync {
+pub(crate) trait InsuranceRepository: Send + Sync {
     /// 온체인 스냅샷을 저장소에 동기화한다.
-    async fn sync_agreement_snapshots(
+    async fn sync_snapshots(
         &self,
         config: &Config,
         master_agreements: &[MasterAgreementInfo],

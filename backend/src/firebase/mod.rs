@@ -350,18 +350,18 @@ fn default_token_uri() -> String {
     "https://oauth2.googleapis.com/token".to_string()
 }
 
-// ── PolicyRepository 구현 ─────────────────────────────────────────────────
+// ── InsuranceRepository 구현 ──────────────────────────────────────────────
 
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 
 use crate::{
-    api::repository::{PolicyRepository, SyncSummary},
+    api::repository::{InsuranceRepository, SyncSummary},
     config::Config,
     oracle::program_accounts::{FlightPolicyInfo, MasterAgreementInfo},
 };
 
-/// Firebase Firestore 기반 PolicyRepository 구현.
+/// Firebase Firestore 기반 InsuranceRepository 구현.
 #[derive(Clone)]
 pub struct FirebaseRepository {
     client: FirebaseClient,
@@ -408,8 +408,8 @@ impl FirebaseRepository {
 }
 
 #[async_trait]
-impl PolicyRepository for FirebaseRepository {
-    async fn sync_agreement_snapshots(
+impl InsuranceRepository for FirebaseRepository {
+    async fn sync_snapshots(
         &self,
         config: &Config,
         master_agreements: &[MasterAgreementInfo],

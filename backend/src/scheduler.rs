@@ -2,12 +2,12 @@ use anyhow::{Context, Result};
 use std::sync::Arc;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
-use crate::{api::repository::PolicyRepository, config::Config, events::EventBus};
+use crate::{api::repository::InsuranceRepository, config::Config, events::EventBus};
 
 /// 스케줄러를 시작하고 cron 표현식에 따라 오라클 체크 잡을 등록한다.
 pub async fn start(
     config: Arc<Config>,
-    repository: Arc<dyn PolicyRepository>,
+    repository: Arc<dyn InsuranceRepository>,
     event_bus: Arc<EventBus>,
 ) -> Result<()> {
     let sched = JobScheduler::new().await?;
@@ -56,7 +56,7 @@ pub async fn start(
 
 async fn run_db_sync(
     config: &Config,
-    repository: &dyn PolicyRepository,
+    repository: &dyn InsuranceRepository,
     event_bus: &EventBus,
 ) -> Result<()> {
     use crate::{
@@ -83,7 +83,7 @@ async fn run_db_sync(
         .await;
 
     let summary = repository
-        .sync_agreement_snapshots(config, &master_agreements, &flight_policies)
+        .sync_snapshots(config, &master_agreements, &flight_policies)
         .await
         .context("정책 스냅샷 저장 실패")?;
 

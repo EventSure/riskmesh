@@ -13,7 +13,7 @@ use anyhow::Result;
 use std::sync::Arc;
 use tracing_subscriber::EnvFilter;
 
-use crate::api::repository::PolicyRepository;
+use crate::api::repository::InsuranceRepository;
 use crate::config::DbBackend;
 
 #[tokio::main]
@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
         config.db_backend,
     );
 
-    let repository: Arc<dyn PolicyRepository> = match config.db_backend {
+    let repository: Arc<dyn InsuranceRepository> = match config.db_backend {
         DbBackend::Sqlite => {
             tracing::info!("[db] SQLite 경로: {}", config.database_path);
             Arc::new(db::SqliteRepository::open(&config.database_path)?)

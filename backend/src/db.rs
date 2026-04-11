@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::{
-    api::repository::{PolicyRepository, SyncSummary},
+    api::repository::{InsuranceRepository, SyncSummary},
     config::Config,
     oracle::program_accounts::{FlightPolicyInfo, MasterAgreementInfo},
 };
@@ -18,7 +18,7 @@ const MASTER_POLICIES: &str = "master_policies";
 const FLIGHT_POLICIES: &str = "flight_policies";
 const SYNC_METADATA: &str = "sync_metadata";
 
-/// SQLite 기반 PolicyRepository 구현.
+/// SQLite 기반 InsuranceRepository 구현.
 #[derive(Clone)]
 pub struct SqliteRepository {
     conn: Arc<Mutex<Connection>>,
@@ -125,8 +125,8 @@ impl SqliteRepository {
 }
 
 #[async_trait]
-impl PolicyRepository for SqliteRepository {
-    async fn sync_agreement_snapshots(
+impl InsuranceRepository for SqliteRepository {
+    async fn sync_snapshots(
         &self,
         config: &Config,
         master_agreements: &[MasterAgreementInfo],

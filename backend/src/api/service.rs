@@ -18,7 +18,7 @@ use crate::{
 
 use super::{
     client::ProgramClient,
-    repository::PolicyRepository,
+    repository::InsuranceRepository,
     types::{
         CreateFlightPolicyParamsWire, CreateFlightPolicyRequest, CreateFlightPolicyResponse,
         EventsQuery, FlightPoliciesQuery, FlightPoliciesResponse, HealthResponse,
@@ -72,7 +72,7 @@ pub(super) fn stream_events(
 }
 
 pub(super) async fn list_master_agreements(
-    repository: &dyn PolicyRepository,
+    repository: &dyn InsuranceRepository,
     query: &MasterAgreementsQuery,
 ) -> Result<MasterAgreementsResponse> {
     let master_agreements = repository.list_master_agreements().await?;
@@ -112,7 +112,7 @@ pub(super) fn list_master_agreement_accounts(
 }
 
 pub(super) async fn get_master_agreement(
-    repository: &dyn PolicyRepository,
+    repository: &dyn InsuranceRepository,
     master_agreement_pubkey: &str,
 ) -> Result<crate::oracle::program_accounts::MasterAgreementInfo> {
     let master_agreement = repository
@@ -124,7 +124,7 @@ pub(super) async fn get_master_agreement(
 }
 
 pub(super) async fn create_db_test_document(
-    repository: &dyn PolicyRepository,
+    repository: &dyn InsuranceRepository,
 ) -> Result<serde_json::Value> {
     // 간단한 DB 연결 테스트 — list_master_agreements 호출로 확인
     let master_agreements = repository.list_master_agreements().await?;
@@ -136,7 +136,7 @@ pub(super) async fn create_db_test_document(
 }
 
 pub(super) async fn list_flight_policies(
-    repository: &dyn PolicyRepository,
+    repository: &dyn InsuranceRepository,
     query: &FlightPoliciesQuery,
 ) -> Result<FlightPoliciesResponse> {
     let flight_policies = repository.list_flight_policies().await?;
@@ -160,7 +160,7 @@ pub(super) async fn list_flight_policies(
 }
 
 pub(super) async fn get_flight_policy(
-    repository: &dyn PolicyRepository,
+    repository: &dyn InsuranceRepository,
     flight_policy_pubkey: &str,
 ) -> Result<crate::oracle::program_accounts::FlightPolicyInfo> {
     let flight_policy = repository
@@ -172,7 +172,7 @@ pub(super) async fn get_flight_policy(
 }
 
 pub(super) async fn list_flight_policies_by_master_agreement(
-    repository: &dyn PolicyRepository,
+    repository: &dyn InsuranceRepository,
     config: &Config,
     master_agreement_pubkey: &Pubkey,
 ) -> Result<MasterAgreementFlightPoliciesResponse> {
@@ -197,7 +197,7 @@ pub(super) async fn list_flight_policies_by_master_agreement(
 }
 
 pub(super) async fn list_master_agreements_tree(
-    repository: &dyn PolicyRepository,
+    repository: &dyn InsuranceRepository,
     config: &Config,
 ) -> Result<MasterAgreementsTreeResponse> {
     let master_agreements = repository.list_master_agreements().await?;
