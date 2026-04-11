@@ -75,12 +75,19 @@ export function PortalConfirm({ masterPDA, participantInfo, allRoles, onSuccess 
       const sig: string = await prog.methods
         .confirmMaster(ConfirmRole.Reinsurer)
         .accounts({ actor: wallet.publicKey, masterPolicy: masterPDA })
-        .rpc({ commitment: 'processed' });
+        .rpc({ commitment: 'confirmed' });
       setConfirmedLocally(true);
       toast(`${t('portal.confirmSuccess')} TX: ${sig.slice(0, 8)}...`, 's');
       onSuccess?.();
     } catch (err: unknown) {
-      toast(err instanceof Error ? err.message : String(err), 'd');
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.includes('AlreadyProcessed') || message.includes('already been processed')) {
+        setConfirmedLocally(true);
+        toast(t('portal.confirmSuccess'), 's');
+        onSuccess?.();
+        return;
+      }
+      toast(message, 'd');
     } finally {
       setLoading(false);
     }
@@ -122,7 +129,7 @@ export function PortalConfirm({ masterPDA, participantInfo, allRoles, onSuccess 
         }),
         createInitializeAccount3Instruction(poolKp.publicKey, currencyMint, masterPDA),
       );
-      await provider.sendAndConfirm(tx1, [poolKp], { commitment: 'processed' });
+      await provider.sendAndConfirm(tx1, [poolKp], { commitment: 'confirmed' });
 
       // TX2: registerParticipantWallets + confirmMaster
       const regIx = await prog.methods
@@ -141,13 +148,20 @@ export function PortalConfirm({ masterPDA, participantInfo, allRoles, onSuccess 
         .instruction();
 
       const tx2 = new Transaction().add(regIx, confirmIx);
-      const sig = await provider.sendAndConfirm(tx2, [], { commitment: 'processed' });
+      const sig = await provider.sendAndConfirm(tx2, [], { commitment: 'confirmed' });
 
       setConfirmedLocally(true);
       toast(`${t('portal.confirmSuccess')} TX: ${sig.slice(0, 8)}...`, 's');
       onSuccess?.();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
+      // AlreadyProcessed = tx succeeded on first attempt, ignore retry error
+      if (message.includes('AlreadyProcessed') || message.includes('already been processed')) {
+        setConfirmedLocally(true);
+        toast(t('portal.confirmSuccess'), 's');
+        onSuccess?.();
+        return;
+      }
       toast(message, 'd');
     } finally {
       setLoading(false);
