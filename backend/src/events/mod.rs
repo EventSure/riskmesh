@@ -108,3 +108,6 @@ impl EventBus {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;
