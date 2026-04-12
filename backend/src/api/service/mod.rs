@@ -334,3 +334,6 @@ fn message_matches_filter(message: &SseMessage, master_filter: Option<&str>) -> 
         _ => true,
     }
 }
+
+#[cfg(test)]
+mod tests;
