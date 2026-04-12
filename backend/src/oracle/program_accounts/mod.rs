@@ -287,3 +287,6 @@ fn flight_policy_status_label(status: u8) -> &'static str {
         _ => "Unknown",
     }
 }
+
+#[cfg(test)]
+mod tests;

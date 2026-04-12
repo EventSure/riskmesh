@@ -239,7 +239,9 @@ pub fn read_u8(data: &[u8], offset: &mut usize) -> Result<u8> {
 }
 
 pub fn read_u16(data: &[u8], offset: &mut usize) -> Result<u16> {
-    let bytes: [u8; 2] = data[*offset..*offset + 2]
+    let bytes: [u8; 2] = data
+        .get(*offset..*offset + 2)
+        .context("u16 읽기 실패: 범위 초과")?
         .try_into()
         .context("u16 읽기 실패")?;
     *offset += 2;
@@ -247,7 +249,9 @@ pub fn read_u16(data: &[u8], offset: &mut usize) -> Result<u16> {
 }
 
 pub fn read_u64(data: &[u8], offset: &mut usize) -> Result<u64> {
-    let bytes: [u8; 8] = data[*offset..*offset + 8]
+    let bytes: [u8; 8] = data
+        .get(*offset..*offset + 8)
+        .context("u64 읽기 실패: 범위 초과")?
         .try_into()
         .context("u64 읽기 실패")?;
     *offset += 8;
@@ -255,7 +259,9 @@ pub fn read_u64(data: &[u8], offset: &mut usize) -> Result<u64> {
 }
 
 pub fn read_i64(data: &[u8], offset: &mut usize) -> Result<i64> {
-    let bytes: [u8; 8] = data[*offset..*offset + 8]
+    let bytes: [u8; 8] = data
+        .get(*offset..*offset + 8)
+        .context("i64 읽기 실패: 범위 초과")?
         .try_into()
         .context("i64 읽기 실패")?;
     *offset += 8;
@@ -263,7 +269,9 @@ pub fn read_i64(data: &[u8], offset: &mut usize) -> Result<i64> {
 }
 
 pub fn read_pubkey(data: &[u8], offset: &mut usize) -> Result<Pubkey> {
-    let bytes: [u8; 32] = data[*offset..*offset + 32]
+    let bytes: [u8; 32] = data
+        .get(*offset..*offset + 32)
+        .context("Pubkey 읽기 실패: 범위 초과")?
         .try_into()
         .context("Pubkey 읽기 실패")?;
     *offset += 32;
@@ -272,12 +280,16 @@ pub fn read_pubkey(data: &[u8], offset: &mut usize) -> Result<Pubkey> {
 
 pub fn read_string(data: &[u8], offset: &mut usize) -> Result<String> {
     let len = u32::from_le_bytes(
-        data[*offset..*offset + 4]
+        data.get(*offset..*offset + 4)
+            .context("String 길이 읽기 실패: 범위 초과")?
             .try_into()
             .context("String 길이 읽기 실패")?,
     ) as usize;
     *offset += 4;
-    let s = std::str::from_utf8(&data[*offset..*offset + len])
+    let s = std::str::from_utf8(
+        data.get(*offset..*offset + len)
+            .context("String 본문 읽기 실패: 범위 초과")?,
+    )
         .context("String UTF-8 디코딩 실패")?
         .to_string();
     *offset += len;
@@ -301,4 +313,3 @@ pub fn anchor_account_discriminator(name: &str) -> [u8; 8] {
     let result = hasher.finalize();
     result[..8].try_into().expect("sha256 길이 보장")
 }
-
