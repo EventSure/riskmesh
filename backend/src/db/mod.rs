@@ -221,3 +221,6 @@ fn current_unix_seconds() -> Result<u64> {
         .context("시스템 시간이 UNIX_EPOCH보다 이전입니다")?
         .as_secs())
 }
+
+#[cfg(test)]
+mod tests;
