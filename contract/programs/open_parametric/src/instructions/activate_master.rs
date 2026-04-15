@@ -75,9 +75,9 @@ pub fn handler(ctx: Context<ActivateMaster>) -> Result<()> {
 
 pub(crate) fn all_participants_confirmed(participants: &[MasterParticipant]) -> bool {
     // confirmed 플래그와 정산 지갑 등록 여부를 동시에 확인한다.
-    participants
-        .iter()
-        .all(|p| p.confirmed && p.pool_wallet != Pubkey::default() && p.deposit_wallet != Pubkey::default())
+    participants.iter().all(|p| {
+        p.confirmed && p.pool_wallet != Pubkey::default() && p.deposit_wallet != Pubkey::default()
+    })
 }
 
 #[derive(Debug, PartialEq, Eq)]

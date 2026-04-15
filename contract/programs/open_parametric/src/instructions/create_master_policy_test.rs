@@ -78,7 +78,7 @@ fn master_participants_reject_exceeding_max_count() {
     let per_bps = 10_000u16 / (MAX_MASTER_PARTICIPANTS as u16 + 1);
     let mut participants: Vec<MasterParticipantInit> = (0..MAX_MASTER_PARTICIPANTS + 1)
         .map(|i| MasterParticipantInit {
-            insurer:   if i == 0 { leader } else { Pubkey::new_unique() },
+            insurer: if i == 0 { leader } else { Pubkey::new_unique() },
             share_bps: per_bps,
         })
         .collect();
@@ -96,7 +96,10 @@ fn master_participants_reject_exceeding_max_count() {
 fn master_participants_single_leader_with_full_share() {
     // 단일 리더가 100%를 보유하는 경우 유효하다.
     let leader = Pubkey::new_unique();
-    let participants = vec![MasterParticipantInit { insurer: leader, share_bps: 10_000 }];
+    let participants = vec![MasterParticipantInit {
+        insurer: leader,
+        share_bps: 10_000,
+    }];
     assert!(validate_master_participants(&participants, leader).is_ok());
 }
 
@@ -107,7 +110,7 @@ fn master_participants_accept_exactly_max_count() {
     let per_bps = 10_000u16 / MAX_MASTER_PARTICIPANTS as u16; // 1250 (8명)
     let mut participants: Vec<MasterParticipantInit> = (0..MAX_MASTER_PARTICIPANTS)
         .map(|i| MasterParticipantInit {
-            insurer:   if i == 0 { leader } else { Pubkey::new_unique() },
+            insurer: if i == 0 { leader } else { Pubkey::new_unique() },
             share_bps: per_bps,
         })
         .collect();

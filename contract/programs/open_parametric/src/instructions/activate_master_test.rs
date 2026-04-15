@@ -100,5 +100,8 @@ fn collateral_requirement_is_split_by_reinsurer_and_participant_shares() {
     // reinsurer: 45% = 4,500 USDC
     // participant: 5,500 USDC를 50/30/20으로 분배
     assert_eq!(required.reinsurer, 4_500_000_000);
-    assert_eq!(required.participants, vec![2_750_000_000, 1_650_000_000, 1_100_000_000]);
+    assert_eq!(
+        required.participants,
+        vec![2_750_000_000, 1_650_000_000, 1_100_000_000]
+    );
 }
