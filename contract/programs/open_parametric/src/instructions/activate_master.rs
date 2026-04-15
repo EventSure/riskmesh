@@ -15,7 +15,7 @@ pub struct ActivateMaster<'info> {
 }
 
 pub fn handler(ctx: Context<ActivateMaster>) -> Result<()> {
-    let master = &mut ctx.accounts.master_policy;
+    let master = &ctx.accounts.master_policy;
     // 마스터 계약 활성화 전 필수 승인(운영자/재보험사/참여사 지갑 등록)을 확인한다.
     require!(
         master.status == MasterPolicyStatus::PendingConfirm as u8,
@@ -69,7 +69,7 @@ pub fn handler(ctx: Context<ActivateMaster>) -> Result<()> {
         );
     }
 
-    master.status = MasterPolicyStatus::Active as u8;
+    ctx.accounts.master_policy.status = MasterPolicyStatus::Active as u8;
     Ok(())
 }
 
@@ -112,7 +112,10 @@ pub(crate) fn calc_min_collateral_by_pool(
     })
 }
 
-fn validate_reinsurer_pool(pool: &Account<TokenAccount>, master: &MasterPolicy) -> Result<()> {
+fn validate_reinsurer_pool(
+    pool: &Account<TokenAccount>,
+    master: &Account<MasterPolicy>,
+) -> Result<()> {
     require!(
         pool.key() == master.reinsurer_pool_wallet,
         OpenParamError::InvalidAccountList
