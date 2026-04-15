@@ -225,7 +225,11 @@ export function MasterContractSetup() {
       toast(`Master policy created! TX: ${sig.slice(0, 8)}...`, 's');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      toast(`TX failed: ${message}`, 'd');
+      if (message.includes('AlreadyProcessed') || message.includes('already been processed')) {
+        toast('Master policy 생성 완료 (tx 중복 응답 무시)', 's');
+      } else {
+        toast(`TX failed: ${message}`, 'd');
+      }
     } finally {
       setLoading(false);
     }

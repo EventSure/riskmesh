@@ -62,8 +62,11 @@ export function useMyPolicies() {
       const walletBase58 = publicKey.toBase58();
       const grouped = new Map<string, MyPolicySummary>();
 
-      // Fetch all master policies from backend API
-      const res = await fetch(`${BACKEND_URL}/api/master-policies`);
+      // Fetch only master policies involving this wallet (server-side filter
+      // across leader / reinsurer / participants)
+      const res = await fetch(
+        `${BACKEND_URL}/api/master-policies?wallet=${encodeURIComponent(walletBase58)}`,
+      );
       if (res.ok) {
         const json: { master_policies: BackendMasterPolicyFull[] } = await res.json();
 
