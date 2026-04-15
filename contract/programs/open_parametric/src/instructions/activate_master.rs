@@ -14,7 +14,7 @@ pub struct ActivateMaster<'info> {
     pub reinsurer_pool_token: Account<'info, TokenAccount>,
 }
 
-pub fn handler(ctx: Context<ActivateMaster>) -> Result<()> {
+pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, ActivateMaster<'a>>) -> Result<()> {
     let master = &ctx.accounts.master_policy;
     // 마스터 계약 활성화 전 필수 승인(운영자/재보험사/참여사 지갑 등록)을 확인한다.
     require!(
