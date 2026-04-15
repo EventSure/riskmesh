@@ -350,18 +350,18 @@ fn default_token_uri() -> String {
     "https://oauth2.googleapis.com/token".to_string()
 }
 
-// ── PolicyRepository 구현 ─────────────────────────────────────────────────
+// ── InsuranceRepository 구현 ──────────────────────────────────────────────
 
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 
 use crate::{
-    api::repository::{PolicyRepository, SyncSummary},
+    api::repository::{InsuranceRepository, SyncSummary},
     config::Config,
-    oracle::program_accounts::{FlightPolicyInfo, MasterPolicyInfo},
+    oracle::program_accounts::{FlightPolicyInfo, MasterAgreementInfo},
 };
 
-/// Firebase Firestore 기반 PolicyRepository 구현.
+/// Firebase Firestore 기반 InsuranceRepository 구현.
 #[derive(Clone)]
 pub struct FirebaseRepository {
     client: FirebaseClient,
@@ -408,23 +408,27 @@ impl FirebaseRepository {
 }
 
 #[async_trait]
-impl PolicyRepository for FirebaseRepository {
-    async fn sync_policy_snapshots(
+impl InsuranceRepository for FirebaseRepository {
+    async fn sync_snapshots(
         &self,
         config: &Config,
-        master_policies: &[MasterPolicyInfo],
+        master_agreements: &[MasterAgreementInfo],
         flight_policies: &[FlightPolicyInfo],
     ) -> Result<SyncSummary> {
         let auth = self.client.resolve_auth().await?;
         let synced_at = current_unix_seconds()?;
 
-        for mp in master_policies {
-            let fields = build_master_policy_fields(config, synced_at, mp)?;
-            let path = format!("{}/{}", self.client.config().master_policies_collection, mp.pubkey);
+        for agreement in master_agreements {
+            let fields = build_master_agreement_fields(config, synced_at, agreement)?;
+            let path = format!(
+                "{}/{}",
+                self.client.config().master_policies_collection,
+                agreement.pubkey
+            );
             self.client
                 .upsert_document(&auth.access_token, &path, fields)
                 .await
-                .with_context(|| format!("MasterPolicy 문서 저장 실패: {}", mp.pubkey))?;
+                .with_context(|| format!("MasterAgreement 문서 저장 실패: {}", agreement.pubkey))?;
         }
 
         for fp in flight_policies {
@@ -436,7 +440,8 @@ impl PolicyRepository for FirebaseRepository {
                 .with_context(|| format!("FlightPolicy 문서 저장 실패: {}", fp.pubkey))?;
         }
 
-        let metadata_fields = build_sync_metadata_fields(config, synced_at, master_policies, flight_policies);
+        let metadata_fields =
+            build_sync_metadata_fields(config, synced_at, master_agreements, flight_policies);
         let metadata_path = format!("{}/current", self.client.config().sync_metadata_collection);
         self.client
             .upsert_document(&auth.access_token, &metadata_path, metadata_fields)
@@ -445,21 +450,21 @@ impl PolicyRepository for FirebaseRepository {
 
         Ok(SyncSummary {
             synced_at,
-            master_policy_count: master_policies.len(),
+            master_agreement_count: master_agreements.len(),
             flight_policy_count: flight_policies.len(),
         })
     }
 
-    async fn list_master_policies(&self) -> Result<Vec<MasterPolicyInfo>> {
+    async fn list_master_agreements(&self) -> Result<Vec<MasterAgreementInfo>> {
         self.list_payload_documents(&self.client.config().master_policies_collection)
             .await
-            .context("Firebase MasterPolicy 목록 조회 실패")
+            .context("Firebase MasterAgreement 목록 조회 실패")
     }
 
-    async fn get_master_policy(&self, pubkey: &str) -> Result<Option<MasterPolicyInfo>> {
+    async fn get_master_agreement(&self, pubkey: &str) -> Result<Option<MasterAgreementInfo>> {
         self.get_payload_document(&self.client.config().master_policies_collection, pubkey)
             .await
-            .with_context(|| format!("Firebase MasterPolicy 조회 실패: {pubkey}"))
+            .with_context(|| format!("Firebase MasterAgreement 조회 실패: {pubkey}"))
     }
 
     async fn list_flight_policies(&self) -> Result<Vec<FlightPolicyInfo>> {
@@ -491,15 +496,20 @@ fn extract_payload<T: DeserializeOwned>(document: FirestoreDocument) -> Result<T
     serde_json::from_value(payload).context("Firestore payload 역직렬화 실패")
 }
 
-fn build_master_policy_fields(config: &Config, synced_at: u64, mp: &MasterPolicyInfo) -> Result<Value> {
-    let payload = serde_json::to_value(mp).context("MasterPolicy JSON 직렬화 실패")?;
+fn build_master_agreement_fields(
+    config: &Config,
+    synced_at: u64,
+    agreement: &MasterAgreementInfo,
+) -> Result<Value> {
+    let payload = serde_json::to_value(agreement).context("MasterAgreement JSON 직렬화 실패")?;
     Ok(json!({
+        // TODO: Firestore field values are consumed outside backend; rename with frontend/data migration work.
         "kind": { "stringValue": "master_policy" },
-        "pubkey": { "stringValue": mp.pubkey },
-        "leader": { "stringValue": mp.leader },
-        "operator": { "stringValue": mp.operator },
-        "status": { "integerValue": mp.status.to_string() },
-        "status_label": { "stringValue": mp.status_label },
+        "pubkey": { "stringValue": agreement.pubkey },
+        "leader": { "stringValue": agreement.leader },
+        "operator": { "stringValue": agreement.operator },
+        "status": { "integerValue": agreement.status.to_string() },
+        "status_label": { "stringValue": agreement.status_label },
         "program_id": { "stringValue": config.program_id.to_string() },
         "rpc_url": { "stringValue": config.rpc_url },
         "synced_at": { "integerValue": synced_at.to_string() },
@@ -525,7 +535,7 @@ fn build_flight_policy_fields(config: &Config, synced_at: u64, fp: &FlightPolicy
 fn build_sync_metadata_fields(
     config: &Config,
     synced_at: u64,
-    master_policies: &[MasterPolicyInfo],
+    master_agreements: &[MasterAgreementInfo],
     flight_policies: &[FlightPolicyInfo],
 ) -> Value {
     json!({
@@ -533,7 +543,8 @@ fn build_sync_metadata_fields(
         "program_id": { "stringValue": config.program_id.to_string() },
         "rpc_url": { "stringValue": config.rpc_url },
         "synced_at": { "integerValue": synced_at.to_string() },
-        "master_policy_count": { "integerValue": master_policies.len().to_string() },
+        // TODO: Firestore field names are consumed outside backend; rename with frontend/data migration work.
+        "master_policy_count": { "integerValue": master_agreements.len().to_string() },
         "flight_policy_count": { "integerValue": flight_policies.len().to_string() },
     })
 }

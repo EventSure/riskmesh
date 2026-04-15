@@ -2,7 +2,7 @@
 ///
 /// 흐름:
 ///   1. getProgramAccounts로 AwaitingOracle(1) FlightPolicy 목록 조회
-///   2. FlightPolicy.master 주소로 MasterPolicy 계정 RPC 조회 → oracle_feed 추출
+///   2. FlightPolicy.master 주소로 Master Agreement 계정 RPC 조회 → oracle_feed 추출
 ///   3. Switchboard Crossbar API에서 오라클 업데이트 수신
 ///   4. [Ed25519 ix, verified_update ix, check_oracle_and_resolve_flight ix] 트랜잭션 전송
 ///   5. FlightPolicy 재조회 → Claimable → settle_flight_claim, NoClaim → settle_flight_no_claim
@@ -33,9 +33,9 @@ use crate::{
 const FLIGHT_POLICY_STATUS_CLAIMABLE: u8 = 2;
 const FLIGHT_POLICY_STATUS_NO_CLAIM: u8 = 4;
 
-/// MasterPolicy 계정에서 Track B 처리에 필요한 최소 정보
+/// Master Agreement 계정에서 Track B 처리에 필요한 최소 정보
 #[derive(Debug)]
-struct MasterPolicyInfo {
+struct MasterAgreementInfo {
     pub pubkey: Pubkey,
     pub oracle_feed: Pubkey,
     pub leader_pool_wallet: Pubkey,
@@ -94,7 +94,7 @@ pub async fn scan_flight_policies(
 }
 
 /// Track B 오라클 실행:
-///   - `AwaitingOracle`: MasterPolicy 조회 → Switchboard oracle resolve → settle
+///   - `AwaitingOracle`: Master Agreement 조회 → Switchboard oracle resolve → settle
 ///   - `Claimable` / `NoClaim`: oracle 없이 settle만 재시도
 pub async fn run(
     config: &Config,
@@ -112,11 +112,11 @@ pub async fn run(
             flight.pubkey,
             flight.status
         );
-        let master = fetch_master_policy(client, &flight.master_policy)
-            .with_context(|| format!("MasterPolicy 조회 실패: {}", flight.master_policy))?;
+        let agreement = fetch_master_agreement(client, &flight.master_policy)
+            .with_context(|| format!("MasterAgreement 조회 실패: {}", flight.master_policy))?;
         return do_settle(
             config, client, payer,
-            &flight.flight_no, &flight.pubkey, &master, flight.status,
+            &flight.flight_no, &flight.pubkey, &agreement, flight.status,
         )
         .await;
     }
@@ -141,11 +141,11 @@ pub async fn run(
         flight.pubkey
     );
 
-    // 1. MasterPolicy 계정 조회 → oracle_feed + 정산 지갑 목록 추출
-    let master = fetch_master_policy(client, &flight.master_policy)
-        .with_context(|| format!("MasterPolicy 조회 실패: {}", flight.master_policy))?;
+    // 1. Master Agreement 계정 조회 → oracle_feed + 정산 지갑 목록 추출
+    let agreement = fetch_master_agreement(client, &flight.master_policy)
+        .with_context(|| format!("MasterAgreement 조회 실패: {}", flight.master_policy))?;
 
-    if master.oracle_feed == Pubkey::default() {
+    if agreement.oracle_feed == Pubkey::default() {
         tracing::info!(
             "[track_b] {} oracle_feed 미설정 (Track A 전용 master), 스킵",
             flight.flight_no
@@ -156,7 +156,7 @@ pub async fn run(
     // 2. Switchboard Crossbar에서 서명된 oracle update 수신
     let oracle_update = switchboard::fetch_oracle_update(
         &config.switchboard_queue,
-        &master.oracle_feed,
+        &agreement.oracle_feed,
         &client.rpc,
     )
     .await
@@ -173,9 +173,9 @@ pub async fn run(
     let our_ix = build_check_oracle_and_resolve_flight_ix(
         &config.program_id,
         &payer.pubkey(),
-        &master.pubkey,
+        &agreement.pubkey,
         &flight.pubkey,
-        &master.oracle_feed,
+        &agreement.oracle_feed,
         &config.switchboard_queue,
     )?;
 
@@ -204,7 +204,7 @@ pub async fn run(
 
     do_settle(
         config, client, payer,
-        &flight.flight_no, &flight.pubkey, &master, updated.status,
+        &flight.flight_no, &flight.pubkey, &agreement, updated.status,
     )
     .await
 }
@@ -217,7 +217,7 @@ async fn do_settle(
     payer: &solana_sdk::signature::Keypair,
     flight_no: &str,
     flight_pubkey: &Pubkey,
-    master: &MasterPolicyInfo,
+    agreement: &MasterAgreementInfo,
     status: u8,
 ) -> Result<()> {
     match status {
@@ -226,12 +226,15 @@ async fn do_settle(
             let ix = build_settle_flight_claim_ix(
                 &config.program_id,
                 &payer.pubkey(),
-                &master.pubkey,
+                &agreement.pubkey,
                 flight_pubkey,
-                &master.leader_deposit_wallet,
-                &master.leader_pool_wallet,
-                master.reinsurer_pool_wallet.as_ref().unwrap_or(&master.leader_pool_wallet),
-                &master.participant_pool_wallets,
+                &agreement.leader_deposit_wallet,
+                &agreement.leader_pool_wallet,
+                agreement
+                    .reinsurer_pool_wallet
+                    .as_ref()
+                    .unwrap_or(&agreement.leader_pool_wallet),
+                &agreement.participant_pool_wallets,
             )?;
             let sig = client
                 .send_transaction(&[ix], payer)
@@ -243,15 +246,15 @@ async fn do_settle(
             let ix = build_settle_flight_no_claim_ix(
                 &config.program_id,
                 &payer.pubkey(),
-                &master.pubkey,
+                &agreement.pubkey,
                 flight_pubkey,
-                &master.leader_pool_wallet,
-                &master.leader_deposit_wallet,
-                master
+                &agreement.leader_pool_wallet,
+                &agreement.leader_deposit_wallet,
+                agreement
                     .reinsurer_deposit_wallet
                     .as_ref()
-                    .unwrap_or(&master.leader_pool_wallet),
-                &master.participant_deposit_wallets,
+                    .unwrap_or(&agreement.leader_pool_wallet),
+                &agreement.participant_deposit_wallets,
             )?;
             let sig = client
                 .send_transaction(&[ix], payer)
@@ -265,15 +268,18 @@ async fn do_settle(
     Ok(())
 }
 
-// ─── MasterPolicy 파싱 ────────────────────────────────────────────────────────
+// ─── Master Agreement 파싱 ────────────────────────────────────────────────────
 
-/// MasterPolicy 계정을 RPC로 직접 조회해 Track B 필요 정보를 파싱한다.
-fn fetch_master_policy(client: &SolanaClient, master_key: &Pubkey) -> Result<MasterPolicyInfo> {
-    let account = client.get_account(master_key)?;
-    parse_master_policy(master_key, &account.data)
+/// Master Agreement 계정을 RPC로 직접 조회해 Track B 필요 정보를 파싱한다.
+fn fetch_master_agreement(
+    client: &SolanaClient,
+    agreement_key: &Pubkey,
+) -> Result<MasterAgreementInfo> {
+    let account = client.get_account(agreement_key)?;
+    parse_master_agreement(agreement_key, &account.data)
 }
 
-/// MasterPolicy 계정 데이터를 역직렬화한다 (borsh 레이아웃).
+/// Master Agreement 계정 데이터를 역직렬화한다 (borsh 레이아웃).
 ///
 /// MasterPolicy 필드 순서 (state.rs 기준):
 ///   discriminator[8], master_id[8], leader[32], operator[32], currency_mint[32],
@@ -286,7 +292,7 @@ fn fetch_master_policy(client: &SolanaClient, master_key: &Pubkey) -> Result<Mas
 ///   oracle_feed[32], status[1], created_at[8], bump[1]
 ///
 /// MasterParticipant: insurer[32] + share_bps[2] + confirmed[1] + pool_wallet[32] + deposit_wallet[32]
-fn parse_master_policy(pubkey: &Pubkey, data: &[u8]) -> Result<MasterPolicyInfo> {
+fn parse_master_agreement(pubkey: &Pubkey, data: &[u8]) -> Result<MasterAgreementInfo> {
     let mut offset = 8usize; // skip discriminator
 
     let _master_id = read_u64(data, &mut offset)?;
@@ -335,7 +341,7 @@ fn parse_master_policy(pubkey: &Pubkey, data: &[u8]) -> Result<MasterPolicyInfo>
 
     let oracle_feed = read_pubkey(data, &mut offset)?;
 
-    Ok(MasterPolicyInfo {
+    Ok(MasterAgreementInfo {
         pubkey: *pubkey,
         oracle_feed,
         leader_pool_wallet,
@@ -362,7 +368,7 @@ fn parse_master_policy(pubkey: &Pubkey, data: &[u8]) -> Result<MasterPolicyInfo>
 fn build_check_oracle_and_resolve_flight_ix(
     program_id: &Pubkey,
     payer: &Pubkey,
-    master_policy: &Pubkey,
+    master_agreement: &Pubkey,
     flight_policy: &Pubkey,
     oracle_feed: &Pubkey,
     queue: &Pubkey,
@@ -372,7 +378,8 @@ fn build_check_oracle_and_resolve_flight_ix(
         program_id: *program_id,
         accounts: vec![
             AccountMeta::new(*payer, true),
-            AccountMeta::new_readonly(*master_policy, false),
+            // TODO: instruction accounts are shared with the smart contract; rename with contract update.
+            AccountMeta::new_readonly(*master_agreement, false),
             AccountMeta::new(*flight_policy, false),
             AccountMeta::new_readonly(*oracle_feed, false),
             AccountMeta::new_readonly(*queue, false),
@@ -396,7 +403,7 @@ fn build_check_oracle_and_resolve_flight_ix(
 fn build_settle_flight_claim_ix(
     program_id: &Pubkey,
     executor: &Pubkey,
-    master_policy: &Pubkey,
+    master_agreement: &Pubkey,
     flight_policy: &Pubkey,
     leader_deposit_wallet: &Pubkey,
     leader_pool_wallet: &Pubkey,
@@ -406,7 +413,8 @@ fn build_settle_flight_claim_ix(
     let discriminator = anchor_instruction_discriminator("settle_flight_claim");
     let mut accounts = vec![
         AccountMeta::new_readonly(*executor, true),
-        AccountMeta::new_readonly(*master_policy, false),
+        // TODO: instruction accounts are shared with the smart contract; rename with contract update.
+        AccountMeta::new_readonly(*master_agreement, false),
         AccountMeta::new(*flight_policy, false),
         AccountMeta::new(*leader_deposit_wallet, false),
         AccountMeta::new(*leader_pool_wallet, false),
@@ -437,7 +445,7 @@ fn build_settle_flight_claim_ix(
 fn build_settle_flight_no_claim_ix(
     program_id: &Pubkey,
     executor: &Pubkey,
-    master_policy: &Pubkey,
+    master_agreement: &Pubkey,
     flight_policy: &Pubkey,
     leader_pool_wallet: &Pubkey,
     leader_deposit_wallet: &Pubkey,
@@ -447,7 +455,8 @@ fn build_settle_flight_no_claim_ix(
     let discriminator = anchor_instruction_discriminator("settle_flight_no_claim");
     let mut accounts = vec![
         AccountMeta::new_readonly(*executor, true),
-        AccountMeta::new_readonly(*master_policy, false),
+        // TODO: instruction accounts are shared with the smart contract; rename with contract update.
+        AccountMeta::new_readonly(*master_agreement, false),
         AccountMeta::new(*flight_policy, false),
         AccountMeta::new(*leader_pool_wallet, false),
         AccountMeta::new(*leader_deposit_wallet, false),

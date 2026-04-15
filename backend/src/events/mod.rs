@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use tokio::sync::{broadcast, RwLock};
 
-use crate::oracle::program_accounts::{FlightPolicyInfo, MasterPolicyInfo};
+use crate::oracle::program_accounts::{FlightPolicyInfo, MasterAgreementInfo};
 
 #[derive(Clone, Debug)]
 pub(crate) struct SseMessage {
@@ -18,7 +18,7 @@ pub(crate) struct EventBus {
 #[derive(Default)]
 struct SnapshotState {
     initialized: bool,
-    masters: HashMap<String, MasterPolicyInfo>,
+    agreements: HashMap<String, MasterAgreementInfo>,
     flights: HashMap<String, FlightPolicyInfo>,
 }
 
@@ -35,15 +35,15 @@ impl EventBus {
         self.tx.subscribe()
     }
 
-    pub(crate) async fn publish_policy_updates(
+    pub(crate) async fn publish_agreement_updates(
         &self,
-        master_policies: &[MasterPolicyInfo],
+        master_agreements: &[MasterAgreementInfo],
         flight_policies: &[FlightPolicyInfo],
     ) {
         let mut snapshot = self.snapshot.write().await;
 
         if !snapshot.initialized {
-            snapshot.masters = master_policies
+            snapshot.agreements = master_agreements
                 .iter()
                 .cloned()
                 .map(|policy| (policy.pubkey.clone(), policy))
@@ -57,14 +57,15 @@ impl EventBus {
             return;
         }
 
-        for policy in master_policies {
+        for policy in master_agreements {
             let changed = snapshot
-                .masters
+                .agreements
                 .get(&policy.pubkey)
                 .map(|prev| prev != policy)
                 .unwrap_or(true);
 
             if changed {
+                // TODO: SSE event name is consumed outside backend; rename with frontend contract update.
                 self.send_json("master_policy_updated", policy);
             }
         }
@@ -81,7 +82,7 @@ impl EventBus {
             }
         }
 
-        snapshot.masters = master_policies
+        snapshot.agreements = master_agreements
             .iter()
             .cloned()
             .map(|policy| (policy.pubkey.clone(), policy))
@@ -107,3 +108,6 @@ impl EventBus {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

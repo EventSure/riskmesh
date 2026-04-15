@@ -40,12 +40,12 @@ impl<'a> ProgramClient<'a> {
 
     pub(super) fn derive_flight_policy_pubkey(
         &self,
-        master_policy_pubkey: &Pubkey,
+        master_agreement_pubkey: &Pubkey,
         child_policy_id: u64,
     ) -> Pubkey {
         let (flight_policy_pubkey, _bump) = flight_policy_pda(
             &self.config.program_id,
-            master_policy_pubkey,
+            master_agreement_pubkey,
             child_policy_id,
         );
         flight_policy_pubkey
@@ -70,7 +70,7 @@ impl<'a> ProgramClient<'a> {
     pub(super) fn create_flight_policy(
         &self,
         leader: &Keypair,
-        master_policy_pubkey: &Pubkey,
+        master_agreement_pubkey: &Pubkey,
         flight_policy_pubkey: &Pubkey,
         payer_token_pubkey: &Pubkey,
         leader_deposit_token: &Pubkey,
@@ -79,7 +79,7 @@ impl<'a> ProgramClient<'a> {
         let ix = build_create_flight_policy_ix(
             &self.config.program_id,
             &leader.pubkey(),
-            master_policy_pubkey,
+            master_agreement_pubkey,
             flight_policy_pubkey,
             payer_token_pubkey,
             leader_deposit_token,
@@ -95,7 +95,7 @@ impl<'a> ProgramClient<'a> {
 fn build_create_flight_policy_ix(
     program_id: &Pubkey,
     creator: &Pubkey,
-    master_policy: &Pubkey,
+    master_agreement: &Pubkey,
     flight_policy: &Pubkey,
     payer_token: &Pubkey,
     leader_deposit_token: &Pubkey,
@@ -110,7 +110,8 @@ fn build_create_flight_policy_ix(
         program_id: *program_id,
         accounts: vec![
             AccountMeta::new(*creator, true),
-            AccountMeta::new(*master_policy, false),
+            // TODO: instruction accounts are shared with the smart contract; rename with contract update.
+            AccountMeta::new(*master_agreement, false),
             AccountMeta::new(*flight_policy, false),
             AccountMeta::new(*payer_token, false),
             AccountMeta::new(*leader_deposit_token, false),
