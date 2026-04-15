@@ -11,7 +11,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct MasterParticipantInfo {
+pub struct MasterAgreementParticipantInfo {
     pub insurer: String,
     pub share_bps: u16,
     pub confirmed: bool,
@@ -20,7 +20,7 @@ pub struct MasterParticipantInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct MasterPolicyInfo {
+pub struct MasterAgreementInfo {
     pub pubkey: String,
     pub master_id: u64,
     pub leader: String,
@@ -41,7 +41,7 @@ pub struct MasterPolicyInfo {
     pub reinsurer_pool_wallet: String,
     pub reinsurer_deposit_wallet: String,
     pub leader_deposit_wallet: String,
-    pub participants: Vec<MasterParticipantInfo>,
+    pub participants: Vec<MasterAgreementParticipantInfo>,
     pub oracle_feed: String,
     pub status: u8,
     pub status_label: String,
@@ -69,19 +69,20 @@ pub struct FlightPolicyInfo {
     pub updated_at: i64,
 }
 
-pub fn scan_master_policies(
+pub fn scan_master_agreements(
     client: &SolanaClient,
     program_id: &Pubkey,
-) -> Result<Vec<MasterPolicyInfo>> {
-    scan_accounts(client, program_id, "MasterPolicy", parse_master_policy)
+) -> Result<Vec<MasterAgreementInfo>> {
+    // TODO: 온체인 Anchor account discriminator는 smart contract와 맞물려 있어 "MasterPolicy"를 유지한다.
+    scan_accounts(client, program_id, "MasterPolicy", parse_master_agreement)
 }
 
-pub fn fetch_master_policy(
+pub fn fetch_master_agreement(
     client: &SolanaClient,
-    master_policy_pubkey: &Pubkey,
-) -> Result<MasterPolicyInfo> {
-    let account = client.get_account(master_policy_pubkey)?;
-    parse_master_policy(master_policy_pubkey, &account.data)
+    master_agreement_pubkey: &Pubkey,
+) -> Result<MasterAgreementInfo> {
+    let account = client.get_account(master_agreement_pubkey)?;
+    parse_master_agreement(master_agreement_pubkey, &account.data)
 }
 
 pub fn scan_flight_policies(
@@ -128,7 +129,7 @@ fn scan_accounts<T>(
     Ok(result)
 }
 
-fn parse_master_policy(pubkey: &Pubkey, data: &[u8]) -> Result<MasterPolicyInfo> {
+fn parse_master_agreement(pubkey: &Pubkey, data: &[u8]) -> Result<MasterAgreementInfo> {
     let mut offset = 8usize;
 
     let master_id = read_u64(data, &mut offset)?;
@@ -156,7 +157,7 @@ fn parse_master_policy(pubkey: &Pubkey, data: &[u8]) -> Result<MasterPolicyInfo>
     let created_at = read_i64(data, &mut offset)?;
     let _bump = read_u8(data, &mut offset)?;
 
-    Ok(MasterPolicyInfo {
+    Ok(MasterAgreementInfo {
         pubkey: pubkey.to_string(),
         master_id,
         leader: leader.to_string(),
@@ -180,7 +181,7 @@ fn parse_master_policy(pubkey: &Pubkey, data: &[u8]) -> Result<MasterPolicyInfo>
         participants,
         oracle_feed: oracle_feed.to_string(),
         status,
-        status_label: master_policy_status_label(status).to_string(),
+        status_label: master_agreement_status_label(status).to_string(),
         created_at,
     })
 }
@@ -233,7 +234,7 @@ fn read_bool(data: &[u8], offset: &mut usize) -> Result<bool> {
 fn read_master_participants(
     data: &[u8],
     offset: &mut usize,
-) -> Result<Vec<MasterParticipantInfo>> {
+) -> Result<Vec<MasterAgreementParticipantInfo>> {
     let len = read_vec_len(data, offset)?;
     let mut participants = Vec::with_capacity(len);
 
@@ -244,7 +245,7 @@ fn read_master_participants(
         let pool_wallet = read_pubkey(data, offset)?;
         let deposit_wallet = read_pubkey(data, offset)?;
 
-        participants.push(MasterParticipantInfo {
+        participants.push(MasterAgreementParticipantInfo {
             insurer: insurer.to_string(),
             share_bps,
             confirmed,
@@ -264,7 +265,7 @@ fn read_vec_len(data: &[u8], offset: &mut usize) -> Result<usize> {
     Ok(u32::from_le_bytes(len_bytes) as usize)
 }
 
-fn master_policy_status_label(status: u8) -> &'static str {
+fn master_agreement_status_label(status: u8) -> &'static str {
     match status {
         0 => "Draft",
         1 => "PendingConfirm",
@@ -286,3 +287,6 @@ fn flight_policy_status_label(status: u8) -> &'static str {
         _ => "Unknown",
     }
 }
+
+#[cfg(test)]
+mod tests;

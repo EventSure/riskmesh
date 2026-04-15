@@ -10,18 +10,21 @@ use tokio_stream::wrappers::{BroadcastStream, IntervalStream};
 use crate::{
     config::Config,
     events::{EventBus, SseMessage},
-    oracle::program_accounts::{fetch_master_policy, scan_flight_policies, scan_master_policies},
+    oracle::program_accounts::{
+        fetch_master_agreement, scan_flight_policies, scan_master_agreements,
+    },
     solana::client::SolanaClient,
 };
 
 use super::{
     client::ProgramClient,
-    repository::PolicyRepository,
+    repository::InsuranceRepository,
     types::{
         CreateFlightPolicyParamsWire, CreateFlightPolicyRequest, CreateFlightPolicyResponse,
-        EventsQuery, FlightPoliciesQuery, FlightPoliciesResponse,
-        HealthResponse, MasterFlightPoliciesResponse, MasterPoliciesQuery, MasterPoliciesResponse,
-        MasterPoliciesTreeResponse, MasterPolicyAccountTree, MasterPolicyAccountsResponse,
+        EventsQuery, FlightPoliciesQuery, FlightPoliciesResponse, HealthResponse,
+        MasterAgreementAccountTree, MasterAgreementAccountsResponse,
+        MasterAgreementFlightPoliciesResponse, MasterAgreementsQuery,
+        MasterAgreementsResponse, MasterAgreementsTreeResponse,
     },
 };
 
@@ -68,12 +71,12 @@ pub(super) fn stream_events(
     Sse::new(select(updates, heartbeats))
 }
 
-pub(super) async fn list_master_policies(
-    repository: &dyn PolicyRepository,
-    query: &MasterPoliciesQuery,
-) -> Result<MasterPoliciesResponse> {
-    let master_policies = repository.list_master_policies().await?;
-    let master_policies = master_policies
+pub(super) async fn list_master_agreements(
+    repository: &dyn InsuranceRepository,
+    query: &MasterAgreementsQuery,
+) -> Result<MasterAgreementsResponse> {
+    let master_agreements = repository.list_master_agreements().await?;
+    let master_agreements = master_agreements
         .into_iter()
         .filter(|mp| {
             if let Some(leader) = query.leader.as_deref() {
@@ -88,51 +91,52 @@ pub(super) async fn list_master_policies(
         })
         .collect();
 
-    Ok(MasterPoliciesResponse { master_policies })
+    Ok(MasterAgreementsResponse { master_agreements })
 }
 
-pub(super) fn list_master_policy_accounts(
+pub(super) fn list_master_agreement_accounts(
     client: &SolanaClient,
     config: &Config,
-) -> Result<MasterPolicyAccountsResponse> {
-    let master_policy_pubkeys = scan_master_policies(client, &config.program_id)
-        .context("MasterPolicy 조회 실패")?
+) -> Result<MasterAgreementAccountsResponse> {
+    let master_agreement_pubkeys = scan_master_agreements(client, &config.program_id)
+        .context("MasterAgreement 조회 실패")?
         .into_iter()
-        .map(|master_policy| master_policy.pubkey)
+        .map(|master_agreement| master_agreement.pubkey)
         .collect::<Vec<_>>();
 
-    Ok(MasterPolicyAccountsResponse {
+    Ok(MasterAgreementAccountsResponse {
         program_id: config.program_id.to_string(),
-        count: master_policy_pubkeys.len(),
-        master_policy_pubkeys,
+        count: master_agreement_pubkeys.len(),
+        master_agreement_pubkeys,
     })
 }
 
-pub(super) async fn get_master_policy(
-    repository: &dyn PolicyRepository,
-    master_policy_pubkey: &str,
-) -> Result<crate::oracle::program_accounts::MasterPolicyInfo> {
-    let master_policy = repository
-        .get_master_policy(master_policy_pubkey)
+pub(super) async fn get_master_agreement(
+    repository: &dyn InsuranceRepository,
+    master_agreement_pubkey: &str,
+) -> Result<crate::oracle::program_accounts::MasterAgreementInfo> {
+    let master_agreement = repository
+        .get_master_agreement(master_agreement_pubkey)
         .await?
         .ok_or_else(|| anyhow::anyhow!("account not found"))?;
 
-    Ok(master_policy)
+    Ok(master_agreement)
 }
 
 pub(super) async fn create_db_test_document(
-    repository: &dyn PolicyRepository,
+    repository: &dyn InsuranceRepository,
 ) -> Result<serde_json::Value> {
-    // 간단한 DB 연결 테스트 — list_master_policies 호출로 확인
-    let master_policies = repository.list_master_policies().await?;
+    // 간단한 DB 연결 테스트 — list_master_agreements 호출로 확인
+    let master_agreements = repository.list_master_agreements().await?;
     Ok(serde_json::json!({
+        // TODO: response field is consumed outside backend; rename with frontend contract update.
         "status": "ok",
-        "master_policy_count": master_policies.len(),
+        "master_policy_count": master_agreements.len(),
     }))
 }
 
 pub(super) async fn list_flight_policies(
-    repository: &dyn PolicyRepository,
+    repository: &dyn InsuranceRepository,
     query: &FlightPoliciesQuery,
 ) -> Result<FlightPoliciesResponse> {
     let flight_policies = repository.list_flight_policies().await?;
@@ -156,7 +160,7 @@ pub(super) async fn list_flight_policies(
 }
 
 pub(super) async fn get_flight_policy(
-    repository: &dyn PolicyRepository,
+    repository: &dyn InsuranceRepository,
     flight_policy_pubkey: &str,
 ) -> Result<crate::oracle::program_accounts::FlightPolicyInfo> {
     let flight_policy = repository
@@ -167,83 +171,83 @@ pub(super) async fn get_flight_policy(
     Ok(flight_policy)
 }
 
-pub(super) async fn list_flight_policies_by_master(
-    repository: &dyn PolicyRepository,
+pub(super) async fn list_flight_policies_by_master_agreement(
+    repository: &dyn InsuranceRepository,
     config: &Config,
-    master_policy_pubkey: &Pubkey,
-) -> Result<MasterFlightPoliciesResponse> {
-    let master_policy_key = master_policy_pubkey.to_string();
-    let _master_policy = repository
-        .get_master_policy(&master_policy_key)
+    master_agreement_pubkey: &Pubkey,
+) -> Result<MasterAgreementFlightPoliciesResponse> {
+    let master_agreement_key = master_agreement_pubkey.to_string();
+    let _master_agreement = repository
+        .get_master_agreement(&master_agreement_key)
         .await?
         .ok_or_else(|| anyhow::anyhow!("account not found"))?;
     let flight_policies = repository.list_flight_policies().await?;
 
     let flight_policies = flight_policies
         .into_iter()
-        .filter(|flight_policy| flight_policy.master == master_policy_key)
+        .filter(|flight_policy| flight_policy.master == master_agreement_key)
         .collect::<Vec<_>>();
 
-    Ok(MasterFlightPoliciesResponse {
+    Ok(MasterAgreementFlightPoliciesResponse {
         program_id: config.program_id.to_string(),
-        master_policy_pubkey: master_policy_key,
+        master_agreement_pubkey: master_agreement_key,
         count: flight_policies.len(),
         flight_policies,
     })
 }
 
-pub(super) async fn list_master_policies_tree(
-    repository: &dyn PolicyRepository,
+pub(super) async fn list_master_agreements_tree(
+    repository: &dyn InsuranceRepository,
     config: &Config,
-) -> Result<MasterPoliciesTreeResponse> {
-    let master_policies = repository.list_master_policies().await?;
+) -> Result<MasterAgreementsTreeResponse> {
+    let master_agreements = repository.list_master_agreements().await?;
     let flight_policies = repository.list_flight_policies().await?;
 
-    let master_policies = master_policies
+    let master_agreements = master_agreements
         .into_iter()
-        .map(|master_policy| {
+        .map(|master_agreement| {
             let flight_policy_pubkeys = flight_policies
                 .iter()
-                .filter(|flight_policy| flight_policy.master == master_policy.pubkey)
+                .filter(|flight_policy| flight_policy.master == master_agreement.pubkey)
                 .map(|flight_policy| flight_policy.pubkey.clone())
                 .collect();
 
-            MasterPolicyAccountTree {
-                master_policy_pubkey: master_policy.pubkey,
+            MasterAgreementAccountTree {
+                master_agreement_pubkey: master_agreement.pubkey,
                 flight_policy_pubkeys,
             }
         })
         .collect::<Vec<_>>();
 
-    Ok(MasterPoliciesTreeResponse {
+    Ok(MasterAgreementsTreeResponse {
         program_id: config.program_id.to_string(),
-        count: master_policies.len(),
-        master_policies,
+        count: master_agreements.len(),
+        master_agreements,
     })
 }
 
 pub(super) fn create_flight_policy(
     client: &SolanaClient,
     config: &Config,
-    master_policy_pubkey: &Pubkey,
+    master_agreement_pubkey: &Pubkey,
     req: CreateFlightPolicyRequest,
 ) -> Result<CreateFlightPolicyResponse> {
     let program_client = ProgramClient::new(client, config);
 
-    let master_policy =
-        fetch_master_policy(client, master_policy_pubkey).context("MasterPolicy 조회 실패")?;
+    let master_agreement = fetch_master_agreement(client, master_agreement_pubkey)
+        .context("MasterAgreement 조회 실패")?;
 
-    if master_policy.status_label != "Active" {
+    if master_agreement.status_label != "Active" {
         anyhow::bail!(
-            "MasterPolicy가 Active 상태가 아닙니다: status={}",
-            master_policy.status_label
+            "MasterAgreement가 Active 상태가 아닙니다: status={}",
+            master_agreement.status_label
         );
     }
 
-    if master_policy.leader != config.leader_pubkey.to_string()
-        && master_policy.operator != config.leader_pubkey.to_string()
+    if master_agreement.leader != config.leader_pubkey.to_string()
+        && master_agreement.operator != config.leader_pubkey.to_string()
     {
-        anyhow::bail!("현재 서버 키는 이 MasterPolicy의 leader/operator 권한이 없습니다");
+        anyhow::bail!("현재 서버 키는 이 MasterAgreement의 leader/operator 권한이 없습니다");
     }
 
     if req.subscriber_ref.is_empty() || req.flight_no.is_empty() || req.route.is_empty() {
@@ -253,7 +257,7 @@ pub(super) fn create_flight_policy(
     let child_policy_id = scan_flight_policies(client, &config.program_id)
         .context("FlightPolicy 조회 실패")?
         .into_iter()
-        .filter(|flight_policy| flight_policy.master == master_policy_pubkey.to_string())
+        .filter(|flight_policy| flight_policy.master == master_agreement_pubkey.to_string())
         .map(|flight_policy| flight_policy.child_policy_id)
         .max()
         .map(|max_id| {
@@ -266,17 +270,17 @@ pub(super) fn create_flight_policy(
 
     let leader = program_client.load_leader_signer()?;
     let flight_policy_pubkey =
-        program_client.derive_flight_policy_pubkey(master_policy_pubkey, child_policy_id);
-    let currency_mint = parse_pubkey("currency_mint", &master_policy.currency_mint)
+        program_client.derive_flight_policy_pubkey(master_agreement_pubkey, child_policy_id);
+    let currency_mint = parse_pubkey("currency_mint", &master_agreement.currency_mint)
         .context("currency_mint 파싱 실패")?;
     let payer_token_pubkey =
         program_client.derive_associated_token_account_pubkey(&leader.pubkey(), &currency_mint);
-    let leader_deposit_token = Pubkey::from_str(&master_policy.leader_deposit_wallet)
+    let leader_deposit_token = Pubkey::from_str(&master_agreement.leader_deposit_wallet)
         .context("leader_deposit_wallet 주소 파싱 실패")?;
 
     let tx_signature = program_client.create_flight_policy(
         &leader,
-        master_policy_pubkey,
+        master_agreement_pubkey,
         &flight_policy_pubkey,
         &payer_token_pubkey,
         &leader_deposit_token,
@@ -291,7 +295,7 @@ pub(super) fn create_flight_policy(
 
     Ok(CreateFlightPolicyResponse {
         program_id: config.program_id.to_string(),
-        master_policy_pubkey: master_policy_pubkey.to_string(),
+        master_agreement_pubkey: master_agreement_pubkey.to_string(),
         child_policy_id,
         flight_policy_pubkey: flight_policy_pubkey.to_string(),
         tx_signature,
@@ -330,3 +334,6 @@ fn message_matches_filter(message: &SseMessage, master_filter: Option<&str>) -> 
         _ => true,
     }
 }
+
+#[cfg(test)]
+mod tests;

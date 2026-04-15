@@ -13,11 +13,11 @@ use anyhow::{Context, Result};
 use tower_http::cors::{Any, CorsLayer};
 
 use crate::{config::Config, events::EventBus};
-use repository::PolicyRepository;
+use repository::InsuranceRepository;
 
 pub async fn start(
     config: Arc<Config>,
-    repository: Arc<dyn PolicyRepository>,
+    repository: Arc<dyn InsuranceRepository>,
     event_bus: Arc<EventBus>,
 ) -> Result<()> {
     let addr: SocketAddr = config
