@@ -36,7 +36,7 @@ pub mod open_parametric {
         instructions::fund_pool::handler(ctx, amount)
     }
 
-    pub fn activate_master(ctx: Context<ActivateMaster>) -> Result<()> {
+    pub fn activate_master<'a>(ctx: Context<'_, '_, 'a, 'a, ActivateMaster<'a>>) -> Result<()> {
         instructions::activate_master::handler(ctx)
     }
 
