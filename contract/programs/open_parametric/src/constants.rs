@@ -6,6 +6,9 @@ pub const MAX_FLIGHT_NO_LEN: usize = 16;
 pub const MAX_MASTER_PARTICIPANTS: usize = 8;
 pub const MAX_SUBSCRIBER_REF_LEN: usize = 64;
 
+// Activate 시점 최소 담보금 계산 기준: 최대 티어 보험금 × 100건
+pub const MIN_COLLATERAL_CASE_COUNT: u64 = 100;
+
 // oracle_feed(32 bytes) 추가됐지만 4096 버퍼로 충분.
 pub const MASTER_POLICY_SPACE: usize = 4096;
 pub const FLIGHT_POLICY_SPACE: usize = 1024;

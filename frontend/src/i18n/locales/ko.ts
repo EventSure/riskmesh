@@ -131,6 +131,9 @@ const ko = {
   'pool.available': '가용 잔액',
   'pool.solvency': '지급 준비율',
   'pool.chartLabel': 'Pool 잔액',
+  'pool.participantFundingTitle': '참여사별 담보금 납부 현황 (최대 지급액 × {{count}}건 기준)',
+  'pool.paid': '납부완료',
+  'pool.pending': '미납/부족',
 
   // === Tab1: Event Log ===
   'log.title': '프로토콜 이벤트 로그',

@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import styled from '@emotion/styled';
-import { PublicKey, Transaction } from '@solana/web3.js';
-import { getAssociatedTokenAddress, createTransferInstruction } from '@solana/spl-token';
+import { PublicKey } from '@solana/web3.js';
+import { getAssociatedTokenAddress } from '@solana/spl-token';
 import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardBody, Mono, Tag, Button, FormGroup, FormLabel, FormInput } from '@/components/common';
 import { useToast } from '@/components/common';
 import { KVRow } from './KVRow';
 import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
 import { useProgram } from '@/hooks/useProgram';
+import { useFundPool } from '@/hooks/useFundPool';
 import type { ParticipantInfo } from '@/hooks/useParticipantRole';
 import { MasterPolicyStatus } from '@/lib/idl/open_parametric';
 
@@ -49,10 +50,10 @@ interface PortalOverviewProps {
 export function PortalOverview({ participantInfo, allRoles, masterPDA }: PortalOverviewProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { program, provider, wallet } = useProgram();
-  const { policyStateIdx, poolBalance, totalPremium, totalClaim } = useProtocolStore();
+  const { program, wallet } = useProgram();
+  const { fundPool, loading: fundLoading } = useFundPool();
+  const { policyStateIdx, poolBalance, totalPremium, totalClaim, refreshPool } = useProtocolStore();
   const [fundAmount, setFundAmount] = useState('');
-  const [fundLoading, setFundLoading] = useState(false);
 
   const roles = allRoles && allRoles.length > 0 ? allRoles : [participantInfo];
   // Sum shareBps across participant roles only (partA/partB/rein) — leader 10000 is not additive
@@ -67,7 +68,7 @@ export function PortalOverview({ participantInfo, allRoles, masterPDA }: PortalO
     : 100;
 
   const handleFundMyPool = async () => {
-    if (!masterPDA || !wallet || !program || !provider) {
+    if (!masterPDA || !wallet || !program) {
       toast(t('portal.fundNoWallet'), 'd');
       return;
     }
@@ -77,7 +78,6 @@ export function PortalOverview({ participantInfo, allRoles, masterPDA }: PortalO
       return;
     }
 
-    setFundLoading(true);
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const masterData = await (program as any).account.masterPolicy.fetch(masterPDA);
@@ -88,35 +88,39 @@ export function PortalOverview({ participantInfo, allRoles, masterPDA }: PortalO
       const walletKey = wallet.publicKey;
       let myPoolWallet: PublicKey | null = null;
 
-      // participants 배열에서 찾기
       for (const p of masterData.participants) {
         if (p.insurer.equals(walletKey) && p.poolWallet) {
           myPoolWallet = p.poolWallet;
           break;
         }
       }
-      // reinsurer인 경우
       if (!myPoolWallet && masterData.reinsurer.equals(walletKey)) {
         myPoolWallet = masterData.reinsurerPoolWallet;
       }
 
       if (!myPoolWallet) {
         toast(t('portal.fundNoPool'), 'd');
-        setFundLoading(false);
         return;
       }
 
       const amountRaw = Math.floor(amountUsdc * 1_000_000);
-      const ix = createTransferInstruction(myATA, myPoolWallet, walletKey, amountRaw);
-      const tx = new Transaction().add(ix);
-      const sig = await provider.sendAndConfirm(tx, []);
-      toast(`${t('portal.fundSuccess')} TX: ${sig.slice(0, 8)}...`, 's');
+      const result = await fundPool({
+        masterPolicy: masterPDA,
+        funderTokenAccount: myATA,
+        poolToken: myPoolWallet,
+        amountRaw,
+      });
+      if (!result.success) {
+        toast(`${t('portal.fundFailed')}: ${result.error}`, 'd');
+        return;
+      }
+
+      toast(`${t('portal.fundSuccess')} TX: ${result.signature.slice(0, 8)}...`, 's');
       setFundAmount('');
+      refreshPool();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       toast(`${t('portal.fundFailed')}: ${message}`, 'd');
-    } finally {
-      setFundLoading(false);
     }
   };
 

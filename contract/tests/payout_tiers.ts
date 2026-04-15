@@ -71,8 +71,8 @@ describe("payout_tiers", () => {
     reinsurerDeposit = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
     leaderPool       = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
 
-    // 풀: 6 tiers × 6 USDC = 36 USDC (충분히 적립)
-    await mintTo(connection, payer, mint, leaderPool, payer, 36_000_000);
+    // activate_master 최소 담보금(최대 tier payout × 100건) 충족: 6 USDC × 100 = 600 USDC
+    await mintTo(connection, payer, mint, leaderPool, payer, 700_000_000);
 
     // 프리미엄 지불 계정: 6 flights × 1 USDC
     payerToken = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
@@ -111,7 +111,15 @@ describe("payout_tiers", () => {
       .rpc();
     await program.methods.confirmMaster(0).accounts({ actor: payer.publicKey, masterPolicy: masterPolicyPda }).rpc();
     await program.methods.confirmMaster(1).accounts({ actor: reinsurer.publicKey, masterPolicy: masterPolicyPda }).signers([reinsurer]).rpc();
-    await program.methods.activateMaster().accounts({ operator: payer.publicKey, masterPolicy: masterPolicyPda }).rpc();
+    await program.methods
+      .activateMaster()
+      .accounts({
+        operator: payer.publicKey,
+        masterPolicy: masterPolicyPda,
+        reinsurerPoolToken: reinsurerPool,
+      })
+      .remainingAccounts([{ pubkey: leaderPool, isWritable: false, isSigner: false }])
+      .rpc();
   });
 
   /**

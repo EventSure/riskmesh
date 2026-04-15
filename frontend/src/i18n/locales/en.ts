@@ -131,6 +131,9 @@ const en = {
   'pool.available': 'Available Balance',
   'pool.solvency': 'Solvency Ratio',
   'pool.chartLabel': 'Pool Balance',
+  'pool.participantFundingTitle': 'Participant collateral status (max payout × {{count}} cases)',
+  'pool.paid': 'Paid',
+  'pool.pending': 'Pending/Short',
 
   // === Tab1: Event Log ===
   'log.title': 'Protocol Event Log',

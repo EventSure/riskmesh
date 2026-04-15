@@ -63,6 +63,12 @@ describe("settle_flight_no_claim", () => {
     const aDeposit        = await createAccount(connection, payer, mint, participantA.publicKey);
     const bDeposit        = await createAccount(connection, payer, mint, participantB.publicKey);
 
+    // activate_master 최소 담보금 검증을 통과하도록 충분한 담보금을 사전 적립한다.
+    await mintTo(connection, payer, mint, reinsurerPool, payer, 20_000_000_000);
+    await mintTo(connection, payer, mint, leaderPool, payer, 20_000_000_000);
+    await mintTo(connection, payer, mint, aPool, payer, 20_000_000_000);
+    await mintTo(connection, payer, mint, bPool, payer, 20_000_000_000);
+
     const now = Math.floor(Date.now() / 1000);
 
     await program.methods
@@ -120,7 +126,16 @@ describe("settle_flight_no_claim", () => {
       .rpc();
     await program.methods
       .activateMaster()
-      .accounts({ operator: payer.publicKey, masterPolicy: masterPolicyPda })
+      .accounts({
+        operator: payer.publicKey,
+        masterPolicy: masterPolicyPda,
+        reinsurerPoolToken: reinsurerPool,
+      })
+      .remainingAccounts([
+        { pubkey: leaderPool, isWritable: false, isSigner: false },
+        { pubkey: aPool, isWritable: false, isSigner: false },
+        { pubkey: bPool, isWritable: false, isSigner: false },
+      ])
       .rpc();
 
     return { masterPolicyPda, leaderDeposit, reinsurerDeposit, aDeposit, bDeposit };

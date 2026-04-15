@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import BN from 'bn.js';
 import { Transaction, TransactionInstruction, SystemProgram, Keypair, PublicKey } from '@solana/web3.js';
-import { getAssociatedTokenAddress, createInitializeAccount3Instruction, createTransferInstruction, createAssociatedTokenAccountIdempotentInstruction, ACCOUNT_SIZE, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { getAssociatedTokenAddress, createInitializeAccount3Instruction, createAssociatedTokenAccountIdempotentInstruction, ACCOUNT_SIZE, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { Card, CardHeader, CardTitle, CardBody, Button, FormGroup, FormLabel, FormInput, Divider, Tag } from '@/components/common';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { useToast } from '@/components/common';
@@ -13,7 +13,7 @@ import { setPoolWallet } from '@/lib/demo-keypairs';
 import { ConfirmRole } from '@/lib/idl/open_parametric';
 
 export function MasterContractSetup() {
-  const { mode, masterActive, processStep, shares, masterAgreementPDA, setTerms, onChainSetTerms, setMasterAgreementPDA, refreshPool } = useProtocolStore();
+  const { mode, masterActive, processStep, shares, setTerms, onChainSetTerms, setMasterAgreementPDA } = useProtocolStore();
   const { toast } = useToast();
   const { t } = useTranslation();
   const { program, provider, wallet, connected } = useProgram();
@@ -26,7 +26,6 @@ export function MasterContractSetup() {
   const [payout4to5h, setPayout4to5h] = useState(DEFAULT_PAYOUT_TIERS.delay4to5h);
   const [payout6h, setPayout6h] = useState(DEFAULT_PAYOUT_TIERS.delay6hOrCancelled);
   const [loading, setLoading] = useState(false);
-  const [fundLoading, setFundLoading] = useState(false);
   const [partAAddress, setPartAAddress] = useState('');
   const [partBAddress, setPartBAddress] = useState('');
   const [reinsurerAddress, setReinsurerAddress] = useState('');
@@ -198,71 +197,6 @@ export function MasterContractSetup() {
     }
   };
 
-  const handleFundPools = async () => {
-    if (!masterAgreementPDA || !wallet || !program || !provider) {
-      toast('Wallet not connected or no master agreement selected', 'd');
-      return;
-    }
-    setFundLoading(true);
-    try {
-      const masterPK = new PublicKey(masterAgreementPDA);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const masterData = await (program as any).account.masterPolicy.fetch(masterPK);
-
-      // 5건 최대 클레임(6h 티어) 감당 가능한 양으로 충전
-      const NUM_CLAIMS = 5;
-      const maxPayoutRaw: number = masterData.payoutDelay6HOrCancelled.toNumber();
-      const totalPayout = maxPayoutRaw * NUM_CLAIMS;
-
-      const reinsurerEffBps: number = masterData.reinsurerEffectiveBps;
-      const reinsurerAmount = Math.floor(totalPayout * reinsurerEffBps / 10_000);
-      const insurerTotal = totalPayout - reinsurerAmount;
-
-      const currencyMint: PublicKey = masterData.currencyMint;
-      const leaderATA = await getAssociatedTokenAddress(currencyMint, wallet.publicKey);
-      const ixs = [];
-
-      // reinsurer pool 충전 (USDC)
-      ixs.push(createTransferInstruction(
-        leaderATA, masterData.reinsurerPoolWallet, wallet.publicKey, reinsurerAmount,
-      ));
-
-      // 각 참여사 pool 충전 (지분율 기반)
-      // 필요 금액 계산:
-      // - reinsurer_effective_bps = 5000 × (10000−1000) / 10000 = 4500 (45%)
-      // - 최대 클레임 100 USDC 기준:
-      //   - reinsurer pool: 45 USDC/건
-      //   - insurer total: 55 USDC → 지분율대로 분배 (leader/partA/partB)
-      // - 5건 여유분: reinsurer pool ~225 USDC, 각 insurer pool ~27.5×5 = 137.5 USDC 등
-
-      // 클릭 시 온체인 master 데이터에서 reinsurerEffectiveBps, payoutDelay6HOrCancelled, 각 참여사 shareBps, poolWallet
-      // 주소를 읽어옴
-      // - 5건 × 최대 티어(100 USDC) = 500 USDC 기준으로 각 pool에 정확한 지분율대로 분배:
-      //   - reinsurer pool → 45% = 225 USDC
-      //   - leader pool → 55% × leader지분
-      //   - partA/B pool → 55% × 각 지분
-      for (const p of masterData.participants) {
-        const amount = Math.floor(insurerTotal * p.shareBps / 10_000);
-        if (amount > 0) {
-          ixs.push(createTransferInstruction(
-            leaderATA, p.poolWallet, wallet.publicKey, amount,
-          ));
-        }
-      }
-
-      const tx = new Transaction().add(...ixs);
-      const sig = await provider.sendAndConfirm(tx, []);
-      refreshPool();
-      const totalUsdc = (totalPayout / 1_000_000).toFixed(2);
-      toast(`Pool funded (${totalUsdc} USDC total)! TX: ${sig.slice(0, 8)}...`, 's');
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      toast(`Fund failed: ${message}`, 'd');
-    } finally {
-      setFundLoading(false);
-    }
-  };
-
   return (
     <Card>
       <CardHeader>
@@ -371,11 +305,6 @@ export function MasterContractSetup() {
         <Button variant="primary" fullWidth onClick={handleSetTerms} disabled={processStep >= 1 || loading} data-guide="set-terms-btn">
           {loading ? 'Sending TX...' : t('master.setTermsBtn')}
         </Button>
-        {mode === 'onchain' && masterActive && (
-          <Button variant="warning" fullWidth onClick={handleFundPools} disabled={fundLoading} style={{ marginTop: 6 }} data-guide="fund-pool-btn">
-            {fundLoading ? 'Funding...' : t('master.fundAllPools')}
-          </Button>
-        )}
       </CardBody>
     </Card>
   );

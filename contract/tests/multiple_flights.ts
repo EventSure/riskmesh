@@ -92,9 +92,11 @@ describe("multiple_flights", () => {
     // Total pool needed: leaderPool = 0.825+1.65 = 2.475, aPool = 0.825+1.65 = 2.475, reinsurerPool = 1.35+2.7 = 4.05
     // Rounding: split_by_bps may add remainder to first slot
     // Let's mint generously
-    await mintTo(connection, payer, mint, reinsurerPool, payer, 6_000_000);  // 6 USDC
-    await mintTo(connection, payer, mint, leaderPool,    payer, 4_000_000);  // 4 USDC
-    await mintTo(connection, payer, mint, aPool,         payer, 4_000_000);  // 4 USDC
+    // activate_master 최소 담보금(최대 tier payout × 100건) 충족
+    // max payout = 6 USDC → total 600 USDC, reinsurer 270 / insurer 330 (leader 165, A 165)
+    await mintTo(connection, payer, mint, reinsurerPool, payer, 300_000_000);  // 300 USDC
+    await mintTo(connection, payer, mint, leaderPool,    payer, 200_000_000);  // 200 USDC
+    await mintTo(connection, payer, mint, aPool,         payer, 200_000_000);  // 200 USDC
 
     // 프리미엄 지불: 3 flights × 1 USDC = 3 USDC
     const payerToken = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
@@ -146,7 +148,18 @@ describe("multiple_flights", () => {
         .rpc();
     }
     await program.methods.confirmMaster(1).accounts({ actor: reinsurer.publicKey, masterPolicy: masterPolicyPda }).signers([reinsurer]).rpc();
-    await program.methods.activateMaster().accounts({ operator: payer.publicKey, masterPolicy: masterPolicyPda }).rpc();
+    await program.methods
+      .activateMaster()
+      .accounts({
+        operator: payer.publicKey,
+        masterPolicy: masterPolicyPda,
+        reinsurerPoolToken: reinsurerPool,
+      })
+      .remainingAccounts([
+        { pubkey: leaderPool, isWritable: false, isSigner: false },
+        { pubkey: aPool, isWritable: false, isSigner: false },
+      ])
+      .rpc();
 
     // FlightPolicy PDAs
     for (const [n, ref] of [[1, "F1"], [2, "F2"], [3, "F3"]] as const) {

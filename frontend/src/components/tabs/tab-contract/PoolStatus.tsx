@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { PublicKey } from '@solana/web3.js';
-import { Card, CardHeader, CardTitle, CardBody, SummaryRow } from '@/components/common';
+import { Card, CardHeader, CardTitle, CardBody, SummaryRow, Tag } from '@/components/common';
 import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
 import { useProgram } from '@/hooks/useProgram';
 import { useMasterAgreementAccount } from '@/hooks/useMasterAgreementAccount';
@@ -9,6 +9,25 @@ import { useTranslation } from 'react-i18next';
 
 Chart.register(...registerables);
 
+const MIN_COLLATERAL_CASE_COUNT = 100;
+const BPS_DENOM = 10_000;
+
+type PoolHealthRow = {
+  label: string;
+  current: number;
+  required: number;
+  paid: boolean;
+};
+
+function splitByBps(totalRaw: number, ratiosBps: number[]): number[] {
+  if (ratiosBps.length === 0) return [];
+
+  const parts = ratiosBps.map((ratio) => Math.floor((totalRaw * ratio) / BPS_DENOM));
+  const allocated = parts.reduce((sum, v) => sum + v, 0);
+  parts[0] = parts[0] + (totalRaw - allocated);
+  return parts;
+}
+
 export function PoolStatus() {
   const { mode, masterAgreementPDA, poolBalance, totalClaim, poolHist, poolRefreshKey, setPoolBalance } = useProtocolStore();
   const { connection } = useProgram();
@@ -16,6 +35,7 @@ export function PoolStatus() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
   const [onChainBalance, setOnChainBalance] = useState<number | null>(null);
+  const [poolRows, setPoolRows] = useState<PoolHealthRow[]>([]);
 
   const pdaKey = useMemo(
     () => mode === 'onchain' && masterAgreementPDA ? new PublicKey(masterAgreementPDA) : null,
@@ -26,29 +46,68 @@ export function PoolStatus() {
   const fetchOnChainBalance = useCallback(async () => {
     if (mode !== 'onchain' || !masterData || !connection) {
       setOnChainBalance(null);
+      setPoolRows([]);
       return;
     }
+
     try {
       let total = 0;
-      // reinsurer pool 잔액
+
+      const maxPayoutRaw = Number(masterData.payoutDelay6hOrCancelled.toNumber());
+      const totalRequiredRaw = maxPayoutRaw * MIN_COLLATERAL_CASE_COUNT;
+      const reinsurerRequiredRaw = Math.floor((totalRequiredRaw * masterData.reinsurerEffectiveBps) / BPS_DENOM);
+      const insurerRequiredRaw = totalRequiredRaw - reinsurerRequiredRaw;
+
+      const participantShareBps = masterData.participants.map((p) => p.shareBps);
+      const participantRequiredRaw = splitByBps(insurerRequiredRaw, participantShareBps);
+
+      const rows: PoolHealthRow[] = [];
+
       try {
         const reinBal = await connection.getTokenAccountBalance(masterData.reinsurerPoolWallet);
-        total += Number(reinBal.value.uiAmount ?? 0);
-      } catch { /* not funded yet */ }
+        const reinUi = Number(reinBal.value.uiAmount ?? 0);
+        total += reinUi;
+        rows.push({
+          label: 'Reinsurer',
+          current: reinUi,
+          required: reinsurerRequiredRaw / 1_000_000,
+          paid: Number(reinBal.value.amount) >= reinsurerRequiredRaw,
+        });
+      } catch {
+        rows.push({ label: 'Reinsurer', current: 0, required: reinsurerRequiredRaw / 1_000_000, paid: false });
+      }
 
-      // 각 참여사 pool 잔액
-      for (const p of masterData.participants) {
+      for (let i = 0; i < masterData.participants.length; i += 1) {
+        const p = masterData.participants[i]!;
+        const requiredRaw = participantRequiredRaw[i] ?? 0;
+        const label = i === 0 ? 'Leader' : `Participant ${i}`;
+
         if (!p.poolWallet.equals(PublicKey.default)) {
           try {
             const bal = await connection.getTokenAccountBalance(p.poolWallet);
-            total += Number(bal.value.uiAmount ?? 0);
-          } catch { /* not registered yet */ }
+            const ui = Number(bal.value.uiAmount ?? 0);
+            total += ui;
+            rows.push({
+              label,
+              current: ui,
+              required: requiredRaw / 1_000_000,
+              paid: Number(bal.value.amount) >= requiredRaw,
+            });
+            continue;
+          } catch {
+            // fallthrough
+          }
         }
+
+        rows.push({ label, current: 0, required: requiredRaw / 1_000_000, paid: false });
       }
+
+      setPoolRows(rows);
       setOnChainBalance(total);
       setPoolBalance(total);
     } catch {
       setOnChainBalance(null);
+      setPoolRows([]);
     }
   }, [mode, masterData, connection, poolRefreshKey, setPoolBalance]);
 
@@ -122,6 +181,25 @@ export function PoolStatus() {
             <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{ratio}%</span>
           </SummaryRow>
         </div>
+
+        {mode === 'onchain' && poolRows.length > 0 && (
+          <div style={{ marginTop: 8, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ padding: '6px 8px', fontSize: 10, color: 'var(--sub)', borderBottom: '1px solid var(--border)', background: 'var(--card2)' }}>
+              {t('pool.participantFundingTitle', { count: MIN_COLLATERAL_CASE_COUNT })}
+            </div>
+            {poolRows.map((row) => (
+              <div key={row.label} style={{ display: 'grid', gridTemplateColumns: '1fr 90px 90px 92px', gap: 6, alignItems: 'center', padding: '6px 8px', borderBottom: '1px solid var(--border)' }}>
+                <span style={{ fontSize: 10 }}>{row.label}</span>
+                <span style={{ fontSize: 10, textAlign: 'right', fontFamily: "'DM Mono', monospace" }}>{formatNum(row.current, 2)}</span>
+                <span style={{ fontSize: 10, textAlign: 'right', fontFamily: "'DM Mono', monospace", color: 'var(--sub)' }}>{formatNum(row.required, 2)}</span>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <Tag variant={row.paid ? 'accent' : 'warning'}>{row.paid ? t('pool.paid') : t('pool.pending')}</Tag>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div style={{ height: 100, marginTop: 8 }}>
           <canvas ref={canvasRef} />
         </div>

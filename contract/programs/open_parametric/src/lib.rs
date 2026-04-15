@@ -32,6 +32,10 @@ pub mod open_parametric {
         instructions::confirm_master::handler(ctx, role)
     }
 
+    pub fn fund_pool(ctx: Context<FundPool>, amount: u64) -> Result<()> {
+        instructions::fund_pool::handler(ctx, amount)
+    }
+
     pub fn activate_master(ctx: Context<ActivateMaster>) -> Result<()> {
         instructions::activate_master::handler(ctx)
     }

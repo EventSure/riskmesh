@@ -67,6 +67,10 @@ describe("error_cases", () => {
     const reinsurerPool    = await createAccount(connection, payer, mint, pda, Keypair.generate());
     const reinsurerDeposit = await createAccount(connection, payer, mint, pda, Keypair.generate());
     const leaderPool       = await createAccount(connection, payer, mint, pda, Keypair.generate());
+
+    // activate_master 최소 담보금 기준(최대 tier payout × 100건) 충족
+    await mintTo(connection, payer, mint, leaderPool, payer, 600_000_000);
+
     const now = Math.floor(Date.now() / 1000);
 
     await program.methods
@@ -98,7 +102,15 @@ describe("error_cases", () => {
       .rpc();
     await program.methods.confirmMaster(0).accounts({ actor: payer.publicKey, masterPolicy: pda }).rpc();
     await program.methods.confirmMaster(1).accounts({ actor: reinsurer.publicKey, masterPolicy: pda }).signers([reinsurer]).rpc();
-    await program.methods.activateMaster().accounts({ operator: payer.publicKey, masterPolicy: pda }).rpc();
+    await program.methods
+      .activateMaster()
+      .accounts({
+        operator: payer.publicKey,
+        masterPolicy: pda,
+        reinsurerPoolToken: reinsurerPool,
+      })
+      .remainingAccounts([{ pubkey: leaderPool, isWritable: false, isSigner: false }])
+      .rpc();
 
     return { pda, leaderDeposit, reinsurerDeposit, leaderPool, reinsurer };
   }
@@ -304,7 +316,15 @@ describe("error_cases", () => {
       // reinsurer confirm 생략
 
       try {
-        await program.methods.activateMaster().accounts({ operator: payer.publicKey, masterPolicy: pda }).rpc();
+        await program.methods
+          .activateMaster()
+          .accounts({
+            operator: payer.publicKey,
+            masterPolicy: pda,
+            reinsurerPoolToken: reinsurerPool,
+          })
+          .remainingAccounts([{ pubkey: leaderPool, isWritable: false, isSigner: false }])
+          .rpc();
         assert.fail("실패해야 하는데 성공함");
       } catch (err) {
         assertAnchorError(err, "MasterNotConfirmed");

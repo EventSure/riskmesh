@@ -24,11 +24,12 @@ describe("settle_flight_claim", () => {
   const payoutAmount = 80n * UNIT; // 80 USDC
   const premiumAmount = 5n * UNIT; // 5 USDC
 
-  const reinsurerAmount = 36n * UNIT; // 80 * 0.45
-  const insurerTotal = 44n * UNIT;
-  const leaderShare = 22n * UNIT; // 44 * 0.5
-  const aShare = 13_200_000n; // 44 * 0.3
-  const bShare = 8_800_000n; // 44 * 0.2
+  // activate_master 최소 담보금(최대 tier payout × 100건) 충족용 금액
+  const reinsurerAmount = 3_600n * UNIT; // 8000 * 0.45
+  const insurerTotal = 4_400n * UNIT;
+  const leaderShare = 2_200n * UNIT; // 4400 * 0.5
+  const aShare = 1_320n * UNIT; // 4400 * 0.3
+  const bShare = 880n * UNIT; // 4400 * 0.2
 
   async function airdrop(pubkey: PublicKey, sol = 2): Promise<void> {
     const sig = await connection.requestAirdrop(pubkey, sol * LAMPORTS_PER_SOL);
@@ -189,7 +190,13 @@ describe("settle_flight_claim", () => {
       .accounts({
         operator: payer.publicKey,
         masterPolicy: masterPolicyPda,
+        reinsurerPoolToken: reinsurerPool,
       })
+      .remainingAccounts([
+        { pubkey: leaderPool, isWritable: false, isSigner: false },
+        { pubkey: aPool, isWritable: false, isSigner: false },
+        { pubkey: bPool, isWritable: false, isSigner: false },
+      ])
       .rpc();
 
     const childPolicyId = new anchor.BN(1);
@@ -254,10 +261,10 @@ describe("settle_flight_claim", () => {
     const bPoolAcct = await getAccount(connection, bPool);
 
     assert.equal(leaderDepositAcct.amount, premiumAmount + payoutAmount);
-    assert.equal(reinsurerPoolAcct.amount, 0n);
-    assert.equal(leaderPoolAcct.amount, 0n);
-    assert.equal(aPoolAcct.amount, 0n);
-    assert.equal(bPoolAcct.amount, 0n);
+    assert.equal(reinsurerPoolAcct.amount, reinsurerAmount - 36n * UNIT);
+    assert.equal(leaderPoolAcct.amount, leaderShare - 22n * UNIT);
+    assert.equal(aPoolAcct.amount, aShare - 13_200_000n);
+    assert.equal(bPoolAcct.amount, bShare - 8_800_000n);
 
     const flight = await program.account.flightPolicy.fetch(flightPolicyPda);
     assert.equal(flight.status, 3); // FlightPolicyStatus::Paid
