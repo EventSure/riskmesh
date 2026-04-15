@@ -20,6 +20,8 @@ pub enum OpenParamError {
     InvalidInput,
     #[msg("Invalid amount")]
     InvalidAmount,
+    #[msg("Pool collateral is insufficient")]
+    PoolInsufficient,
     #[msg("Input too long")]
     InputTooLong,
     #[msg("Math overflow")]
