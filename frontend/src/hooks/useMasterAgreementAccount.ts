@@ -59,10 +59,10 @@ function toMasterAgreementAccount(data: BackendMasterAgreement): MasterAgreement
     coverageStartTs: fakeBN(data.coverage_start_ts) as unknown as import('@coral-xyz/anchor').BN,
     coverageEndTs: fakeBN(data.coverage_end_ts) as unknown as import('@coral-xyz/anchor').BN,
     premiumPerPolicy: fakeBN(data.premium_per_policy) as unknown as import('@coral-xyz/anchor').BN,
-    payoutDelay2h: fakeBN(data.payout_delay_2h) as unknown as import('@coral-xyz/anchor').BN,
-    payoutDelay3h: fakeBN(data.payout_delay_3h) as unknown as import('@coral-xyz/anchor').BN,
-    payoutDelay4to5h: fakeBN(data.payout_delay_4to5h) as unknown as import('@coral-xyz/anchor').BN,
-    payoutDelay6hOrCancelled: fakeBN(
+    payoutDelay2H: fakeBN(data.payout_delay_2h) as unknown as import('@coral-xyz/anchor').BN,
+    payoutDelay3H: fakeBN(data.payout_delay_3h) as unknown as import('@coral-xyz/anchor').BN,
+    payoutDelay4To5H: fakeBN(data.payout_delay_4to5h) as unknown as import('@coral-xyz/anchor').BN,
+    payoutDelay6HOrCancelled: fakeBN(
       data.payout_delay_6h_or_cancelled,
     ) as unknown as import('@coral-xyz/anchor').BN,
     leaderShareBps: data.leader_share_bps,

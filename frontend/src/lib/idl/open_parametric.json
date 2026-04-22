@@ -202,14 +202,14 @@
     {
       "name": "create_master_agreement",
       "discriminator": [
-        60,
-        218,
-        158,
-        201,
-        93,
-        156,
-        126,
-        51
+        207,
+        185,
+        226,
+        104,
+        127,
+        226,
+        78,
+        171
       ],
       "accounts": [
         {
@@ -241,12 +241,15 @@
                   101,
                   114,
                   95,
-                  112,
-                  111,
-                  108,
-                  105,
-                  99,
-                  121
+                  97,
+                  103,
+                  114,
+                  101,
+                  101,
+                  109,
+                  101,
+                  110,
+                  116
                 ]
               },
               {
@@ -459,14 +462,14 @@
     {
       "name": "MasterAgreement",
       "discriminator": [
-        244,
+        4,
+        22,
+        143,
+        104,
+        174,
+        194,
         57,
-        211,
-        253,
-        13,
-        177,
-        50,
-        201
+        81
       ]
     }
   ],
@@ -730,50 +733,6 @@
       }
     },
     {
-      "name": "MasterParticipant",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "insurer",
-            "type": "pubkey"
-          },
-          {
-            "name": "share_bps",
-            "type": "u16"
-          },
-          {
-            "name": "confirmed",
-            "type": "bool"
-          },
-          {
-            "name": "pool_wallet",
-            "type": "pubkey"
-          },
-          {
-            "name": "deposit_wallet",
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "MasterParticipantInit",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "insurer",
-            "type": "pubkey"
-          },
-          {
-            "name": "share_bps",
-            "type": "u16"
-          }
-        ]
-      }
-    },
-    {
       "name": "MasterAgreement",
       "type": {
         "kind": "struct",
@@ -893,6 +852,50 @@
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MasterParticipant",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "insurer",
+            "type": "pubkey"
+          },
+          {
+            "name": "share_bps",
+            "type": "u16"
+          },
+          {
+            "name": "confirmed",
+            "type": "bool"
+          },
+          {
+            "name": "pool_wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "deposit_wallet",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MasterParticipantInit",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "insurer",
+            "type": "pubkey"
+          },
+          {
+            "name": "share_bps",
+            "type": "u16"
           }
         ]
       }

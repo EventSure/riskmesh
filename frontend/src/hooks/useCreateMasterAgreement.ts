@@ -11,10 +11,10 @@ export interface CreateMasterAgreementInput {
   coverageStartTs: number; // unix seconds
   coverageEndTs: number;
   premiumPerPolicy: number; // in token base units
-  payoutDelay2h: number;
-  payoutDelay3h: number;
-  payoutDelay4to5h: number;
-  payoutDelay6hOrCancelled: number;
+  payoutDelay2H: number;
+  payoutDelay3H: number;
+  payoutDelay4To5H: number;
+  payoutDelay6HOrCancelled: number;
   leaderShareBps: number;
   cededRatioBps: number;
   reinsCommissionBps: number;
@@ -48,10 +48,10 @@ export function useCreateMasterAgreement() {
           coverageStartTs: new BN(input.coverageStartTs),
           coverageEndTs: new BN(input.coverageEndTs),
           premiumPerPolicy: new BN(input.premiumPerPolicy),
-          payoutDelay2H: new BN(input.payoutDelay2h),
-          payoutDelay3H: new BN(input.payoutDelay3h),
-          payoutDelay4To5H: new BN(input.payoutDelay4to5h),
-          payoutDelay6HOrCancelled: new BN(input.payoutDelay6hOrCancelled),
+          payoutDelay2H: new BN(input.payoutDelay2H),
+          payoutDelay3H: new BN(input.payoutDelay3H),
+          payoutDelay4To5H: new BN(input.payoutDelay4To5H),
+          payoutDelay6HOrCancelled: new BN(input.payoutDelay6HOrCancelled),
           leaderShareBps: input.leaderShareBps,
           cededRatioBps: input.cededRatioBps,
           reinsCommissionBps: input.reinsCommissionBps,

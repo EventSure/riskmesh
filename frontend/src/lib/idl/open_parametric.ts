@@ -410,14 +410,14 @@ export type OpenParametric = {
     {
       "name": "createMasterAgreement",
       "discriminator": [
-        60,
-        218,
-        158,
-        201,
-        93,
-        156,
-        126,
-        51
+        207,
+        185,
+        226,
+        104,
+        127,
+        226,
+        78,
+        171
       ],
       "accounts": [
         {
@@ -449,12 +449,15 @@ export type OpenParametric = {
                   101,
                   114,
                   95,
-                  112,
-                  111,
-                  108,
-                  105,
-                  99,
-                  121
+                  97,
+                  103,
+                  114,
+                  101,
+                  101,
+                  109,
+                  101,
+                  110,
+                  116
                 ]
               },
               {
@@ -667,14 +670,14 @@ export type OpenParametric = {
     {
       "name": "masterAgreement",
       "discriminator": [
-        244,
+        4,
+        22,
+        143,
+        104,
+        174,
+        194,
         57,
-        211,
-        253,
-        13,
-        177,
-        50,
-        201
+        81
       ]
     }
   ],
@@ -821,19 +824,19 @@ export type OpenParametric = {
             "type": "u64"
           },
           {
-            "name": "payoutDelay2h",
+            "name": "payoutDelay2H",
             "type": "u64"
           },
           {
-            "name": "payoutDelay3h",
+            "name": "payoutDelay3H",
             "type": "u64"
           },
           {
-            "name": "payoutDelay4to5h",
+            "name": "payoutDelay4To5H",
             "type": "u64"
           },
           {
-            "name": "payoutDelay6hOrCancelled",
+            "name": "payoutDelay6HOrCancelled",
             "type": "u64"
           },
           {
@@ -1015,19 +1018,19 @@ export type OpenParametric = {
             "type": "u64"
           },
           {
-            "name": "payoutDelay2h",
+            "name": "payoutDelay2H",
             "type": "u64"
           },
           {
-            "name": "payoutDelay3h",
+            "name": "payoutDelay3H",
             "type": "u64"
           },
           {
-            "name": "payoutDelay4to5h",
+            "name": "payoutDelay4To5H",
             "type": "u64"
           },
           {
-            "name": "payoutDelay6hOrCancelled",
+            "name": "payoutDelay6HOrCancelled",
             "type": "u64"
           },
           {

@@ -33,7 +33,10 @@ pub struct CreateMasterAgreement<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<CreateMasterAgreement>, params: CreateMasterAgreementParams) -> Result<()> {
+pub fn handler(
+    ctx: Context<CreateMasterAgreement>,
+    params: CreateMasterAgreementParams,
+) -> Result<()> {
     let master = &mut ctx.accounts.master_agreement;
     let has_reinsurer = params.ceded_ratio_bps > 0;
 
