@@ -1,12 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, Button, DataTable, Tag } from '@/components/common';
-import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
+import { useProtocolStore, formatNum, PARTICIPANT_COLORS } from '@/store/useProtocolStore';
 import { useShallow } from 'zustand/react/shallow';
 
 export function ContractFeedTable() {
   const { t } = useTranslation();
-  const { contracts, clearContracts, premiumPerPolicy, mode } = useProtocolStore(
-    useShallow(s => ({ contracts: s.contracts, clearContracts: s.clearContracts, premiumPerPolicy: s.premiumPerPolicy, mode: s.mode })),
+  const { contracts, clearContracts, premiumPerPolicy, mode, participants } = useProtocolStore(
+    useShallow(s => ({ contracts: s.contracts, clearContracts: s.clearContracts, premiumPerPolicy: s.premiumPerPolicy, mode: s.mode, participants: s.participants })),
   );
 
   return (
@@ -25,7 +25,11 @@ export function ContractFeedTable() {
           <thead>
             <tr>
               <th>#</th><th>{t('feed.th.policyholder')}</th><th>{t('feed.th.flight')}</th><th>{t('feed.th.date')}</th><th>{t('feed.th.premium')}</th>
-              <th>{t('feed.th.leader')}</th><th>{t('feed.th.partA')}</th><th>{t('feed.th.partB')}</th><th>{t('feed.th.reinsurer')}</th><th>{t('feed.th.settledAt')}</th><th>{t('feed.th.status')}</th>
+              <th>{t('feed.th.leader')}</th>
+              {participants.map((p, i) => (
+                <th key={p.id}>{p.name || `${t('feed.th.participant')}${i + 1}`}</th>
+              ))}
+              <th>{t('feed.th.reinsurer')}</th><th>{t('feed.th.settledAt')}</th><th>{t('feed.th.status')}</th>
             </tr>
           </thead>
           <tbody>
@@ -37,8 +41,9 @@ export function ContractFeedTable() {
                 <td>{c.date}</td>
                 <td style={{ color: 'var(--warning)' }}>{formatNum(premiumPerPolicy, 4)}</td>
                 <td style={{ color: '#9945FF' }}>{formatNum(c.lNet, 4)}</td>
-                <td style={{ color: '#14F195' }}>{formatNum(c.aNet, 4)}</td>
-                <td style={{ color: '#F59E0B' }}>{formatNum(c.bNet, 4)}</td>
+                {participants.map((p, i) => (
+                  <td key={p.id} style={{ color: PARTICIPANT_COLORS[i] }}>{formatNum(c.participantNets[i] ?? 0, 4)}</td>
+                ))}
                 <td style={{ color: '#38BDF8' }}>{formatNum(c.rNet, 4)}</td>
                 <td style={{ fontSize: 9, color: 'var(--sub)' }}>{c.ts}</td>
                 <td><Tag variant={c.status === 'active' ? 'accent' : c.status === 'claimed' ? 'warning' : c.status === 'paid' ? 'primary' : 'subtle'}>{t(`common.${c.status}`)}</Tag></td>

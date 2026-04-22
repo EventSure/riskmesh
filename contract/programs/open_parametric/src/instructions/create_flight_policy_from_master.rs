@@ -23,7 +23,7 @@ pub struct CreateFlightPolicyFromMaster<'info> {
     #[account(mut)]
     pub payer_token: Account<'info, TokenAccount>,
     #[account(mut)]
-    pub leader_deposit_token: Account<'info, TokenAccount>,
+    pub leader_pool_token: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
@@ -57,8 +57,12 @@ pub fn handler(
     );
 
     require!(
-        ctx.accounts.leader_deposit_token.key() == master.leader_deposit_wallet,
+        ctx.accounts.leader_pool_token.key() == master.leader_pool_wallet,
         OpenParamError::InvalidInput
+    );
+    require!(
+        ctx.accounts.leader_pool_token.owner == master.key(),
+        OpenParamError::InvalidSettlementTarget
     );
     require!(
         ctx.accounts.payer_token.owner == ctx.accounts.creator.key(),
@@ -69,16 +73,16 @@ pub fn handler(
         OpenParamError::InvalidInput
     );
     require!(
-        ctx.accounts.leader_deposit_token.mint == master.currency_mint,
+        ctx.accounts.leader_pool_token.mint == master.currency_mint,
         OpenParamError::InvalidInput
     );
 
-    // 가입 프리미엄은 생성자 지갑에서 leader_deposit 지갑으로 선납된다.
+    // 가입 프리미엄은 생성자 지갑에서 리더 풀(PDA 소유)로 선납된다.
     let transfer_ctx = CpiContext::new(
         ctx.accounts.token_program.to_account_info(),
         Transfer {
             from: ctx.accounts.payer_token.to_account_info(),
-            to: ctx.accounts.leader_deposit_token.to_account_info(),
+            to: ctx.accounts.leader_pool_token.to_account_info(),
             authority: ctx.accounts.creator.to_account_info(),
         },
     );

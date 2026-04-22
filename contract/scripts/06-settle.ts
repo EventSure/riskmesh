@@ -59,12 +59,12 @@ async function main() {
         masterPolicy:        masterPda,
         flightPolicy:        flightPda,
         leaderDepositToken:  new PublicKey(s.leaderDepositWallet),
+        leaderPoolToken:     new PublicKey(s.leaderPoolWallet),
         reinsurerPoolToken:  new PublicKey(s.reinsurerPoolWallet),
         tokenProgram:        TOKEN_PROGRAM_ID,
       })
       .remainingAccounts([
-        // participants 순서대로: leader(0), A(1), B(2) 각 pool_wallet
-        { pubkey: new PublicKey(s.leaderPoolWallet),       isWritable: true, isSigner: false },
+        // participants 순서대로: A, B 각 pool_wallet
         { pubkey: new PublicKey(s.participantAPoolWallet!), isWritable: true, isSigner: false },
         { pubkey: new PublicKey(s.participantBPoolWallet!), isWritable: true, isSigner: false },
       ])
@@ -87,13 +87,13 @@ async function main() {
         executor:               leader.publicKey,
         masterPolicy:           masterPda,
         flightPolicy:           flightPda,
+        leaderPoolToken:        new PublicKey(s.leaderPoolWallet),
         leaderDepositToken:     new PublicKey(s.leaderDepositWallet),
-        reinsurerDepositToken:  new PublicKey(s.reinsurerDepositWallet ?? s.leaderAta),
+        reinsurerDepositToken:  new PublicKey(s.reinsurerDepositWallet ?? s.leaderPoolWallet),
         tokenProgram:           TOKEN_PROGRAM_ID,
       })
       .remainingAccounts([
-        // participants 순서대로: leader(0), A(1), B(2) 각 deposit_wallet
-        { pubkey: new PublicKey(s.leaderAta),                       isWritable: true, isSigner: false },
+        // participants 순서대로: A, B 각 deposit_wallet
         { pubkey: new PublicKey(s.participantADepositWallet!),       isWritable: true, isSigner: false },
         { pubkey: new PublicKey(s.participantBDepositWallet!),       isWritable: true, isSigner: false },
       ])

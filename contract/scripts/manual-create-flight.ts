@@ -11,7 +11,7 @@
  *   DEPARTURE_TS     출발 Unix timestamp (기본값: 현재+24시간)
  *   SUBSCRIBER_REF   가입자 참조 (기본값: manual-test)
  *   CHILD_POLICY_ID  직접 지정 시 사용 (생략하면 자동 증가)
- *   KEYPAIR_PATH     leader 키페어 경로 (기본값: ~/.config/solana/id.json)
+ *   KEYPAIR_PATH     leader 키페어 경로 (기본값: ~/.config/solana/riskmesh-leader.json)
  */
 import * as anchor from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
@@ -27,7 +27,7 @@ const FLIGHT_NO       = process.env.FLIGHT_NO        ?? "KE001";
 const ROUTE           = process.env.ROUTE            ?? "ICN-NRT";
 const SUBSCRIBER_REF  = process.env.SUBSCRIBER_REF   ?? "manual-test";
 const KEYPAIR_PATH    = process.env.KEYPAIR_PATH
-  ?? path.join(process.env.HOME ?? "~", ".config/solana/id.json");
+  ?? path.join(process.env.HOME ?? "~", ".config/solana/riskmesh-leader.json");
 
 // 출발시각: 기본 현재+24시간
 const DEPARTURE_TS = parseInt(
@@ -116,7 +116,7 @@ async function main() {
       masterPolicy:       masterPda,
       flightPolicy:       flightPda,
       payerToken:         payerAta,
-      leaderDepositToken: master.leaderDepositWallet,
+      leaderPoolToken:    master.leaderPoolWallet,
       tokenProgram:       TOKEN_PROGRAM_ID,
       systemProgram:      anchor.web3.SystemProgram.programId,
     })

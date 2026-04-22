@@ -3,7 +3,7 @@ import { PublicKey } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { BACKEND_URL } from '@/lib/constants';
 
-export type ParticipantRole = 'leader' | 'partA' | 'partB' | 'rein' | null;
+export type ParticipantRole = 'leader' | 'participant' | 'rein' | null;
 
 export interface ParticipantInfo {
   role: ParticipantRole;
@@ -14,7 +14,8 @@ export interface ParticipantInfo {
 
 interface BackendMasterPolicy {
   leader: string;
-  reinsurer: string;
+  leader_share_bps: number;
+  reinsurer: string | null;
   reinsurer_effective_bps: number;
   reinsurer_confirmed: boolean;
   participants: Array<{ insurer: string; share_bps: number; confirmed: boolean }>;
@@ -52,7 +53,7 @@ export function useParticipantRole(masterAgreementPDA: PublicKey | null) {
         const found: ParticipantInfo[] = [];
 
         if (account.leader === walletKey) {
-          found.push({ role: 'leader', shareBps: 10000, confirmed: true, participantIndex: -1 });
+          found.push({ role: 'leader', shareBps: account.leader_share_bps, confirmed: true, participantIndex: -1 });
         }
         if (account.reinsurer === walletKey) {
           found.push({
@@ -62,19 +63,14 @@ export function useParticipantRole(masterAgreementPDA: PublicKey | null) {
             participantIndex: -1,
           });
         }
-        // participants[0] = leader (already handled above), [1] = partA, [2] = partB
-        // non-leader 참여자만 순서대로 partA/partB 역할 부여
-        const nonLeaders = account.participants
-          .map((p, i) => ({ ...p, originalIndex: i }))
-          .filter(p => p.insurer !== account.leader);
-        for (let j = 0; j < nonLeaders.length; j++) {
-          const p = nonLeaders[j]!;
+        for (let j = 0; j < account.participants.length; j++) {
+          const p = account.participants[j]!;
           if (p.insurer === walletKey) {
             found.push({
-              role: j === 0 ? 'partA' : 'partB',
+              role: 'participant',
               shareBps: p.share_bps,
               confirmed: p.confirmed,
-              participantIndex: p.originalIndex,
+              participantIndex: j,
             });
           }
         }

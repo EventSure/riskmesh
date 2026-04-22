@@ -33,13 +33,15 @@ pub struct MasterAgreementInfo {
     pub payout_delay_3h: u64,
     pub payout_delay_4to5h: u64,
     pub payout_delay_6h_or_cancelled: u64,
+    pub leader_share_bps: u16,
     pub ceded_ratio_bps: u16,
     pub reins_commission_bps: u16,
     pub reinsurer_effective_bps: u16,
-    pub reinsurer: String,
+    pub reinsurer: Option<String>,
     pub reinsurer_confirmed: bool,
-    pub reinsurer_pool_wallet: String,
-    pub reinsurer_deposit_wallet: String,
+    pub reinsurer_pool_wallet: Option<String>,
+    pub reinsurer_deposit_wallet: Option<String>,
+    pub leader_pool_wallet: String,
     pub leader_deposit_wallet: String,
     pub participants: Vec<MasterAgreementParticipantInfo>,
     pub oracle_feed: String,
@@ -143,13 +145,15 @@ fn parse_master_agreement(pubkey: &Pubkey, data: &[u8]) -> Result<MasterAgreemen
     let payout_delay_3h = read_u64(data, &mut offset)?;
     let payout_delay_4to5h = read_u64(data, &mut offset)?;
     let payout_delay_6h_or_cancelled = read_u64(data, &mut offset)?;
+    let leader_share_bps = read_u16(data, &mut offset)?;
     let ceded_ratio_bps = read_u16(data, &mut offset)?;
     let reins_commission_bps = read_u16(data, &mut offset)?;
     let reinsurer_effective_bps = read_u16(data, &mut offset)?;
-    let reinsurer = read_pubkey(data, &mut offset)?;
+    let reinsurer = read_optional_pubkey(data, &mut offset)?;
     let reinsurer_confirmed = read_bool(data, &mut offset)?;
-    let reinsurer_pool_wallet = read_pubkey(data, &mut offset)?;
-    let reinsurer_deposit_wallet = read_pubkey(data, &mut offset)?;
+    let reinsurer_pool_wallet = read_optional_pubkey(data, &mut offset)?;
+    let reinsurer_deposit_wallet = read_optional_pubkey(data, &mut offset)?;
+    let leader_pool_wallet = read_pubkey(data, &mut offset)?;
     let leader_deposit_wallet = read_pubkey(data, &mut offset)?;
     let participants = read_master_participants(data, &mut offset)?;
     let oracle_feed = read_pubkey(data, &mut offset)?;
@@ -170,13 +174,15 @@ fn parse_master_agreement(pubkey: &Pubkey, data: &[u8]) -> Result<MasterAgreemen
         payout_delay_3h,
         payout_delay_4to5h,
         payout_delay_6h_or_cancelled,
+        leader_share_bps,
         ceded_ratio_bps,
         reins_commission_bps,
         reinsurer_effective_bps,
-        reinsurer: reinsurer.to_string(),
+        reinsurer: reinsurer.map(|v| v.to_string()),
         reinsurer_confirmed,
-        reinsurer_pool_wallet: reinsurer_pool_wallet.to_string(),
-        reinsurer_deposit_wallet: reinsurer_deposit_wallet.to_string(),
+        reinsurer_pool_wallet: reinsurer_pool_wallet.map(|v| v.to_string()),
+        reinsurer_deposit_wallet: reinsurer_deposit_wallet.map(|v| v.to_string()),
+        leader_pool_wallet: leader_pool_wallet.to_string(),
         leader_deposit_wallet: leader_deposit_wallet.to_string(),
         participants,
         oracle_feed: oracle_feed.to_string(),
@@ -229,6 +235,15 @@ fn parse_flight_policy(pubkey: &Pubkey, data: &[u8]) -> Result<FlightPolicyInfo>
 
 fn read_bool(data: &[u8], offset: &mut usize) -> Result<bool> {
     Ok(read_u8(data, offset)? != 0)
+}
+
+fn read_optional_pubkey(data: &[u8], offset: &mut usize) -> Result<Option<Pubkey>> {
+    let tag = read_u8(data, offset)?;
+    match tag {
+        0 => Ok(None),
+        1 => Ok(Some(read_pubkey(data, offset)?)),
+        _ => anyhow::bail!("invalid Option<Pubkey> tag: {tag}"),
+    }
 }
 
 fn read_master_participants(

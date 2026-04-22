@@ -12,6 +12,8 @@ pub struct SettleFlightNoClaim<'info> {
     #[account(mut)]
     pub flight_policy: Account<'info, FlightPolicy>,
     #[account(mut)]
+    pub leader_pool_token: Account<'info, TokenAccount>,
+    #[account(mut)]
     pub leader_deposit_token: Account<'info, TokenAccount>,
     #[account(mut)]
     pub reinsurer_deposit_token: Account<'info, TokenAccount>,
@@ -40,32 +42,45 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightNoClaim<'a>>) -> Res
     require!(!flight.premium_distributed, OpenParamError::AlreadySettled);
 
     require!(
-        ctx.accounts.leader_deposit_token.key() == master.leader_deposit_wallet,
+        ctx.accounts.leader_pool_token.key() == master.leader_pool_wallet,
         OpenParamError::InvalidInput
     );
     require!(
-        ctx.accounts.reinsurer_deposit_token.key() == master.reinsurer_deposit_wallet,
+        ctx.accounts.leader_pool_token.mint == master.currency_mint,
+        OpenParamError::InvalidInput
+    );
+    require!(
+        ctx.accounts.leader_pool_token.owner == master.key(),
+        OpenParamError::InvalidSettlementTarget
+    );
+    require!(
+        ctx.accounts.leader_deposit_token.key() == master.leader_deposit_wallet,
         OpenParamError::InvalidInput
     );
     require!(
         ctx.accounts.leader_deposit_token.mint == master.currency_mint,
         OpenParamError::InvalidInput
     );
-    require!(
-        ctx.accounts.reinsurer_deposit_token.mint == master.currency_mint,
-        OpenParamError::InvalidInput
-    );
-    require!(
-        ctx.accounts.leader_deposit_token.owner == master.key(),
-        OpenParamError::InvalidSettlementTarget
-    );
+
+    if let Some(reinsurer_deposit_wallet) = master.reinsurer_deposit_wallet {
+        require!(
+            ctx.accounts.reinsurer_deposit_token.key() == reinsurer_deposit_wallet,
+            OpenParamError::InvalidInput
+        );
+        require!(
+            ctx.accounts.reinsurer_deposit_token.mint == master.currency_mint,
+            OpenParamError::InvalidInput
+        );
+    }
 
     require!(
         ctx.remaining_accounts.len() == master.participants.len(),
         OpenParamError::InvalidAccountList
     );
 
-    let insurer_ratios: Vec<u16> = master.participants.iter().map(|p| p.share_bps).collect();
+    let insurer_ratios: Vec<u16> = std::iter::once(master.leader_share_bps)
+        .chain(master.participants.iter().map(|p| p.share_bps))
+        .collect();
     // premium을 재보험사 몫 + 보험사(leader/A/B...) 몫으로 분리한다.
     let (reinsurer_amount, insurer_amounts) = calc_no_claim_split(
         flight.premium_paid,
@@ -83,11 +98,11 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightNoClaim<'a>>) -> Res
     let signer = &[&seeds[..]];
 
     if reinsurer_amount > 0 {
-        // 리더 deposit에 모인 premium 중 재보험사 몫을 재보험사 deposit으로 보낸다.
+        // 리더 풀에 모인 premium 중 재보험사 몫을 재보험사 deposit으로 보낸다.
         let reins_ctx = CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             Transfer {
-                from: ctx.accounts.leader_deposit_token.to_account_info(),
+                from: ctx.accounts.leader_pool_token.to_account_info(),
                 to: ctx.accounts.reinsurer_deposit_token.to_account_info(),
                 authority: ctx.accounts.master_policy.to_account_info(),
             },
@@ -96,15 +111,31 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightNoClaim<'a>>) -> Res
         token::transfer(reins_ctx, reinsurer_amount)?;
     }
 
-    for (i, amount) in insurer_amounts.iter().enumerate() {
+    let leader_amount = insurer_amounts[0];
+    if leader_amount > 0 {
+        // 리더 몫은 leader_pool → leader_deposit(ATA)로 이체한다.
+        let leader_ctx = CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            Transfer {
+                from: ctx.accounts.leader_pool_token.to_account_info(),
+                to: ctx.accounts.leader_deposit_token.to_account_info(),
+                authority: ctx.accounts.master_policy.to_account_info(),
+            },
+            signer,
+        );
+        token::transfer(leader_ctx, leader_amount)?;
+    }
+
+    for (i, amount) in insurer_amounts.iter().enumerate().skip(1) {
         if *amount == 0 {
             continue;
         }
-        let deposit_info = &ctx.remaining_accounts[i];
+        let participant_idx = i - 1;
+        let deposit_info = &ctx.remaining_accounts[participant_idx];
         let deposit_wallet: Account<TokenAccount> = Account::try_from(deposit_info)?;
 
         require!(
-            deposit_wallet.key() == master.participants[i].deposit_wallet,
+            deposit_wallet.key() == master.participants[participant_idx].deposit_wallet,
             OpenParamError::InvalidInput
         );
         require!(
@@ -112,11 +143,11 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightNoClaim<'a>>) -> Res
             OpenParamError::InvalidInput
         );
 
-        // 남은 premium은 참여사 deposit 지갑으로 비율대로 분배한다.
+        // 남은 premium은 리더 풀에서 참여사 deposit 지갑으로 비율대로 분배한다.
         let transfer_ctx = CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             Transfer {
-                from: ctx.accounts.leader_deposit_token.to_account_info(),
+                from: ctx.accounts.leader_pool_token.to_account_info(),
                 to: deposit_info.to_account_info(),
                 authority: ctx.accounts.master_policy.to_account_info(),
             },

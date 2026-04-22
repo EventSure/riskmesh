@@ -19,6 +19,10 @@ export async function sendTx(
     return { signature, success: true };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
+    // AlreadyProcessed = tx succeeded on first attempt, wallet retried with same blockhash
+    if (message.includes('AlreadyProcessed') || message.includes('already been processed')) {
+      return { signature: '', success: true };
+    }
     // Extract Anchor error code if present
     const anchorMatch = message.match(/Error Code: (\w+)/);
     const errorMsg = anchorMatch ? anchorMatch[1]! : message;

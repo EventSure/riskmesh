@@ -84,7 +84,7 @@ pub(super) async fn list_master_agreements(
             }
             if let Some(wallet) = query.wallet.as_deref() {
                 return mp.leader == wallet
-                    || mp.reinsurer == wallet
+                    || mp.reinsurer.as_deref() == Some(wallet)
                     || mp.participants.iter().any(|p| p.insurer == wallet);
             }
             true

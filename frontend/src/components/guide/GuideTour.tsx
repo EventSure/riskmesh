@@ -221,11 +221,12 @@ export function GuideTour({ activeTab }: Props) {
   const { t } = useTranslation();
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
 
-  const { processStep, role, confirms, masterActive, contracts, claims } = useProtocolStore(
+  const { processStep, role, participants, reinsurer, masterActive, contracts, claims } = useProtocolStore(
     useShallow(s => ({
       processStep: s.processStep,
       role: s.role,
-      confirms: s.confirms,
+      participants: s.participants,
+      reinsurer: s.reinsurer,
       masterActive: s.masterActive,
       contracts: s.contracts,
       claims: s.claims,
@@ -291,12 +292,12 @@ export function GuideTour({ activeTab }: Props) {
     let ok = false;
     switch (sn) {
       case 1: ok = processStep >= 1; break;
-      case 2: ok = role === 'partA'; break;
-      case 3: ok = confirms.partA; break;
-      case 4: ok = role === 'partB'; break;
-      case 5: ok = confirms.partB; break;
-      case 6: ok = role === 'rein'; break;
-      case 7: ok = confirms.rein; break;
+      case 2: ok = role === 'participant'; break;
+      case 3: ok = participants[0]?.confirmed ?? false; break;
+      case 4: ok = participants.length < 2 || role === 'participant'; break;
+      case 5: ok = participants.length < 2 || (participants[1]?.confirmed ?? false); break;
+      case 6: ok = !reinsurer.enabled || role === 'rein'; break;
+      case 7: ok = !reinsurer.enabled || reinsurer.confirmed; break;
       case 8: ok = role === 'leader'; break;
       case 9: ok = masterActive; break;
       case 11: ok = activeTab === 'tab-feed'; break;
@@ -310,7 +311,7 @@ export function GuideTour({ activeTab }: Props) {
       const timer = setTimeout(nextStep, 350);
       return () => clearTimeout(timer);
     }
-  }, [currentStep, processStep, role, confirms, masterActive, activeTab, contracts.length, claims, nextStep]);
+  }, [currentStep, processStep, role, participants, reinsurer, masterActive, activeTab, contracts.length, claims, nextStep]);
 
   /* ── Step 14: DOM event listener for select change ── */
 

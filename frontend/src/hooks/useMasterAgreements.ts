@@ -18,9 +18,7 @@ function detectRole(m: BackendMasterPolicyItem, wallet: string): MasterAgreement
   if (m.leader === wallet) return 'leader';
   if (m.reinsurer === wallet) return 'rein';
   const nonLeaders = m.participants.filter(p => p.insurer !== m.leader);
-  const idx = nonLeaders.findIndex(p => p.insurer === wallet);
-  if (idx === 0) return 'partA';
-  if (idx === 1) return 'partB';
+  if (nonLeaders.some(p => p.insurer === wallet)) return 'participant';
   return undefined;
 }
 

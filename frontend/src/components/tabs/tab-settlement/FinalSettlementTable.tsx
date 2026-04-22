@@ -1,16 +1,21 @@
 import { Card, CardHeader, CardTitle, SettlementTable } from '@/components/common';
-import { formatNum } from '@/store/useProtocolStore';
+import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
 import { useTranslation } from 'react-i18next';
 import { useSettlementData } from '@/hooks/useSettlementData';
 
 export function FinalSettlementTable() {
   const { t } = useTranslation();
+  const { participants, reinsurer } = useProtocolStore();
   const { settledAcc: acc } = useSettlementData();
   const rows = [
     { label: t('settle.party.leader'), p: acc.leaderPrem, c: acc.leaderClaim, rein: false },
-    { label: t('settle.party.partA'), p: acc.partAPrem, c: acc.partAClaim, rein: false },
-    { label: t('settle.party.partB'), p: acc.partBPrem, c: acc.partBClaim, rein: false },
-    { label: t('settle.party.reinsurer'), p: acc.reinPrem, c: -acc.reinClaim, rein: true },
+    ...participants.map((pt, i) => ({
+      label: pt.name || `${t('settle.party.participant')} ${i + 1}`,
+      p: acc.participantPrems[i] ?? 0,
+      c: acc.participantClaims[i] ?? 0,
+      rein: false,
+    })),
+    ...(reinsurer.enabled ? [{ label: t('settle.party.reinsurer'), p: acc.reinPrem, c: -acc.reinClaim, rein: true }] : []),
   ].map(r => {
     const net = r.rein ? (r.p + r.c) : (r.p - r.c);
     return { ...r, net };

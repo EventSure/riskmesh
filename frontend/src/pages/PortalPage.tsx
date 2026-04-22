@@ -209,7 +209,7 @@ export function PortalPage() {
       { id: 'overview', label: t('portal.overview') },
       { id: 'contracts', label: t('portal.contracts') },
     ];
-    if (roleSet.has('leader') || roleSet.has('partA') || roleSet.has('partB') || roleSet.has('rein')) {
+    if (roleSet.has('leader') || roleSet.has('participant') || roleSet.has('rein')) {
       common.push({ id: 'confirm', label: t('portal.confirm') });
     }
     if (roleSet.has('leader') || roleSet.has('rein')) {
@@ -348,7 +348,7 @@ export function PortalPage() {
 
   // Find role-specific info for each tab
   const reinInfo = roles.find(r => r.role === 'rein') ?? participantInfo;
-  const participantRoleInfo = roles.find(r => r.role === 'partA' || r.role === 'partB' || r.role === 'rein') ?? participantInfo;
+  const participantRoleInfo = roles.find(r => r.role === 'participant' || r.role === 'rein') ?? participantInfo;
 
   return (
     <PageShell header={<PortalHeader role={primaryRole} masterPDA={masterParam} roles={roles} />}>
@@ -359,7 +359,7 @@ export function PortalPage() {
       {activeTab === 'contracts' && (
         <PortalContracts masterPDA={masterPDA} />
       )}
-      {activeTab === 'confirm' && (roleSet.has('leader') || roleSet.has('partA') || roleSet.has('partB') || roleSet.has('rein')) && (
+      {activeTab === 'confirm' && (roleSet.has('leader') || roleSet.has('participant') || roleSet.has('rein')) && (
         <PortalConfirm masterPDA={masterPDA} participantInfo={participantRoleInfo} allRoles={roles} onSuccess={refreshRole} />
       )}
       {activeTab === 'risk' && (roleSet.has('leader') || roleSet.has('rein')) && (

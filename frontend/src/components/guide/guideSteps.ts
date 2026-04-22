@@ -9,9 +9,9 @@ export interface GuideStep {
 export const GUIDE_STEPS: GuideStep[] = [
   { step: 1, target: 'set-terms-btn', titleKey: 'guide.step1.title', descKey: 'guide.step1.desc', position: 'right' },
   { step: 2, target: 'role-select', titleKey: 'guide.step2.title', descKey: 'guide.step2.desc', position: 'bottom' },
-  { step: 3, target: 'confirm-partA', titleKey: 'guide.step3.title', descKey: 'guide.step3.desc', position: 'right' },
+  { step: 3, target: 'confirm-p1', titleKey: 'guide.step3.title', descKey: 'guide.step3.desc', position: 'right' },
   { step: 4, target: 'role-select', titleKey: 'guide.step4.title', descKey: 'guide.step4.desc', position: 'bottom' },
-  { step: 5, target: 'confirm-partB', titleKey: 'guide.step5.title', descKey: 'guide.step5.desc', position: 'right' },
+  { step: 5, target: 'confirm-p2', titleKey: 'guide.step5.title', descKey: 'guide.step5.desc', position: 'right' },
   { step: 6, target: 'role-select', titleKey: 'guide.step6.title', descKey: 'guide.step6.desc', position: 'bottom' },
   { step: 7, target: 'confirm-rein', titleKey: 'guide.step7.title', descKey: 'guide.step7.desc', position: 'right' },
   { step: 8, target: 'role-select', titleKey: 'guide.step8.title', descKey: 'guide.step8.desc', position: 'bottom' },

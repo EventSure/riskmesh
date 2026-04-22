@@ -1,4 +1,8 @@
 use axum::{
+    body::Body,
+    http::Request,
+    middleware::{self, Next},
+    response::Response,
     routing::{get, post},
     Router,
 };
@@ -21,5 +25,21 @@ pub(super) fn build_router(state: AppState) -> Router {
             "/api/master-policies/:master_policy_pubkey/flight-policies",
             get(get_flight_policies_by_master_agreement).post(post_flight_policy),
         )
+        .layer(middleware::from_fn(log_error_responses))
         .with_state(state)
+}
+
+async fn log_error_responses(request: Request<Body>, next: Next) -> Response {
+    let method = request.method().clone();
+    let uri = request.uri().clone();
+    let response = next.run(request).await;
+    let status = response.status();
+
+    if status.is_server_error() {
+        tracing::error!(%method, %uri, %status, "API 에러 응답");
+    } else if status.is_client_error() {
+        tracing::warn!(%method, %uri, %status, "API 에러 응답");
+    }
+
+    response
 }

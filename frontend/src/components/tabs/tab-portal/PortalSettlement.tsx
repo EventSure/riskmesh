@@ -34,8 +34,14 @@ export function PortalSettlement({ participantInfo, allRoles }: PortalSettlement
     return claims.map(c => {
       // Sum myNet across all roles
       const myNet = roles.reduce((sum, r) => {
-        if (r.role === 'partA') return sum + c.aNet;
-        if (r.role === 'partB') return sum + c.bNet;
+        if (r.role === 'participant') {
+          // participantIndex is the on-chain participants[] index where 0 = leader.
+          // store.participants excludes the leader, so storeIdx = participantIndex - 1.
+          // Invariant: for role === 'participant', participantIndex must be >= 1.
+          if (r.participantIndex < 1) return sum;
+          const storeIdx = r.participantIndex - 1;
+          return sum + (c.participantNets[storeIdx] ?? 0);
+        }
         if (r.role === 'rein') return sum + c.rNet;
         return sum;
       }, 0);

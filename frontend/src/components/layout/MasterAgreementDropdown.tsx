@@ -37,10 +37,9 @@ function formatDate(ts: number): string {
   });
 }
 
-const ROLE_LABEL: Record<'leader' | 'partA' | 'partB' | 'rein', string> = {
+const ROLE_LABEL: Record<'leader' | 'participant' | 'rein', string> = {
   leader: '리더사',
-  partA: '참여사A',
-  partB: '참여사B',
+  participant: '참여사',
   rein: '재보험사',
 };
 

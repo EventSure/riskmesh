@@ -98,13 +98,12 @@ const WalletWrap = styled.div`
 
 const ROLE_COLORS: Record<string, string> = {
   leader: '#9945FF',
-  partA: '#22C55E',
-  partB: '#F59E0B',
+  participant: '#22C55E',
   rein: '#38BDF8',
 };
 
 interface PortalHeaderProps {
-  role: 'leader' | 'partA' | 'partB' | 'rein' | null;
+  role: 'leader' | 'participant' | 'rein' | null;
   masterPDA: string | null;
   roles?: ParticipantInfo[];
 }

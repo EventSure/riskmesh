@@ -14,6 +14,8 @@ pub struct SettleFlightClaim<'info> {
     #[account(mut)]
     pub leader_deposit_token: Account<'info, TokenAccount>,
     #[account(mut)]
+    pub leader_pool_token: Account<'info, TokenAccount>,
+    #[account(mut)]
     pub reinsurer_pool_token: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
 }
@@ -42,21 +44,36 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightClaim<'a>>) -> Resul
         OpenParamError::InvalidInput
     );
     require!(
-        ctx.accounts.reinsurer_pool_token.key() == master.reinsurer_pool_wallet,
-        OpenParamError::InvalidInput
-    );
-    require!(
         ctx.accounts.leader_deposit_token.mint == master.currency_mint,
         OpenParamError::InvalidInput
     );
     require!(
-        ctx.accounts.reinsurer_pool_token.mint == master.currency_mint,
+        ctx.accounts.leader_pool_token.key() == master.leader_pool_wallet,
         OpenParamError::InvalidInput
     );
     require!(
-        ctx.accounts.reinsurer_pool_token.owner == master.key(),
+        ctx.accounts.leader_pool_token.mint == master.currency_mint,
+        OpenParamError::InvalidInput
+    );
+    require!(
+        ctx.accounts.leader_pool_token.owner == master.key(),
         OpenParamError::InvalidSettlementTarget
     );
+
+    if let Some(reinsurer_pool_wallet) = master.reinsurer_pool_wallet {
+        require!(
+            ctx.accounts.reinsurer_pool_token.key() == reinsurer_pool_wallet,
+            OpenParamError::InvalidInput
+        );
+        require!(
+            ctx.accounts.reinsurer_pool_token.mint == master.currency_mint,
+            OpenParamError::InvalidInput
+        );
+        require!(
+            ctx.accounts.reinsurer_pool_token.owner == master.key(),
+            OpenParamError::InvalidSettlementTarget
+        );
+    }
 
     require!(
         ctx.remaining_accounts.len() == master.participants.len(),
@@ -66,7 +83,9 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightClaim<'a>>) -> Resul
     let payout = flight.payout_amount;
     require!(payout > 0, OpenParamError::InvalidPayout);
 
-    let insurer_ratios: Vec<u16> = master.participants.iter().map(|p| p.share_bps).collect();
+    let insurer_ratios: Vec<u16> = std::iter::once(master.leader_share_bps)
+        .chain(master.participants.iter().map(|p| p.share_bps))
+        .collect();
     // 총 payout을 재보험사 몫 + 보험사(leader/A/B...) 몫으로 분리한다.
     let (reinsurer_amount, insurer_amounts) =
         calc_claim_split(payout, master.reinsurer_effective_bps, &insurer_ratios)?;
@@ -94,15 +113,30 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightClaim<'a>>) -> Resul
         token::transfer(reins_transfer_ctx, reinsurer_amount)?;
     }
 
-    for (i, amount) in insurer_amounts.iter().enumerate() {
+    let leader_amount = insurer_amounts[0];
+    if leader_amount > 0 {
+        let leader_transfer_ctx = CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            Transfer {
+                from: ctx.accounts.leader_pool_token.to_account_info(),
+                to: ctx.accounts.leader_deposit_token.to_account_info(),
+                authority: ctx.accounts.master_policy.to_account_info(),
+            },
+            signer,
+        );
+        token::transfer(leader_transfer_ctx, leader_amount)?;
+    }
+
+    for (i, amount) in insurer_amounts.iter().enumerate().skip(1) {
         if *amount == 0 {
             continue;
         }
-        let pool_info = &ctx.remaining_accounts[i];
+        let participant_idx = i - 1;
+        let pool_info = &ctx.remaining_accounts[participant_idx];
         let pool_wallet: Account<TokenAccount> = Account::try_from(pool_info)?;
 
         require!(
-            pool_wallet.key() == master.participants[i].pool_wallet,
+            pool_wallet.key() == master.participants[participant_idx].pool_wallet,
             OpenParamError::InvalidInput
         );
         require!(

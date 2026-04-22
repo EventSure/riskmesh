@@ -1,93 +1,115 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useProtocolStore } from '../useProtocolStore';
+import type { Participant } from '../useProtocolStore';
 
-// Helper to get fresh store state
 const getState = () => useProtocolStore.getState();
 const { setState } = useProtocolStore;
 
+const makeParticipants = (shares: number[]): Participant[] =>
+  shares.map((share, i) => ({ id: `p${i + 1}`, name: '', share, address: '', confirmed: false }));
+
+const makeAcc = (n: number) => ({
+  leaderPrem: 0,
+  participantPrems: new Array(n).fill(0),
+  reinPrem: 0,
+  leaderClaim: 0,
+  participantClaims: new Array(n).fill(0),
+  reinClaim: 0,
+});
+
 beforeEach(() => {
   getState().resetAll();
-  // Ensure leader role for most tests
   setState({ role: 'leader' });
 });
 
 describe('setTerms', () => {
   it('succeeds when role is leader and shares sum to 100', () => {
-    setState({ role: 'leader', shares: { leader: 50, partA: 30, partB: 20 } });
+    setState({ role: 'leader', leaderShare: 50, participants: makeParticipants([30, 20]) });
     const result = getState().setTerms();
     expect(result.ok).toBe(true);
     expect(getState().processStep).toBe(1);
   });
 
   it('succeeds when role is operator', () => {
-    setState({ role: 'operator', shares: { leader: 50, partA: 30, partB: 20 } });
+    setState({ role: 'operator', leaderShare: 50, participants: makeParticipants([30, 20]) });
     const result = getState().setTerms();
     expect(result.ok).toBe(true);
   });
 
-  it('fails when role is partA', () => {
-    setState({ role: 'partA' });
+  it('fails when role is participant', () => {
+    setState({ role: 'participant' });
     const result = getState().setTerms();
     expect(result.ok).toBe(false);
     expect(result.msg).toBeDefined();
   });
 
   it('fails when shares do not sum to 100', () => {
-    setState({ shares: { leader: 50, partA: 30, partB: 10 } });
+    setState({ leaderShare: 50, participants: makeParticipants([30, 10]) });
     const result = getState().setTerms();
     expect(result.ok).toBe(false);
     expect(result.msg).toBeDefined();
   });
 
   it('sets policyStateIdx to 0 on success', () => {
-    setState({ shares: { leader: 50, partA: 30, partB: 20 } });
+    setState({ leaderShare: 50, participants: makeParticipants([30, 20]) });
     getState().setTerms();
     expect(getState().policyStateIdx).toBe(0);
   });
 });
 
-describe('confirmParty', () => {
+describe('confirmParticipant / confirmReinsurer', () => {
   beforeEach(() => {
-    setState({ processStep: 1 });
+    setState({
+      processStep: 1,
+      leaderShare: 50,
+      participants: makeParticipants([30, 20]),
+      reinsurer: { enabled: true, address: '', confirmed: false },
+      acc: makeAcc(2),
+    });
   });
 
-  it('partA confirmation sets processStep to 2', () => {
-    getState().confirmParty('partA');
-    expect(getState().confirms.partA).toBe(true);
+  it('first participant confirmation sets processStep to 2', () => {
+    getState().confirmParticipant('p1');
+    expect(getState().participants.find(p => p.id === 'p1')?.confirmed).toBe(true);
     expect(getState().processStep).toBe(2);
   });
 
-  it('partA + partB sets processStep to 3', () => {
-    getState().confirmParty('partA');
-    getState().confirmParty('partB');
+  it('both participants confirmed sets processStep to 3', () => {
+    getState().confirmParticipant('p1');
+    getState().confirmParticipant('p2');
     expect(getState().processStep).toBe(3);
   });
 
-  it('all three confirmations set processStep to 4', () => {
-    getState().confirmParty('partA');
-    getState().confirmParty('partB');
-    getState().confirmParty('rein');
+  it('all parties confirmed sets processStep to 4', () => {
+    getState().confirmParticipant('p1');
+    getState().confirmParticipant('p2');
+    getState().confirmReinsurer();
     expect(getState().processStep).toBe(4);
-    expect(getState().confirms).toEqual({ partA: true, partB: true, rein: true });
+    expect(getState().participants.every(p => p.confirmed)).toBe(true);
+    expect(getState().reinsurer.confirmed).toBe(true);
   });
 
-  it('partB alone does not advance processStep beyond 1', () => {
-    getState().confirmParty('partB');
-    expect(getState().processStep).toBe(1);
+  it('second participant alone advances processStep to 2', () => {
+    getState().confirmParticipant('p2');
+    expect(getState().processStep).toBe(2);
   });
 });
 
 describe('activateMaster', () => {
   it('fails when not all parties confirmed', () => {
-    setState({ confirms: { partA: true, partB: true, rein: false } });
+    setState({
+      participants: makeParticipants([30, 20]).map((p, i) => ({ ...p, confirmed: i === 0 })),
+      reinsurer: { enabled: true, address: '', confirmed: false },
+    });
     const result = getState().activateMaster();
     expect(result.ok).toBe(false);
   });
 
   it('fails when role is not leader', () => {
     setState({
-      role: 'partA',
-      confirms: { partA: true, partB: true, rein: true },
+      role: 'participant',
+      participants: makeParticipants([30, 20]).map(p => ({ ...p, confirmed: true })),
+      reinsurer: { enabled: true, address: '', confirmed: true },
     });
     const result = getState().activateMaster();
     expect(result.ok).toBe(false);
@@ -96,7 +118,8 @@ describe('activateMaster', () => {
   it('succeeds with all confirmations and leader role', () => {
     setState({
       role: 'leader',
-      confirms: { partA: true, partB: true, rein: true },
+      participants: makeParticipants([30, 20]).map(p => ({ ...p, confirmed: true })),
+      reinsurer: { enabled: true, address: '', confirmed: true },
     });
     const result = getState().activateMaster();
     expect(result.ok).toBe(true);
@@ -110,7 +133,10 @@ describe('addContract', () => {
   beforeEach(() => {
     setState({
       masterActive: true,
-      shares: { leader: 50, partA: 30, partB: 20 },
+      leaderShare: 50,
+      participants: makeParticipants([30, 20]),
+      reinsurer: { enabled: true, address: '', confirmed: false },
+      acc: makeAcc(2),
       premiumPerPolicy: 3,
       cededRatioBps: 5000,
       reinsCommissionBps: 1000,
@@ -131,12 +157,12 @@ describe('addContract', () => {
     const ct = contracts[0];
     // reinsEff = 0.5 * (1 - 0.1) = 0.45
     // lNet = 0.5 * 0.55 * 3 = 0.825
-    // aNet = 0.3 * 0.55 * 3 = 0.495
-    // bNet = 0.2 * 0.55 * 3 = 0.33
+    // participantNets[0] (30%) = 0.3 * 0.55 * 3 = 0.495
+    // participantNets[1] (20%) = 0.2 * 0.55 * 3 = 0.33
     // rNet = 0.45 * 3 = 1.35
     expect(ct.lNet).toBeCloseTo(0.825, 6);
-    expect(ct.aNet).toBeCloseTo(0.495, 6);
-    expect(ct.bNet).toBeCloseTo(0.33, 6);
+    expect(ct.participantNets[0]).toBeCloseTo(0.495, 6);
+    expect(ct.participantNets[1]).toBeCloseTo(0.33, 6);
     expect(ct.rNet).toBeCloseTo(1.35, 6);
     expect(ct.status).toBe('active');
     expect(ct.name).toBe('홍길동');
@@ -148,8 +174,8 @@ describe('addContract', () => {
     getState().addContract('B', 'OZ201', '2026-02-05');
     const acc = getState().acc;
     expect(acc.leaderPrem).toBeCloseTo(0.825 * 2, 6);
-    expect(acc.partAPrem).toBeCloseTo(0.495 * 2, 6);
-    expect(acc.partBPrem).toBeCloseTo(0.33 * 2, 6);
+    expect(acc.participantPrems[0]).toBeCloseTo(0.495 * 2, 6);
+    expect(acc.participantPrems[1]).toBeCloseTo(0.33 * 2, 6);
     expect(acc.reinPrem).toBeCloseTo(1.35 * 2, 6);
   });
 
@@ -165,7 +191,10 @@ describe('runOracle', () => {
   beforeEach(() => {
     setState({
       masterActive: true,
-      shares: { leader: 50, partA: 30, partB: 20 },
+      leaderShare: 50,
+      participants: makeParticipants([30, 20]),
+      reinsurer: { enabled: true, address: '', confirmed: false },
+      acc: makeAcc(2),
       premiumPerPolicy: 3,
       cededRatioBps: 5000,
       reinsCommissionBps: 1000,
@@ -246,12 +275,12 @@ describe('runOracle', () => {
     const cl = getState().claims[0];
     // payout=5, reinsEff=0.45, insurerEff=0.55
     // lNet = 5 * 0.55 * 0.5 = 1.375
-    // aNet = 5 * 0.55 * 0.3 = 0.825
-    // bNet = 5 * 0.55 * 0.2 = 0.55
+    // participantNets[0] (30%) = 5 * 0.55 * 0.3 = 0.825
+    // participantNets[1] (20%) = 5 * 0.55 * 0.2 = 0.55
     // rNet = 5 * 0.45 = 2.25
     expect(cl.lNet).toBeCloseTo(1.375, 6);
-    expect(cl.aNet).toBeCloseTo(0.825, 6);
-    expect(cl.bNet).toBeCloseTo(0.55, 6);
+    expect(cl.participantNets[0]).toBeCloseTo(0.825, 6);
+    expect(cl.participantNets[1]).toBeCloseTo(0.55, 6);
     expect(cl.rNet).toBeCloseTo(2.25, 6);
     expect(cl.totRC).toBeCloseTo(2.25, 6);
   });
@@ -269,7 +298,6 @@ describe('runOracle', () => {
 
   it('rejects already claimed contract', () => {
     getState().runOracle(1, 120, 0, false);
-    // Add another contract to test with
     getState().addContract('Test2', 'OZ201', '2026-02-05');
     const result = getState().runOracle(1, 180, 0, false);
     expect(result.ok).toBe(false);
@@ -289,8 +317,10 @@ describe('runOracle', () => {
     const acc = getState().acc;
     // delay2h: lNet=1.375, delay3h: lNet = 8 * 0.55 * 0.5 = 2.2
     expect(acc.leaderClaim).toBeCloseTo(1.375 + 2.2, 6);
-    expect(acc.partAClaim).toBeCloseTo(0.825 + 1.32, 6);
-    expect(acc.partBClaim).toBeCloseTo(0.55 + 0.88, 6);
+    // participantClaims[0] (30%): 0.825 + 8*0.55*0.3=1.32
+    expect(acc.participantClaims[0]).toBeCloseTo(0.825 + 1.32, 6);
+    // participantClaims[1] (20%): 0.55 + 8*0.55*0.2=0.88
+    expect(acc.participantClaims[1]).toBeCloseTo(0.55 + 0.88, 6);
     expect(acc.reinClaim).toBeCloseTo(2.25 + 3.6, 6);
   });
 });
@@ -299,7 +329,10 @@ describe('approveClaims', () => {
   beforeEach(() => {
     setState({
       masterActive: true,
-      shares: { leader: 50, partA: 30, partB: 20 },
+      leaderShare: 50,
+      participants: makeParticipants([30, 20]),
+      reinsurer: { enabled: true, address: '', confirmed: false },
+      acc: makeAcc(2),
       premiumPerPolicy: 3,
       cededRatioBps: 5000,
       reinsCommissionBps: 1000,
@@ -334,7 +367,10 @@ describe('settleClaims', () => {
   beforeEach(() => {
     setState({
       masterActive: true,
-      shares: { leader: 50, partA: 30, partB: 20 },
+      leaderShare: 50,
+      participants: makeParticipants([30, 20]),
+      reinsurer: { enabled: true, address: '', confirmed: false },
+      acc: makeAcc(2),
       premiumPerPolicy: 3,
       cededRatioBps: 5000,
       reinsCommissionBps: 1000,

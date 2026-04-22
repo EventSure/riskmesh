@@ -16,7 +16,7 @@ import { kp, loadState, makeProgram, flightPolicyPub, saveState } from "./common
 
 async function main() {
   const s = loadState() as any;
-  if (!s.masterId || !s.masterPda || !s.leaderAta || !s.leaderDepositWallet) {
+  if (!s.masterId || !s.masterPda || !s.leaderAta || !s.leaderPoolWallet) {
     throw new Error("master-setup 데이터 없음. yarn demo:3-master-setup 먼저 실행하세요.");
   }
 
@@ -58,8 +58,8 @@ async function main() {
       creator:            leader.publicKey,
       masterPolicy:       masterPda,
       flightPolicy:       flightPda,
-      payerToken:         new PublicKey(s.leaderAta),
-      leaderDepositToken: new PublicKey(s.leaderDepositWallet),
+      payerToken:      new PublicKey(s.leaderAta),
+      leaderPoolToken: new PublicKey(s.leaderPoolWallet),
     })
     .signers([leader])
     .rpc();

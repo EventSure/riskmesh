@@ -123,16 +123,14 @@ async function main() {
   console.log(`Reinsurer ATA : ${reinsAta.address.toBase58()}`);
 
   // ── PDA 소유 토큰 계정 생성 ──────────────────────────────────────────────────
-  // ATA는 (mint, owner) 쌍으로 유일 → 다수의 PDA 소유 계정은 명시적 Keypair 사용
-  console.log("\nPDA 소유 pool/deposit 계정 생성 중...");
-  const leaderDepositKp  = Keypair.generate();
+  // leaderDeposit은 leader(ATA) 소유. 나머지 풀은 모두 masterPda 소유 에스크로.
+  console.log("\n토큰 계정 생성 중...");
   const reinsurerPoolKp  = Keypair.generate();
   const reinsurerDepKp   = Keypair.generate();
   const leaderPoolKp     = Keypair.generate();
   const aPoolKp          = Keypair.generate();
   const bPoolKp          = Keypair.generate();
 
-  await createAccount(conn, leader, mintPubkey, masterPda, leaderDepositKp);
   await createAccount(conn, leader, mintPubkey, masterPda, reinsurerPoolKp);
   await createAccount(conn, leader, mintPubkey, masterPda, reinsurerDepKp);
   await createAccount(conn, leader, mintPubkey, masterPda, leaderPoolKp);
@@ -145,7 +143,7 @@ async function main() {
   await mintTo(conn, leader, mintPubkey, aPoolKp.publicKey,      leader, 1_800_000);
   await mintTo(conn, leader, mintPubkey, bPoolKp.publicKey,      leader, 1_200_000);
 
-  console.log(`leaderDepositWallet : ${leaderDepositKp.publicKey.toBase58()}`);
+  console.log(`leaderDepositWallet : ${leaderAta.address.toBase58()} (leader ATA)`);
   console.log(`reinsurerPoolWallet : ${reinsurerPoolKp.publicKey.toBase58()}`);
   console.log(`reinsurerDepWallet  : ${reinsurerDepKp.publicKey.toBase58()}`);
   console.log(`leaderPoolWallet    : ${leaderPoolKp.publicKey.toBase58()} (+3 USDC)`);
@@ -169,10 +167,10 @@ async function main() {
       payoutDelay3H:       new BN(3_000_000),
       payoutDelay4To5H:    new BN(4_000_000),
       payoutDelay6HOrCancelled: new BN(6_000_000),
+      leaderShareBps:      5_000,
       cededRatioBps:       0,
       reinsCommissionBps:  0,
       participants: [
-        { insurer: leader.publicKey, shareBps: 5_000 },
         { insurer: partyA.publicKey, shareBps: 3_000 },
         { insurer: partyB.publicKey, shareBps: 2_000 },
       ],
@@ -184,7 +182,7 @@ async function main() {
       reinsurer:              reins.publicKey,
       currencyMint:           mintPubkey,
       masterPolicy:           masterPda,
-      leaderDepositWallet:    leaderDepositKp.publicKey,
+      leaderDepositWallet:    leaderAta.address,
       reinsurerPoolWallet:    reinsurerPoolKp.publicKey,
       reinsurerDepositWallet: reinsurerDepKp.publicKey,
       systemProgram:          SystemProgram.programId,
@@ -228,14 +226,6 @@ async function main() {
     console.log(`  ${actor.publicKey.toBase58().slice(0, 8)}... 완료`);
   }
 
-  console.log("\nconfirm_master(1) — 재보험사 승인 중...");
-  await pg.methods
-    .confirmMaster(1)
-    .accountsPartial({ actor: reins.publicKey, masterPolicy: masterPda })
-    .signers([reins])
-    .rpc();
-  console.log(`  ${reins.publicKey.toBase58().slice(0, 8)}... 완료`);
-
   // ── activate_master ──────────────────────────────────────────────────────────
   console.log("\nactivate_master 호출 중...");
   const txAct = await pg.methods
@@ -256,7 +246,7 @@ async function main() {
     masterId:               MASTER_ID,
     masterPda:              masterPda.toBase58(),
     leaderAta:              leaderAta.address.toBase58(),
-    leaderDepositWallet:    leaderDepositKp.publicKey.toBase58(),
+    leaderDepositWallet:    leaderAta.address.toBase58(),
     reinsurerPoolWallet:    reinsurerPoolKp.publicKey.toBase58(),
     reinsurerDepositWallet: reinsurerDepKp.publicKey.toBase58(),
     leaderPoolWallet:       leaderPoolKp.publicKey.toBase58(),

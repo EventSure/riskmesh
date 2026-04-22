@@ -37,16 +37,29 @@ pub fn handler(ctx: Context<RegisterParticipantWallets>) -> Result<()> {
         ctx.accounts.deposit_wallet.mint == master.currency_mint,
         OpenParamError::InvalidInput
     );
+    // pool 지갑은 항상 master PDA가 소유하는 에스크로 계정이어야 한다.
+    require!(
+        ctx.accounts.pool_wallet.owner == master.key(),
+        OpenParamError::InvalidSettlementTarget
+    );
 
-    // signer와 매칭되는 참여자를 찾아 pool/deposit 정산 지갑을 기록한다.
-    let idx = master
-        .participants
-        .iter()
-        .position(|p| p.insurer == ctx.accounts.insurer.key())
-        .ok_or(OpenParamError::NotFound)?;
+    if ctx.accounts.insurer.key() == master.leader {
+        require!(
+            ctx.accounts.deposit_wallet.key() == master.leader_deposit_wallet,
+            OpenParamError::InvalidInput
+        );
+        master.leader_pool_wallet = ctx.accounts.pool_wallet.key();
+    } else {
+        // signer와 매칭되는 참여자를 찾아 pool/deposit 정산 지갑을 기록한다.
+        let idx = master
+            .participants
+            .iter()
+            .position(|p| p.insurer == ctx.accounts.insurer.key())
+            .ok_or(OpenParamError::NotFound)?;
 
-    master.participants[idx].pool_wallet = ctx.accounts.pool_wallet.key();
-    master.participants[idx].deposit_wallet = ctx.accounts.deposit_wallet.key();
+        master.participants[idx].pool_wallet = ctx.accounts.pool_wallet.key();
+        master.participants[idx].deposit_wallet = ctx.accounts.deposit_wallet.key();
+    }
 
     Ok(())
 }

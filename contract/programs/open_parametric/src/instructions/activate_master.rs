@@ -22,7 +22,11 @@ pub fn handler(ctx: Context<ActivateMaster>) -> Result<()> {
         OpenParamError::Unauthorized
     );
     require!(
-        master.reinsurer_confirmed,
+        master.reinsurer.is_none() || master.reinsurer_confirmed,
+        OpenParamError::MasterNotConfirmed
+    );
+    require!(
+        master.leader_pool_wallet != Pubkey::default(),
         OpenParamError::MasterNotConfirmed
     );
 

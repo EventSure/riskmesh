@@ -18,6 +18,7 @@ fn build_master_agreement_bytes() -> (Pubkey, Vec<u8>, Vec<Pubkey>) {
     let reinsurer = Pubkey::new_unique();
     let reinsurer_pool_wallet = Pubkey::new_unique();
     let reinsurer_deposit_wallet = Pubkey::new_unique();
+    let leader_pool_wallet = Pubkey::new_unique();
     let leader_deposit_wallet = Pubkey::new_unique();
     let participant_insurer = Pubkey::new_unique();
     let participant_pool_wallet = Pubkey::new_unique();
@@ -36,13 +37,18 @@ fn build_master_agreement_bytes() -> (Pubkey, Vec<u8>, Vec<Pubkey>) {
     data.extend_from_slice(&200u64.to_le_bytes());
     data.extend_from_slice(&300u64.to_le_bytes());
     data.extend_from_slice(&400u64.to_le_bytes());
+    data.extend_from_slice(&5_000u16.to_le_bytes()); // leader_share_bps
     data.extend_from_slice(&1_100u16.to_le_bytes());
     data.extend_from_slice(&220u16.to_le_bytes());
     data.extend_from_slice(&880u16.to_le_bytes());
+    data.push(1); // Option<reinsurer> = Some
     push_pubkey(&mut data, &reinsurer);
-    data.push(1);
+    data.push(1); // reinsurer_confirmed
+    data.push(1); // Option<reinsurer_pool_wallet> = Some
     push_pubkey(&mut data, &reinsurer_pool_wallet);
+    data.push(1); // Option<reinsurer_deposit_wallet> = Some
     push_pubkey(&mut data, &reinsurer_deposit_wallet);
+    push_pubkey(&mut data, &leader_pool_wallet);
     push_pubkey(&mut data, &leader_deposit_wallet);
     data.extend_from_slice(&1u32.to_le_bytes());
     push_pubkey(&mut data, &participant_insurer);
@@ -65,6 +71,7 @@ fn build_master_agreement_bytes() -> (Pubkey, Vec<u8>, Vec<Pubkey>) {
             reinsurer,
             reinsurer_pool_wallet,
             reinsurer_deposit_wallet,
+            leader_pool_wallet,
             leader_deposit_wallet,
             participant_insurer,
             participant_pool_wallet,
@@ -121,18 +128,19 @@ fn parse_master_agreement_parses_full_account_data() {
     assert_eq!(agreement.ceded_ratio_bps, 1_100);
     assert_eq!(agreement.reins_commission_bps, 220);
     assert_eq!(agreement.reinsurer_effective_bps, 880);
-    assert_eq!(agreement.reinsurer, keys[3].to_string());
+    assert_eq!(agreement.reinsurer, Some(keys[3].to_string()));
     assert!(agreement.reinsurer_confirmed);
-    assert_eq!(agreement.reinsurer_pool_wallet, keys[4].to_string());
-    assert_eq!(agreement.reinsurer_deposit_wallet, keys[5].to_string());
-    assert_eq!(agreement.leader_deposit_wallet, keys[6].to_string());
+    assert_eq!(agreement.reinsurer_pool_wallet, Some(keys[4].to_string()));
+    assert_eq!(agreement.reinsurer_deposit_wallet, Some(keys[5].to_string()));
+    assert_eq!(agreement.leader_pool_wallet, keys[6].to_string());
+    assert_eq!(agreement.leader_deposit_wallet, keys[7].to_string());
     assert_eq!(agreement.participants.len(), 1);
-    assert_eq!(agreement.participants[0].insurer, keys[7].to_string());
+    assert_eq!(agreement.participants[0].insurer, keys[8].to_string());
     assert_eq!(agreement.participants[0].share_bps, 5_000);
     assert!(agreement.participants[0].confirmed);
-    assert_eq!(agreement.participants[0].pool_wallet, keys[8].to_string());
-    assert_eq!(agreement.participants[0].deposit_wallet, keys[9].to_string());
-    assert_eq!(agreement.oracle_feed, keys[10].to_string());
+    assert_eq!(agreement.participants[0].pool_wallet, keys[9].to_string());
+    assert_eq!(agreement.participants[0].deposit_wallet, keys[10].to_string());
+    assert_eq!(agreement.oracle_feed, keys[11].to_string());
     assert_eq!(agreement.status, 2);
     assert_eq!(agreement.status_label, "Active");
     assert_eq!(agreement.created_at, 777);

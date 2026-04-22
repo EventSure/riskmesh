@@ -6,7 +6,7 @@
  * 환경변수:
  *   MASTER_PDA       MasterPolicy 주소 (필수)
  *   CHILD_POLICY_ID  FlightPolicy child ID (기본값: 4)
- *   KEYPAIR_PATH     leader 키페어 경로 (기본값: ~/.config/solana/id.json)
+ *   KEYPAIR_PATH     leader 키페어 경로 (기본값: ~/.config/solana/riskmesh-leader.json)
  */
 import * as anchor from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
@@ -20,7 +20,7 @@ const RPC_URL = process.env.ANCHOR_PROVIDER_URL ?? "https://api.devnet.solana.co
 const MASTER_PDA   = process.env.MASTER_PDA        ?? (() => { throw new Error("MASTER_PDA 환경변수가 필요합니다"); })();
 const CHILD_ID     = parseInt(process.env.CHILD_POLICY_ID ?? "4");
 const KEYPAIR_PATH = process.env.KEYPAIR_PATH
-  ?? path.join(process.env.HOME ?? "~", ".config/solana/id.json");
+  ?? path.join(process.env.HOME ?? "~", ".config/solana/riskmesh-leader.json");
 
 const STATUS: Record<number, string> = {
   0: "Issued",
@@ -93,7 +93,8 @@ async function main() {
         masterPolicy:       masterPda,
         flightPolicy:       flightPda,
         leaderDepositToken: master.leaderDepositWallet,
-        reinsurerPoolToken: master.reinsurerPoolWallet,
+        leaderPoolToken:    master.leaderPoolWallet,
+        reinsurerPoolToken: master.reinsurerPoolWallet ?? master.leaderPoolWallet,
         tokenProgram:       TOKEN_PROGRAM_ID,
       })
       .remainingAccounts(participantPoolWallets)
@@ -122,8 +123,9 @@ async function main() {
         executor:              leader.publicKey,
         masterPolicy:          masterPda,
         flightPolicy:          flightPda,
+        leaderPoolToken:       master.leaderPoolWallet,
         leaderDepositToken:    master.leaderDepositWallet,
-        reinsurerDepositToken: master.reinsurerDepositWallet,
+        reinsurerDepositToken: master.reinsurerDepositWallet ?? master.leaderPoolWallet,
         tokenProgram:          TOKEN_PROGRAM_ID,
       })
       .remainingAccounts(participantDepositWallets)

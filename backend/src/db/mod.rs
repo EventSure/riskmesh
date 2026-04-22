@@ -62,19 +62,6 @@ impl SqliteRepository {
         })
     }
 
-    fn upsert(&self, collection: &str, id: &str, payload: &str) -> Result<()> {
-        let conn = self.conn.lock().unwrap();
-        conn.execute(
-            "INSERT INTO documents (collection, id, payload, updated_at)
-             VALUES (?1, ?2, ?3, strftime('%s','now'))
-             ON CONFLICT(collection, id)
-             DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at",
-            params![collection, id, payload],
-        )
-        .with_context(|| format!("문서 upsert 실패: {collection}/{id}"))?;
-        Ok(())
-    }
-
     fn get(&self, collection: &str, id: &str) -> Result<Option<String>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn
@@ -141,15 +128,26 @@ impl InsuranceRepository for SqliteRepository {
         let rpc_url = config.rpc_url.clone();
 
         tokio::task::spawn_blocking(move || {
+            let mut conn = repo.conn.lock().unwrap();
+            let tx = conn
+                .transaction()
+                .context("스냅샷 트랜잭션 시작 실패")?;
+
+            tx.execute(
+                "DELETE FROM documents WHERE collection IN (?1, ?2)",
+                params![MASTER_POLICIES, FLIGHT_POLICIES],
+            )
+            .context("기존 스냅샷 삭제 실패")?;
+
             for agreement in &master_agreements {
                 let payload =
                     serde_json::to_string(agreement).context("MasterAgreement JSON 직렬화 실패")?;
-                repo.upsert(MASTER_POLICIES, &agreement.pubkey, &payload)
+                upsert_document(&tx, MASTER_POLICIES, &agreement.pubkey, &payload)
                     .with_context(|| format!("MasterAgreement 저장 실패: {}", agreement.pubkey))?;
             }
             for fp in &flight_policies {
                 let payload = serde_json::to_string(fp).context("FlightPolicy JSON 직렬화 실패")?;
-                repo.upsert(FLIGHT_POLICIES, &fp.pubkey, &payload)
+                upsert_document(&tx, FLIGHT_POLICIES, &fp.pubkey, &payload)
                     .with_context(|| format!("FlightPolicy 저장 실패: {}", fp.pubkey))?;
             }
             let metadata = json!({
@@ -160,8 +158,9 @@ impl InsuranceRepository for SqliteRepository {
                 "master_policy_count": master_agreements.len(),
                 "flight_policy_count": flight_policies.len(),
             });
-            repo.upsert(SYNC_METADATA, "current", &metadata.to_string())
+            upsert_document(&tx, SYNC_METADATA, "current", &metadata.to_string())
                 .context("동기화 메타데이터 저장 실패")?;
+            tx.commit().context("스냅샷 트랜잭션 커밋 실패")?;
             Ok(SyncSummary {
                 synced_at,
                 master_agreement_count: master_agreements.len(),
@@ -213,6 +212,23 @@ impl InsuranceRepository for SqliteRepository {
         .await
         .context("spawn_blocking 실패")?
     }
+}
+
+fn upsert_document(
+    tx: &rusqlite::Transaction<'_>,
+    collection: &str,
+    id: &str,
+    payload: &str,
+) -> Result<()> {
+    tx.execute(
+        "INSERT INTO documents (collection, id, payload, updated_at)
+         VALUES (?1, ?2, ?3, strftime('%s','now'))
+         ON CONFLICT(collection, id)
+         DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at",
+        params![collection, id, payload],
+    )
+    .with_context(|| format!("문서 upsert 실패: {collection}/{id}"))?;
+    Ok(())
 }
 
 fn current_unix_seconds() -> Result<u64> {

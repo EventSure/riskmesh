@@ -5,12 +5,20 @@ import type { FlightPolicyWithKey } from '@/hooks/useFlightPolicies';
 import i18n from '@/i18n';
 
 /* ── Types ── */
-export type Role = 'leader' | 'partA' | 'partB' | 'rein' | 'operator';
+export type Role = 'leader' | 'participant' | 'rein' | 'operator';
 
-export interface Shares {
-  leader: number;
-  partA: number;
-  partB: number;
+export interface Participant {
+  id: string;
+  name: string;
+  share: number;
+  address: string;
+  confirmed: boolean;
+}
+
+export interface ReinsurerConfig {
+  enabled: boolean;
+  address: string;
+  confirmed: boolean;
 }
 
 export interface Contract {
@@ -19,8 +27,7 @@ export interface Contract {
   flight: string;
   date: string;
   lNet: number;
-  aNet: number;
-  bNet: number;
+  participantNets: number[];
   rNet: number;
   status: 'active' | 'claimed' | 'paid' | 'noClaim' | 'expired' | 'settled';
   ts: string;
@@ -35,8 +42,7 @@ export interface Claim {
   tier: string;
   payout: number;
   lNet: number;
-  aNet: number;
-  bNet: number;
+  participantNets: number[];
   totRC: number;
   rNet: number;
   status: 'claimable' | 'approved' | 'settled';
@@ -48,12 +54,10 @@ export interface Claim {
 
 export interface Acc {
   leaderPrem: number;
-  partAPrem: number;
-  partBPrem: number;
+  participantPrems: number[];
   reinPrem: number;
   leaderClaim: number;
-  partAClaim: number;
-  partBClaim: number;
+  participantClaims: number[];
   reinClaim: number;
 }
 
@@ -75,7 +79,7 @@ export interface MasterAgreementSummary {
   status: number;
   statusLabel: string;
   coverageEndTs: number;
-  myRole?: 'leader' | 'partA' | 'partB' | 'rein';
+  myRole?: 'leader' | 'participant' | 'rein';
 }
 
 export interface PoolHistEntry {
@@ -116,11 +120,15 @@ export const NAMES = [
 
 export const ROLES: Record<Role, { label: string; color: string }> = {
   leader: { label: '리더사(삼성화재)', color: '#9945FF' },
-  partA: { label: '참여사A(현대해상)', color: '#14F195' },
-  partB: { label: '참여사B(DB손보)', color: '#F59E0B' },
+  participant: { label: '참여사', color: '#14F195' },
   rein: { label: '재보험사', color: '#38BDF8' },
   operator: { label: 'Operator', color: '#EF4444' },
 };
+
+export const PARTICIPANT_COLORS = ['#14F195', '#F59E0B', '#38BDF8', '#A78BFA'] as const;
+export const REINSURER_COLOR = '#EC4899';
+
+export const MAX_PARTICIPANTS = 4;
 
 export const POLICY_STATES = ['Draft', 'Open', 'Funded', 'Active', 'Claimable', 'Approved', 'Settled'] as const;
 export const POLICY_STATE_ICONS = ['📄', '📂', '💰', '⚡', '🔔', '✅', '💸'] as const;
@@ -153,7 +161,13 @@ export const formatNum = (n: number, d = 2) =>
     maximumFractionDigits: d,
   }).format(Number(n));
 
-export const getRoleLabel = (role: Role): string => i18n.t(`role.${role}Short`);
+export const getRoleLabel = (role: string): string => {
+  if (role === 'rein') return i18n.t('role.reinShort');
+  if (role === 'leader') return i18n.t('role.leaderShort');
+  if (role === 'operator') return i18n.t('role.operatorShort');
+  if (role === 'participant') return i18n.t('role.participantShort');
+  return role;
+};
 
 const nowTime = () =>
   new Date().toLocaleTimeString('ko-KR', { hour12: false });
@@ -164,6 +178,13 @@ const nowDate = () =>
     hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
   });
 
+const makeInitialAcc = (n: number): Acc => ({
+  leaderPrem: 0, participantPrems: new Array(n).fill(0), reinPrem: 0,
+  leaderClaim: 0, participantClaims: new Array(n).fill(0), reinClaim: 0,
+});
+
+const DEFAULT_PARTICIPANT: Participant = { id: 'p1', name: '', share: 50, address: '', confirmed: false };
+
 /* ── Store ── */
 interface ProtocolState {
   mode: ProtocolMode;
@@ -171,8 +192,9 @@ interface ProtocolState {
   masterActive: boolean;
   processStep: number;
   policyStateIdx: number;
-  confirms: { partA: boolean; partB: boolean; rein: boolean };
-  shares: Shares;
+  leaderShare: number;
+  participants: Participant[];
+  reinsurer: ReinsurerConfig;
   poolBalance: number;
   totalPremium: number;
   totalClaim: number;
@@ -187,6 +209,8 @@ interface ProtocolState {
   poolHist: PoolHistEntry[];
 
   // Master policy terms (USDC display units)
+  coverageStart: string;
+  coverageEnd: string;
   premiumPerPolicy: number;
   payoutTiers: { delay2h: number; delay3h: number; delay4to5h: number; delay6hOrCancelled: number };
 
@@ -204,9 +228,16 @@ interface ProtocolState {
   // Actions
   setMode: (m: ProtocolMode) => void;
   setRole: (r: Role) => void;
-  setShares: (s: Partial<Shares>) => void;
+  setLeaderShare: (v: number) => void;
+  addParticipant: () => void;
+  removeParticipant: (id: string) => void;
+  updateParticipant: (id: string, patch: Partial<Omit<Participant, 'id'>>) => void;
+  setReinsurer: (patch: Partial<ReinsurerConfig>) => void;
+  toggleReinsurer: () => void;
+  setCoverage: (c: { start?: string; end?: string }) => void;
   setTerms: () => { ok: boolean; msg?: string };
-  confirmParty: (key: 'partA' | 'partB' | 'rein') => void;
+  confirmParticipant: (id: string) => void;
+  confirmReinsurer: () => void;
   activateMaster: () => { ok: boolean; msg?: string };
   addContract: (name?: string, flight?: string, date?: string) => void;
   clearContracts: () => void;
@@ -217,8 +248,17 @@ interface ProtocolState {
   setMasterAgreementPDA: (pda: string | null) => void;
   setMasterAgreements: (list: MasterAgreementSummary[]) => void;
   selectMasterAgreement: (pda: string | null) => void;
-  onChainSetTerms: (txSignature: string, cededRatioBps?: number, reinsCommissionBps?: number, premium?: number, payoutTiers?: { delay2h: number; delay3h: number; delay4to5h: number; delay6hOrCancelled: number }) => void;
-  onChainConfirm: (key: 'partA' | 'partB' | 'rein', txSignature: string) => void;
+  onChainSetTerms: (txSignature: string, opts?: {
+    cededRatioBps?: number;
+    reinsCommissionBps?: number;
+    premium?: number;
+    payoutTiers?: { delay2h: number; delay3h: number; delay4to5h: number; delay6hOrCancelled: number };
+    coverageDates?: { start: string; end: string };
+    leaderShare?: number;
+    participants?: Participant[];
+    reinsurer?: ReinsurerConfig;
+  }) => void;
+  onChainConfirm: (target: string, txSignature: string) => void;
   onChainActivate: (txSignature: string, pda: string) => void;
   onChainAddContract: (id: number, name: string, flight: string, date: string, txSignature: string) => void;
   onChainResolve: (contractId: number, delay: number, cancelled: boolean, txSignature: string) => void;
@@ -228,10 +268,9 @@ interface ProtocolState {
   resetAll: () => void;
   syncMasterFromChain: (data: MasterPolicyAccount) => void;
   syncFlightPoliciesFromChain: (policies: FlightPolicyWithKey[]) => void;
-
 }
 
-const INITIAL_ACC: Acc = { leaderPrem: 0, partAPrem: 0, partBPrem: 0, reinPrem: 0, leaderClaim: 0, partAClaim: 0, partBClaim: 0, reinClaim: 0 };
+let participantIdCounter = 1;
 
 export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
   mode: 'simulation' as ProtocolMode,
@@ -239,8 +278,9 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
   masterActive: false,
   processStep: 0,
   policyStateIdx: -1,
-  confirms: { partA: false, partB: false, rein: false },
-  shares: { leader: 50, partA: 30, partB: 20 },
+  leaderShare: 50,
+  participants: [{ ...DEFAULT_PARTICIPANT }],
+  reinsurer: { enabled: true, address: '', confirmed: false },
   poolBalance: 10000,
   totalPremium: 0,
   totalClaim: 0,
@@ -248,13 +288,15 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
   claims: [],
   contractCount: 0,
   claimCount: 0,
-  acc: { ...INITIAL_ACC },
+  acc: makeInitialAcc(1),
   logs: [],
   logIdCounter: 0,
   premHist: [],
   poolHist: [{ t: 'init', v: 10000 }],
 
   // Master policy terms
+  coverageStart: '2026-01-01',
+  coverageEnd: '2026-12-31',
   premiumPerPolicy: 3,
   payoutTiers: { delay2h: 5, delay3h: 8, delay4to5h: 12, delay6hOrCancelled: 15 },
 
@@ -279,36 +321,111 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     get().addLog(i18n.t('store.roleSwitch', { role: getRoleLabel(r) }), ROLES[r].color, 'role_switch');
   },
 
-  setShares: (s) => set(st => ({ shares: { ...st.shares, ...s } })),
+  setLeaderShare: (v) => set({ leaderShare: v }),
+
+  addParticipant: () => {
+    set(st => {
+      if (st.participants.length >= MAX_PARTICIPANTS) return st;
+      participantIdCounter++;
+      const newP: Participant = {
+        id: `p${participantIdCounter}`,
+        name: '',
+        share: 0,
+        address: '',
+        confirmed: false,
+      };
+      return {
+        participants: [...st.participants, newP],
+        acc: {
+          ...st.acc,
+          participantPrems: [...st.acc.participantPrems, 0],
+          participantClaims: [...st.acc.participantClaims, 0],
+        },
+      };
+    });
+  },
+
+  removeParticipant: (id) => {
+    set(st => {
+      if (st.participants.length <= 1) return st;
+      const idx = st.participants.findIndex(p => p.id === id);
+      if (idx < 0) return st;
+      const participants = st.participants.filter(p => p.id !== id);
+      const participantPrems = st.acc.participantPrems.filter((_, i) => i !== idx);
+      const participantClaims = st.acc.participantClaims.filter((_, i) => i !== idx);
+      return {
+        participants,
+        acc: { ...st.acc, participantPrems, participantClaims },
+      };
+    });
+  },
+
+  updateParticipant: (id, patch) => {
+    set(st => ({
+      participants: st.participants.map(p => p.id === id ? { ...p, ...patch } : p),
+    }));
+  },
+
+  setReinsurer: (patch) => set(st => ({ reinsurer: { ...st.reinsurer, ...patch } })),
+
+  toggleReinsurer: () => set(st => ({
+    reinsurer: { ...st.reinsurer, enabled: !st.reinsurer.enabled, confirmed: false, address: st.reinsurer.enabled ? '' : st.reinsurer.address },
+  })),
+
+  setCoverage: (c) => set(st => ({ coverageStart: c.start ?? st.coverageStart, coverageEnd: c.end ?? st.coverageEnd })),
 
   setTerms: () => {
-    const { role, shares } = get();
+    const { role, leaderShare, participants } = get();
     if (role !== 'leader' && role !== 'operator') return { ok: false, msg: i18n.t('store.leaderOnly') };
-    if (shares.leader + shares.partA + shares.partB !== 100) return { ok: false, msg: i18n.t('store.shareSumError') };
-    set({ processStep: 1, policyStateIdx: 0 });
+    if (participants.length === 0) return { ok: false, msg: i18n.t('store.participantRequired') };
+    const total = leaderShare + participants.reduce((s, p) => s + p.share, 0);
+    if (total !== 100) return { ok: false, msg: i18n.t('store.shareSumError') };
+    set({ processStep: 1, policyStateIdx: 0, acc: makeInitialAcc(participants.length) });
+    const shareDetail = `L${leaderShare}/${participants.map((p, i) => `P${i + 1}:${p.share}`).join('/')}`;
     get().addLog(
       i18n.t('store.termsSet'), '#9945FF', 'set_terms',
-      i18n.t('store.termsDetail', { leader: shares.leader, partA: shares.partA, partB: shares.partB }),
+      `${i18n.t('store.termsDetailPrefix')}|${shareDetail}`,
     );
     return { ok: true };
   },
 
-  confirmParty: (key) => {
+  confirmParticipant: (id) => {
     set(st => {
-      const c = { ...st.confirms, [key]: true };
+      const participants = st.participants.map(p => p.id === id ? { ...p, confirmed: true } : p);
+      const allPart = participants.every(p => p.confirmed);
+      const somePart = participants.some(p => p.confirmed);
+      const reinOk = !st.reinsurer.enabled || st.reinsurer.confirmed;
       let step = st.processStep;
-      if (c.partA && step < 2) step = 2;
-      if (c.partA && c.partB && step < 3) step = 3;
-      if (c.partA && c.partB && c.rein && step < 4) step = 4;
-      return { confirms: c, processStep: step };
+      if (somePart && step < 2) step = 2;
+      if (allPart && step < 3) step = 3;
+      if (allPart && reinOk && step < 4) step = 4;
+      return { participants, processStep: step };
     });
-    get().addLog(i18n.t('store.confirmDone', { role: getRoleLabel(key) }), ROLES[key].color, 'confirm_party');
+    const st = get();
+    const p = st.participants.find(p => p.id === id);
+    const idx = st.participants.findIndex(p => p.id === id);
+    const label = p?.name || `참여사 ${idx + 1}`;
+    get().addLog(i18n.t('store.confirmDone', { role: label }), PARTICIPANT_COLORS[idx] || '#14F195', 'confirm_party');
+  },
+
+  confirmReinsurer: () => {
+    set(st => {
+      const reinsurer = { ...st.reinsurer, confirmed: true };
+      const allPart = st.participants.every(p => p.confirmed);
+      let step = st.processStep;
+      if (allPart && step < 3) step = 3;
+      if (allPart && reinsurer.confirmed && step < 4) step = 4;
+      return { reinsurer, processStep: step };
+    });
+    get().addLog(i18n.t('store.confirmDone', { role: getRoleLabel('rein') }), REINSURER_COLOR, 'confirm_party');
   },
 
   activateMaster: () => {
-    const { role, confirms } = get();
+    const { role, participants, reinsurer } = get();
     if (role !== 'leader' && role !== 'operator') return { ok: false, msg: i18n.t('store.leaderOnly') };
-    if (!confirms.partA || !confirms.partB || !confirms.rein) return { ok: false, msg: i18n.t('store.allConfirmNeeded') };
+    const allPart = participants.every(p => p.confirmed);
+    const reinOk = !reinsurer.enabled || reinsurer.confirmed;
+    if (!allPart || !reinOk) return { ok: false, msg: i18n.t('store.allConfirmNeeded') };
     set({ masterActive: true, policyStateIdx: 3, processStep: 5 });
     get().addLog(
       i18n.t('store.masterActivated'), '#14F195', 'activate_master',
@@ -325,18 +442,15 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     const flight = autoFlight || 'KE081';
     const date = autoDate || '2026-01-15';
     const pp = st.premiumPerPolicy;
-    const lS = st.shares.leader / 100;
-    const aS = st.shares.partA / 100;
-    const bS = st.shares.partB / 100;
+    const lS = st.leaderShare / 100;
     const ceded = st.cededRatioBps / 10000;
     const comm = st.reinsCommissionBps / 10000;
-    const reinsEff = ceded * (1 - comm);
+    const reinsEff = st.reinsurer.enabled ? ceded * (1 - comm) : 0;
     const lNet = lS * (1 - reinsEff) * pp;
-    const aNet = aS * (1 - reinsEff) * pp;
-    const bNet = bS * (1 - reinsEff) * pp;
+    const participantNets = st.participants.map(p => (p.share / 100) * (1 - reinsEff) * pp);
     const rNet = reinsEff * pp;
 
-    const ct: Contract = { id: newCnt, name, flight, date, lNet, aNet, bNet, rNet, status: 'active', ts: nowDate() };
+    const ct: Contract = { id: newCnt, name, flight, date, lNet, participantNets, rNet, status: 'active', ts: nowDate() };
     set(prev => ({
       contractCount: newCnt,
       contracts: [...prev.contracts, ct],
@@ -344,23 +458,24 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       acc: {
         ...prev.acc,
         leaderPrem: prev.acc.leaderPrem + lNet,
-        partAPrem: prev.acc.partAPrem + aNet,
-        partBPrem: prev.acc.partBPrem + bNet,
+        participantPrems: prev.acc.participantPrems.map((v, i) => v + (participantNets[i] ?? 0)),
         reinPrem: prev.acc.reinPrem + rNet,
       },
       premHist: [...prev.premHist, { t: nowTime(), v: prev.totalPremium + pp }],
     }));
+    const netDetail = participantNets.map((n, i) => `P${i + 1}:${formatNum(n, 4)}`).join('/');
     get().addLog(
       i18n.t('store.newContract', { id: newCnt, name, flight, date }), ROLES.leader.color, 'new_contract',
-      i18n.t('store.newContractDetail', { lNet: formatNum(lNet, 4), aNet: formatNum(aNet, 4), bNet: formatNum(bNet, 4), rNet: formatNum(rNet, 4) }),
+      `L:${formatNum(lNet, 4)}/${netDetail}/R:${formatNum(rNet, 4)}`,
     );
   },
 
   clearContracts: () => {
+    const n = get().participants.length;
     set({
       contracts: [],
       contractCount: 0,
-      acc: { ...INITIAL_ACC },
+      acc: makeInitialAcc(n),
       totalPremium: 0,
       totalClaim: 0,
       poolBalance: 10000,
@@ -376,7 +491,6 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     if (fresh < 0 || fresh > 30) return { ok: false, msg: i18n.t('store.oracleStale', { fresh }), type: 'error' as const, code: 'E_ORACLE_STALE' };
     if (delay < 0 || delay % 10 !== 0) return { ok: false, msg: i18n.t('store.oracleFormat', { delay }), type: 'error' as const, code: 'E_ORACLE_FORMAT' };
 
-    // Cancellation overrides delay: treat as highest tier regardless of actual delay
     const tier = cancelled ? TIERS[3] : getTier(delay);
     if (!tier) {
       get().addLog(i18n.t('store.oracleNoTrigger', { delay }), '#22C55E', 'check_oracle');
@@ -388,20 +502,19 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     if (contract.status !== 'active') return { ok: false, msg: i18n.t('store.alreadyClaimed', { id: contractId }), type: 'error' as const, code: 'E_ALREADY_CLAIMED' };
     const ceded = st.cededRatioBps / 10000;
     const commRate = st.reinsCommissionBps / 10000;
-    const reinsEff = ceded * (1 - commRate);
+    const reinsEff = st.reinsurer.enabled ? ceded * (1 - commRate) : 0;
     const newClCnt = st.claimCount + 1;
     const payout = st.payoutTiers[tier.key];
-    const lS = st.shares.leader / 100, aS = st.shares.partA / 100, bS = st.shares.partB / 100;
+    const lS = st.leaderShare / 100;
     const insurerEff = 1 - reinsEff;
     const totRC = payout * reinsEff;
     const lNet = payout * insurerEff * lS;
-    const aNet = payout * insurerEff * aS;
-    const bNet = payout * insurerEff * bS;
+    const participantNets = st.participants.map(p => payout * insurerEff * (p.share / 100));
     const rNet = totRC;
 
     const cl: Claim = {
       id: newClCnt, contractId, name: contract?.name || i18n.t('store.defaultName'), flight: contract?.flight || '—',
-      delay, tier: tier.label, payout, lNet, aNet, bNet, totRC, rNet,
+      delay, tier: tier.label, payout, lNet, participantNets, totRC, rNet,
       status: 'claimable', ts: nowDate(), color: tier.color,
     };
 
@@ -414,17 +527,17 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       acc: {
         ...prev.acc,
         leaderClaim: prev.acc.leaderClaim + lNet,
-        partAClaim: prev.acc.partAClaim + aNet,
-        partBClaim: prev.acc.partBClaim + bNet,
+        participantClaims: prev.acc.participantClaims.map((v, i) => v + (participantNets[i] ?? 0)),
         reinClaim: prev.acc.reinClaim + rNet,
       },
       contracts: prev.contracts.map(c => c.id === contractId ? { ...c, status: 'claimed' as const } : c),
       poolHist: [...prev.poolHist, { t: nowTime(), v: Math.max(0, prev.poolBalance - payout) }],
     }));
 
+    const netDetail = participantNets.map((n, i) => `P${i + 1}:${formatNum(n, 2)}`).join('/');
     get().addLog(
       i18n.t('store.claimLog', { id: newClCnt, tier: tier.label, payout }), tier.color, 'create_claim',
-      i18n.t('store.claimDetail', { lNet: formatNum(lNet, 2), aNet: formatNum(aNet, 2), bNet: formatNum(bNet, 2), totRC: formatNum(totRC, 2) }),
+      `L:${formatNum(lNet, 2)}/${netDetail}/RC:${formatNum(totRC, 2)}`,
     );
 
     return { ok: true, msg: i18n.t('store.claimCreated', { delay, tier: tier.label, payout }), type: 'ok' as const };
@@ -476,9 +589,11 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       masterActive: false,
       processStep: 0,
       policyStateIdx: -1,
-      confirms: { partA: false, partB: false, rein: false },
-      contracts: [],
-      claims: [],
+      leaderShare: 50,
+      participants: [{ ...DEFAULT_PARTICIPANT }] as Participant[],
+      reinsurer: { enabled: true, address: '', confirmed: false } as ReinsurerConfig,
+      contracts: [] as Contract[],
+      claims: [] as Claim[],
       contractCount: 0,
       claimCount: 0,
     };
@@ -493,36 +608,67 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
 
   /* ── On-chain action callbacks (called by components after successful tx) ── */
 
-  onChainSetTerms: (txSignature, cededBps, commBps, premium, payoutTiers) => {
-    const { shares } = get();
+  onChainSetTerms: (txSignature, opts) => {
+    const { leaderShare, participants } = get();
     set({
       processStep: 1,
       policyStateIdx: 0,
-      ...(cededBps != null && { cededRatioBps: cededBps }),
-      ...(commBps != null && { reinsCommissionBps: commBps }),
-      ...(premium != null && { premiumPerPolicy: premium }),
-      ...(payoutTiers != null && { payoutTiers }),
+      ...(opts?.cededRatioBps != null && { cededRatioBps: opts.cededRatioBps }),
+      ...(opts?.reinsCommissionBps != null && { reinsCommissionBps: opts.reinsCommissionBps }),
+      ...(opts?.premium != null && { premiumPerPolicy: opts.premium }),
+      ...(opts?.payoutTiers != null && { payoutTiers: opts.payoutTiers }),
+      ...(opts?.coverageDates != null && { coverageStart: opts.coverageDates.start, coverageEnd: opts.coverageDates.end }),
+      ...(opts?.leaderShare != null && { leaderShare: opts.leaderShare }),
+      ...(opts?.participants != null && { participants: opts.participants }),
+      ...(opts?.reinsurer != null && { reinsurer: opts.reinsurer }),
+      acc: makeInitialAcc((opts?.participants ?? participants).length),
     });
+    const ls = opts?.leaderShare ?? leaderShare;
+    const ps = opts?.participants ?? participants;
+    const shareDetail = `L${ls}/${ps.map((p, i) => `P${i + 1}:${p.share}`).join('/')}`;
     get().addLog(
       i18n.t('store.termsSet'), '#9945FF', 'create_master_policy',
-      i18n.t('store.termsDetail', { leader: shares.leader, partA: shares.partA, partB: shares.partB }),
+      shareDetail,
       txSignature,
     );
   },
 
-  onChainConfirm: (key, txSignature) => {
-    set(st => {
-      const c = { ...st.confirms, [key]: true };
-      let step = st.processStep;
-      if (c.partA && step < 2) step = 2;
-      if (c.partA && c.partB && step < 3) step = 3;
-      if (c.partA && c.partB && c.rein && step < 4) step = 4;
-      return { confirms: c, processStep: step };
-    });
-    get().addLog(
-      i18n.t('store.confirmDone', { role: getRoleLabel(key) }), ROLES[key].color, 'confirm_master',
-      '', txSignature,
-    );
+  onChainConfirm: (target, txSignature) => {
+    if (target === 'rein') {
+      set(st => {
+        const reinsurer = { ...st.reinsurer, confirmed: true };
+        const allPart = st.participants.every(p => p.confirmed);
+        let step = st.processStep;
+        if (allPart && step < 3) step = 3;
+        if (allPart && reinsurer.confirmed && step < 4) step = 4;
+        return { reinsurer, processStep: step };
+      });
+      get().addLog(
+        i18n.t('store.confirmDone', { role: getRoleLabel('rein') }), REINSURER_COLOR, 'confirm_master',
+        '', txSignature,
+      );
+    } else {
+      set(st => {
+        const participants = st.participants.map(p => p.id === target ? { ...p, confirmed: true } : p);
+        const allPart = participants.every(p => p.confirmed);
+        const somePart = participants.some(p => p.confirmed);
+        const reinOk = !st.reinsurer.enabled || st.reinsurer.confirmed;
+        let step = st.processStep;
+        if (somePart && step < 2) step = 2;
+        if (allPart && step < 3) step = 3;
+        if (allPart && reinOk && step < 4) step = 4;
+        return { participants, processStep: step };
+      });
+      const st = get();
+      const p = st.participants.find(p => p.id === target);
+      const idx = st.participants.findIndex(p => p.id === target);
+      const label = p?.name || `참여사 ${idx + 1}`;
+      get().addLog(
+        i18n.t('store.confirmDone', { role: label }),
+        PARTICIPANT_COLORS[idx] || '#14F195', 'confirm_master',
+        '', txSignature,
+      );
+    }
   },
 
   onChainActivate: (txSignature, pda) => {
@@ -536,18 +682,15 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
   onChainAddContract: (id, name, flight, date, txSignature) => {
     const st = get();
     const pp = st.premiumPerPolicy;
-    const lS = st.shares.leader / 100;
-    const aS = st.shares.partA / 100;
-    const bS = st.shares.partB / 100;
+    const lS = st.leaderShare / 100;
     const ceded = st.cededRatioBps / 10000;
     const comm = st.reinsCommissionBps / 10000;
-    const reinsEff = ceded * (1 - comm);
+    const reinsEff = st.reinsurer.enabled ? ceded * (1 - comm) : 0;
     const lNet = lS * (1 - reinsEff) * pp;
-    const aNet = aS * (1 - reinsEff) * pp;
-    const bNet = bS * (1 - reinsEff) * pp;
+    const participantNets = st.participants.map(p => (p.share / 100) * (1 - reinsEff) * pp);
     const rNet = reinsEff * pp;
 
-    const ct: Contract = { id, name, flight, date, lNet, aNet, bNet, rNet, status: 'active', ts: nowDate() };
+    const ct: Contract = { id, name, flight, date, lNet, participantNets, rNet, status: 'active', ts: nowDate() };
     set(prev => ({
       contractCount: id,
       contracts: [...prev.contracts, ct],
@@ -555,15 +698,15 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       acc: {
         ...prev.acc,
         leaderPrem: prev.acc.leaderPrem + lNet,
-        partAPrem: prev.acc.partAPrem + aNet,
-        partBPrem: prev.acc.partBPrem + bNet,
+        participantPrems: prev.acc.participantPrems.map((v, i) => v + (participantNets[i] ?? 0)),
         reinPrem: prev.acc.reinPrem + rNet,
       },
       premHist: [...prev.premHist, { t: nowTime(), v: prev.totalPremium + pp }],
     }));
+    const netDetail = participantNets.map((n, i) => `P${i + 1}:${formatNum(n, 4)}`).join('/');
     get().addLog(
       i18n.t('store.newContract', { id, name, flight, date }), ROLES.leader.color, 'create_flight_policy',
-      i18n.t('store.newContractDetail', { lNet: formatNum(lNet, 4), aNet: formatNum(aNet, 4), bNet: formatNum(bNet, 4), rNet: formatNum(rNet, 4) }),
+      `L:${formatNum(lNet, 4)}/${netDetail}/R:${formatNum(rNet, 4)}`,
       txSignature,
     );
   },
@@ -573,9 +716,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     const contract = st.contracts.find(c => c.id === contractId);
     if (!contract) return;
 
-    // Cancellation overrides delay: treat as highest tier regardless of actual delay
     const tier = cancelled ? TIERS[3] : getTier(delay);
-    // No trigger (delay < 120min): on-chain status → NoClaim, mark contract resolved
     if (!tier) {
       set(prev => ({
         contracts: prev.contracts.map(c => c.id === contractId ? { ...c, status: 'noClaim' as const } : c),
@@ -589,20 +730,19 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
 
     const ceded = st.cededRatioBps / 10000;
     const commRate = st.reinsCommissionBps / 10000;
-    const reinsEff = ceded * (1 - commRate);
+    const reinsEff = st.reinsurer.enabled ? ceded * (1 - commRate) : 0;
     const newClCnt = st.claimCount + 1;
     const payout = st.payoutTiers[tier.key];
-    const lS = st.shares.leader / 100, aS = st.shares.partA / 100, bS = st.shares.partB / 100;
+    const lS = st.leaderShare / 100;
     const insurerEff = 1 - reinsEff;
     const totRC = payout * reinsEff;
     const lNet = payout * insurerEff * lS;
-    const aNet = payout * insurerEff * aS;
-    const bNet = payout * insurerEff * bS;
+    const participantNets = st.participants.map(p => payout * insurerEff * (p.share / 100));
     const rNet = totRC;
 
     const cl: Claim = {
       id: newClCnt, contractId, name: contract.name, flight: contract.flight,
-      delay, tier: tier.label, payout, lNet, aNet, bNet, totRC, rNet,
+      delay, tier: tier.label, payout, lNet, participantNets, totRC, rNet,
       status: 'claimable', ts: nowDate(), color: tier.color,
     };
 
@@ -615,17 +755,17 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       acc: {
         ...prev.acc,
         leaderClaim: prev.acc.leaderClaim + lNet,
-        partAClaim: prev.acc.partAClaim + aNet,
-        partBClaim: prev.acc.partBClaim + bNet,
+        participantClaims: prev.acc.participantClaims.map((v, i) => v + (participantNets[i] ?? 0)),
         reinClaim: prev.acc.reinClaim + rNet,
       },
       contracts: prev.contracts.map(c => c.id === contractId ? { ...c, status: 'claimed' as const } : c),
       poolHist: [...prev.poolHist, { t: nowTime(), v: Math.max(0, prev.poolBalance - payout) }],
     }));
 
+    const netDetail = participantNets.map((n, i) => `P${i + 1}:${formatNum(n, 2)}`).join('/');
     get().addLog(
       i18n.t('store.claimLog', { id: newClCnt, tier: tier.label, payout }), tier.color, 'resolve_flight_delay',
-      i18n.t('store.claimDetail', { lNet: formatNum(lNet, 2), aNet: formatNum(aNet, 2), bNet: formatNum(bNet, 2), totRC: formatNum(totRC, 2) }),
+      `L:${formatNum(lNet, 2)}/${netDetail}/RC:${formatNum(totRC, 2)}`,
       txSignature,
     );
   },
@@ -652,15 +792,18 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
   setPoolBalance: (balance) => set({ poolBalance: balance }),
 
   resetAll: () => {
+    participantIdCounter = 1;
     set({
       masterActive: false, policyStateIdx: -1, processStep: 0,
-      confirms: { partA: false, partB: false, rein: false },
-      shares: { leader: 50, partA: 30, partB: 20 },
+      leaderShare: 50,
+      participants: [{ ...DEFAULT_PARTICIPANT }],
+      reinsurer: { enabled: true, address: '', confirmed: false },
+      coverageStart: '2026-01-01', coverageEnd: '2026-12-31',
       premiumPerPolicy: 3, payoutTiers: { delay2h: 5, delay3h: 8, delay4to5h: 12, delay6hOrCancelled: 15 },
       cededRatioBps: 5000, reinsCommissionBps: 1000,
       poolBalance: 10000, totalPremium: 0, totalClaim: 0,
       contracts: [], claims: [], contractCount: 0, claimCount: 0,
-      acc: { ...INITIAL_ACC },
+      acc: makeInitialAcc(1),
       premHist: [], poolHist: [{ t: 'init', v: 10000 }],
       logs: [], logIdCounter: 0,
       masterAgreementPDA: null, lastTxSignature: null,
@@ -670,57 +813,88 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
 
   syncMasterFromChain: (data: MasterPolicyAccount) => {
     const isActive = data.status === MasterPolicyStatus.Active;
-    const partAConfirmed = data.participants[1]?.confirmed ?? false;
-    const partBConfirmed = data.participants[2]?.confirmed ?? false;
+
+    // Map on-chain participants (leader is separate; participants[] contains only non-leaders).
+    // Preserve existing store participant id/name by matching on address — this
+    // prevents user-edited names from being overwritten on every poll and keeps
+    // ids stable so addParticipant-generated ids never collide.
+    const prevParticipants = get().participants;
+    const participants: Participant[] = data.participants.map((p, i) => {
+      const address = p?.insurer?.toBase58() ?? '';
+      const existing = address ? prevParticipants.find(x => x.address === address) : undefined;
+      return {
+        id: existing?.id ?? `p${i + 1}`,
+        name: existing?.name ?? `참여사 ${i + 1}`,
+        share: Math.round((p?.shareBps ?? 0) / 100),
+        address,
+        confirmed: p?.confirmed ?? false,
+      };
+    });
+    // Keep id counter ahead of any existing ids to avoid collisions on subsequent addParticipant calls.
+    for (const p of participants) {
+      const n = parseInt(p.id.replace(/^p/, ''), 10);
+      if (Number.isFinite(n) && n > participantIdCounter) participantIdCounter = n;
+    }
+
+    const leaderShare = Math.round((data.leaderShareBps ?? 5000) / 100);
+
     const reinConfirmed = data.reinsurerConfirmed;
-    const confirms = { partA: partAConfirmed, partB: partBConfirmed, rein: reinConfirmed };
+    const hasReinsurer = data.cededRatioBps > 0;
+    const reinsurer: ReinsurerConfig = {
+      enabled: hasReinsurer,
+      address: hasReinsurer ? (data.reinsurer?.toBase58() ?? '') : '',
+      confirmed: hasReinsurer && reinConfirmed,
+    };
+
+    const allPart = participants.every(p => p.confirmed);
+    const somePart = participants.some(p => p.confirmed);
+    const reinOk = !hasReinsurer || reinConfirmed;
 
     let processStep = 1;
-    if (partAConfirmed) processStep = 2;
-    if (partAConfirmed && partBConfirmed) processStep = 3;
-    if (partAConfirmed && partBConfirmed && reinConfirmed) processStep = 4;
+    if (somePart) processStep = 2;
+    if (allPart) processStep = 3;
+    if (allPart && reinOk) processStep = 4;
     if (isActive) processStep = 5;
 
-    const newShares: Shares = {
-      leader: Math.round((data.participants[0]?.shareBps ?? 5000) / 100),
-      partA: Math.round((data.participants[1]?.shareBps ?? 0) / 100),
-      partB: Math.round((data.participants[2]?.shareBps ?? 0) / 100),
+    const toDateStr = (ts: import('@coral-xyz/anchor').BN) => {
+      const d = new Date(ts.toNumber() * 1000);
+      return d.toISOString().slice(0, 10);
     };
 
     set({
       masterActive: isActive,
-      confirms,
+      leaderShare,
+      participants,
+      reinsurer,
       processStep,
-      shares: newShares,
       cededRatioBps: data.cededRatioBps,
       reinsCommissionBps: data.reinsCommissionBps,
       ...(data.premiumPerPolicy && { premiumPerPolicy: data.premiumPerPolicy.toNumber() / 1_000_000 }),
-      ...(data.payoutDelay2h && {
+      ...(data.payoutDelay2H && {
         payoutTiers: {
-          delay2h: data.payoutDelay2h.toNumber() / 1_000_000,
-          delay3h: data.payoutDelay3h.toNumber() / 1_000_000,
-          delay4to5h: data.payoutDelay4to5h.toNumber() / 1_000_000,
-          delay6hOrCancelled: data.payoutDelay6hOrCancelled.toNumber() / 1_000_000,
+          delay2h: data.payoutDelay2H.toNumber() / 1_000_000,
+          delay3h: data.payoutDelay3H.toNumber() / 1_000_000,
+          delay4to5h: data.payoutDelay4To5H.toNumber() / 1_000_000,
+          delay6hOrCancelled: data.payoutDelay6HOrCancelled.toNumber() / 1_000_000,
         },
       }),
+      ...(data.coverageStartTs && { coverageStart: toDateStr(data.coverageStartTs) }),
+      ...(data.coverageEndTs && { coverageEnd: toDateStr(data.coverageEndTs) }),
       policyStateIdx: isActive ? 3 : processStep > 0 ? 0 : -1,
     });
   },
 
   syncFlightPoliciesFromChain: (policies: FlightPolicyWithKey[]) => {
     const st = get();
-    const lS = st.shares.leader / 100;
-    const aS = st.shares.partA / 100;
-    const bS = st.shares.partB / 100;
+    const lS = st.leaderShare / 100;
+    const participantShares = st.participants.map(p => p.share / 100);
     const ceded = st.cededRatioBps / 10000;
     const comm = st.reinsCommissionBps / 10000;
 
-    // Per-contract premium net (premiumPerPolicy unit each)
     const pp = st.premiumPerPolicy;
-    const reinsEff = ceded * (1 - comm);
+    const reinsEff = st.reinsurer.enabled ? ceded * (1 - comm) : 0;
     const ctLNet = lS * (1 - reinsEff) * pp;
-    const ctANet = aS * (1 - reinsEff) * pp;
-    const ctBNet = bS * (1 - reinsEff) * pp;
+    const ctParticipantNets = participantShares.map(s => s * (1 - reinsEff) * pp);
     const ctRNet = reinsEff * pp;
 
     const formatTs = (unixSec: number) =>
@@ -751,7 +925,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       } else if (a.status === FlightPolicyStatus.Paid) {
         contractStatus = 'paid';
       } else {
-        contractStatus = 'claimed'; // Claimable (2) only
+        contractStatus = 'claimed';
       }
 
       const ct: Contract = {
@@ -760,15 +934,13 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
         flight: a.flightNo,
         date,
         lNet: ctLNet,
-        aNet: ctANet,
-        bNet: ctBNet,
+        participantNets: ctParticipantNets,
         rNet: ctRNet,
         status: contractStatus,
         ts: formatTs(a.createdAt.toNumber()),
       };
       contracts.push(ct);
 
-      // Only create Claim entries for Claimable (2) and Paid (3)
       if (
         a.status === FlightPolicyStatus.Claimable ||
         a.status === FlightPolicyStatus.Paid
@@ -778,14 +950,11 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
         const tier = a.cancelled ? TIERS[3] : getTier(delay);
         if (tier) {
           const payout = a.payoutAmount.toNumber() / 1_000_000;
-          const lPay = payout * lS, aPay = payout * aS, bPay = payout * bS;
-          const lRC = lPay * ceded, aRC = aPay * ceded, bRC = bPay * ceded;
-          const totRC = lRC + aRC + bRC;
-          const clComm = payout * comm;
-          const clLNet = lPay - lRC + clComm * lS;
-          const clANet = aPay - aRC + clComm * aS;
-          const clBNet = bPay - bRC + clComm * bS;
-          const clRNet = totRC - clComm;
+          const insurerEff = 1 - reinsEff;
+          const totRC = payout * reinsEff;
+          const clLNet = payout * insurerEff * lS;
+          const clParticipantNets = participantShares.map(s => payout * insurerEff * s);
+          const clRNet = totRC;
 
           const cl: Claim = {
             id: claimIdCounter,
@@ -796,8 +965,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
             tier: tier.label,
             payout,
             lNet: clLNet,
-            aNet: clANet,
-            bNet: clBNet,
+            participantNets: clParticipantNets,
             totRC,
             rNet: clRNet,
             status: a.status === FlightPolicyStatus.Paid ? 'settled' : 'claimable',
@@ -810,24 +978,21 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     }
 
     // Recalculate acc from all contracts + claims
-    const acc: Acc = { ...INITIAL_ACC };
+    const acc = makeInitialAcc(st.participants.length);
     for (const ct of contracts) {
       acc.leaderPrem += ct.lNet;
-      acc.partAPrem += ct.aNet;
-      acc.partBPrem += ct.bNet;
+      ct.participantNets.forEach((n, i) => { acc.participantPrems[i] = (acc.participantPrems[i] || 0) + n; });
       acc.reinPrem += ct.rNet;
     }
     for (const cl of claims) {
       acc.leaderClaim += cl.lNet;
-      acc.partAClaim += cl.aNet;
-      acc.partBClaim += cl.bNet;
+      cl.participantNets.forEach((n, i) => { acc.participantClaims[i] = (acc.participantClaims[i] || 0) + n; });
       acc.reinClaim += cl.rNet;
     }
 
     const totalPremium = contracts.length * pp;
     const totalClaim = claims.reduce((s, c) => s + c.payout, 0);
 
-    // Daemon activity heuristic: latest updatedAt among resolved FlightPolicies
     const resolvedPolicies = policies.filter(fp =>
       fp.account.status !== FlightPolicyStatus.Issued &&
       fp.account.status !== FlightPolicyStatus.AwaitingOracle
@@ -855,17 +1020,21 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       mode: state.mode,
       role: state.role,
       masterAgreementPDA: state.masterAgreementPDA,
-      shares: state.shares,
+      leaderShare: state.leaderShare,
       cededRatioBps: state.cededRatioBps,
       reinsCommissionBps: state.reinsCommissionBps,
     };
     if (state.mode !== 'onchain') {
       return {
         ...always,
+        // In simulation mode, participants/reinsurer are user-managed — persist them.
+        // In on-chain mode they are authoritative from chain (syncMasterFromChain),
+        // so we skip them to prevent stale confirmed state leaking across agreements.
+        participants: state.participants,
+        reinsurer: state.reinsurer,
         masterActive: state.masterActive,
         processStep: state.processStep,
         policyStateIdx: state.policyStateIdx,
-        confirms: state.confirms,
         contracts: state.contracts,
         claims: state.claims,
         contractCount: state.contractCount,
@@ -879,5 +1048,17 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       };
     }
     return always;
+  },
+  onRehydrateStorage: () => (state) => {
+    // Restore participantIdCounter from persisted participants so that subsequent
+    // addParticipant calls never produce ids that collide with rehydrated ones.
+    if (state?.participants) {
+      let max = 0;
+      for (const p of state.participants) {
+        const n = parseInt(p.id.replace(/^p/, ''), 10);
+        if (Number.isFinite(n) && n > max) max = n;
+      }
+      if (max > participantIdCounter) participantIdCounter = max;
+    }
   },
 }));

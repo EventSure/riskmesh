@@ -43,6 +43,8 @@ describe("payout_tiers", () => {
   let masterPolicyPda: PublicKey;
   let leaderDeposit: PublicKey;
   let leaderPool: PublicKey;
+  let participantPool: PublicKey;
+  let participantDeposit: PublicKey;
   let reinsurerPool: PublicKey;
   let reinsurerDeposit: PublicKey;
   let payerToken: PublicKey;
@@ -56,7 +58,9 @@ describe("payout_tiers", () => {
 
   before(async () => {
     const reinsurer = Keypair.generate();
+    const participant = Keypair.generate();
     await airdrop(reinsurer.publicKey);
+    await airdrop(participant.publicKey);
 
     const mint = await createMint(connection, payer, payer.publicKey, null, 6);
     const masterId = new anchor.BN(30);
@@ -66,13 +70,16 @@ describe("payout_tiers", () => {
       program.programId
     );
 
-    leaderDeposit    = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
+    leaderDeposit    = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
     reinsurerPool    = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
     reinsurerDeposit = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
     leaderPool       = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
+    participantPool  = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
+    participantDeposit = await createAccount(connection, payer, mint, participant.publicKey);
 
     // 풀: 6 tiers × 6 USDC = 36 USDC (충분히 적립)
-    await mintTo(connection, payer, mint, leaderPool, payer, 36_000_000);
+    await mintTo(connection, payer, mint, leaderPool, payer, 18_000_000);
+    await mintTo(connection, payer, mint, participantPool, payer, 18_000_000);
 
     // 프리미엄 지불 계정: 6 flights × 1 USDC
     payerToken = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
@@ -89,9 +96,10 @@ describe("payout_tiers", () => {
         payoutDelay3H:            new anchor.BN(PAYOUT_3H.toString()),
         payoutDelay4To5H:         new anchor.BN(PAYOUT_4TO5H.toString()),
         payoutDelay6HOrCancelled: new anchor.BN(PAYOUT_6H.toString()),
+        leaderShareBps:      5_000,
         cededRatioBps:      0,
         reinsCommissionBps: 0,
-        participants: [{ insurer: payer.publicKey, shareBps: 10_000 }],
+        participants: [{ insurer: participant.publicKey, shareBps: 5_000 }],
         oracleFeed: PublicKey.default,
       })
       .accountsPartial({
@@ -109,8 +117,13 @@ describe("payout_tiers", () => {
       .registerParticipantWallets()
       .accounts({ insurer: payer.publicKey, masterPolicy: masterPolicyPda, poolWallet: leaderPool, depositWallet: leaderDeposit })
       .rpc();
+    await program.methods
+      .registerParticipantWallets()
+      .accounts({ insurer: participant.publicKey, masterPolicy: masterPolicyPda, poolWallet: participantPool, depositWallet: participantDeposit })
+      .signers([participant])
+      .rpc();
     await program.methods.confirmMaster(0).accounts({ actor: payer.publicKey, masterPolicy: masterPolicyPda }).rpc();
-    await program.methods.confirmMaster(1).accounts({ actor: reinsurer.publicKey, masterPolicy: masterPolicyPda }).signers([reinsurer]).rpc();
+    await program.methods.confirmMaster(0).accounts({ actor: participant.publicKey, masterPolicy: masterPolicyPda }).signers([participant]).rpc();
     await program.methods.activateMaster().accounts({ operator: payer.publicKey, masterPolicy: masterPolicyPda }).rpc();
   });
 
@@ -141,7 +154,7 @@ describe("payout_tiers", () => {
       })
       .accountsPartial({
         creator: payer.publicKey, masterPolicy: masterPolicyPda, flightPolicy: flightPda,
-        payerToken, leaderDepositToken: leaderDeposit,
+        payerToken, leaderPoolToken: leaderPool,
         tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
       })
       .rpc();
@@ -160,25 +173,31 @@ describe("payout_tiers", () => {
     if (expectedPayout === 0n) return;
 
     // settle 전후 잔액 스냅샷으로 증감 검증
-    const poolBefore    = await getAccount(connection, leaderPool);
+    const leaderPoolBefore = await getAccount(connection, leaderPool);
+    const participantPoolBefore = await getAccount(connection, participantPool);
     const depositBefore = await getAccount(connection, leaderDeposit);
 
     await program.methods
       .settleFlightClaim()
       .accountsPartial({
         executor: payer.publicKey, masterPolicy: masterPolicyPda, flightPolicy: flightPda,
-        leaderDepositToken: leaderDeposit, reinsurerPoolToken: reinsurerPool,
+        leaderDepositToken: leaderDeposit, leaderPoolToken: leaderPool, reinsurerPoolToken: reinsurerPool,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
-      .remainingAccounts([{ pubkey: leaderPool, isWritable: true, isSigner: false }])
+      .remainingAccounts([{ pubkey: participantPool, isWritable: true, isSigner: false }])
       .rpc();
 
-    const poolAfter    = await getAccount(connection, leaderPool);
+    const leaderPoolAfter = await getAccount(connection, leaderPool);
+    const participantPoolAfter = await getAccount(connection, participantPool);
     const depositAfter = await getAccount(connection, leaderDeposit);
 
     // ceded=0, 스냅샷은 premium이 이미 deposit에 쌓인 후 측정됨.
     // settle은 payout만 pool → deposit으로 이동.
-    assert.equal(poolBefore.amount - poolAfter.amount, expectedPayout, "pool 감소량");
+    assert.equal(
+      (leaderPoolBefore.amount - leaderPoolAfter.amount) + (participantPoolBefore.amount - participantPoolAfter.amount),
+      expectedPayout,
+      "total pool 감소량"
+    );
     assert.equal(depositAfter.amount - depositBefore.amount, expectedPayout, "deposit 유입량");
 
     const fpAfter = await program.account.flightPolicy.fetch(flightPda);
