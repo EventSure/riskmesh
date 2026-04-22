@@ -125,10 +125,10 @@ export const ROLES: Record<Role, { label: string; color: string }> = {
   operator: { label: 'Operator', color: '#EF4444' },
 };
 
-export const PARTICIPANT_COLORS = ['#14F195', '#F59E0B', '#38BDF8', '#A78BFA'] as const;
+export const PARTICIPANT_COLORS = ['#14F195', '#F59E0B', '#38BDF8', '#A78BFA', '#FB923C'] as const;
 export const REINSURER_COLOR = '#EC4899';
 
-export const MAX_PARTICIPANTS = 4;
+export const MAX_PARTICIPANTS = 5; // 참여사 + 재보험사 합산 최대
 
 export const POLICY_STATES = ['Draft', 'Open', 'Funded', 'Active', 'Claimable', 'Approved', 'Settled'] as const;
 export const POLICY_STATE_ICONS = ['📄', '📂', '💰', '⚡', '🔔', '✅', '💸'] as const;
@@ -325,7 +325,8 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
 
   addParticipant: () => {
     set(st => {
-      if (st.participants.length >= MAX_PARTICIPANTS) return st;
+      const maxParticipants = st.reinsurer.enabled ? MAX_PARTICIPANTS - 1 : MAX_PARTICIPANTS;
+      if (st.participants.length >= maxParticipants) return st;
       participantIdCounter++;
       const newP: Participant = {
         id: `p${participantIdCounter}`,

@@ -47,6 +47,7 @@ pub fn handler(ctx: Context<CreateMasterAgreement>, params: CreateMasterAgreemen
         params.leader_share_bps,
         &params.participants,
         ctx.accounts.leader.key(),
+        has_reinsurer,
     )?;
 
     require!(
@@ -115,10 +116,16 @@ pub(crate) fn validate_master_participants(
     leader_share_bps: u16,
     participants: &[MasterParticipantInit],
     leader: Pubkey,
+    has_reinsurer: bool,
 ) -> std::result::Result<(), OpenParamError> {
-    // 리더 지분 + 참여자 지분 합계가 10000bps인지, 참여자 수/중복/리더 포함 여부를 검증한다.
-    if participants.is_empty() || participants.len() > MAX_MASTER_PARTICIPANTS {
+    // 리더사만으로는 구성 불가: 최소 1명의 참여사 필요.
+    if participants.is_empty() {
         return Err(OpenParamError::InvalidInput);
+    }
+    // 참여사 + 재보험사 합산이 MAX_MASTER_PARTICIPANTS를 초과할 수 없다.
+    let effective_total = participants.len() + if has_reinsurer { 1 } else { 0 };
+    if effective_total > MAX_MASTER_PARTICIPANTS {
+        return Err(OpenParamError::TooManyParticipants);
     }
 
     let mut total_share: u32 = leader_share_bps as u32;

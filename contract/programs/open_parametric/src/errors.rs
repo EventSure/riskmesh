@@ -38,4 +38,6 @@ pub enum OpenParamError {
     InvalidSettlementTarget,
     #[msg("Invalid account list")]
     InvalidAccountList,
+    #[msg("Too many participants")]
+    TooManyParticipants,
 }
