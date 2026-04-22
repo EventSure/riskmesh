@@ -1,16 +1,32 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useProtocolStore } from '@/store/useProtocolStore';
+import { useProtocolStore } from '../../store/useProtocolStore';
+import type { Participant } from '../../store/useProtocolStore';
 import { useSettlementData } from '../useSettlementData';
 
 const getState = () => useProtocolStore.getState();
+
+const makeParticipants = (shares: number[]): Participant[] =>
+  shares.map((share, i) => ({ id: `p${i + 1}`, name: '', share, address: '', confirmed: false }));
+
+const makeAcc = (n: number) => ({
+  leaderPrem: 0,
+  participantPrems: new Array(n).fill(0),
+  reinPrem: 0,
+  leaderClaim: 0,
+  participantClaims: new Array(n).fill(0),
+  reinClaim: 0,
+});
 
 beforeEach(() => {
   getState().resetAll();
   useProtocolStore.setState({
     role: 'leader',
     masterActive: true,
-    shares: { leader: 50, partA: 30, partB: 20 },
+    leaderShare: 50,
+    participants: makeParticipants([30, 20]),
+    reinsurer: { enabled: true, address: '', confirmed: false },
+    acc: makeAcc(2),
     premiumPerPolicy: 3,
     cededRatioBps: 5000,
     reinsCommissionBps: 1000,
@@ -56,13 +72,12 @@ describe('useSettlementData', () => {
     getState().addContract('A', 'KE081', '2026-01-15');
     getState().addContract('B', 'OZ201', '2026-02-05');
     getState().addContract('C', 'KE085', '2026-03-10');
-    getState().runOracle(1, 120, 0, false); // claimable
-    getState().runOracle(2, 180, 0, false); // will be approved
-    getState().runOracle(3, 240, 0, false); // will be settled
+    getState().runOracle(1, 120, 0, false);
+    getState().runOracle(2, 180, 0, false);
+    getState().runOracle(3, 240, 0, false);
 
-    // Approve all, then settle only those that are approved
-    getState().approveClaims(); // all 3 → approved
-    getState().settleClaims();  // all 3 → settled
+    getState().approveClaims();
+    getState().settleClaims();
 
     const { result } = renderHook(() => useSettlementData());
     expect(result.current.settledCount).toBe(3);
@@ -81,13 +96,13 @@ describe('useSettlementData', () => {
 
     // reinsEff = 0.5 * 0.9 = 0.45
     // settledTotalPremium = 3
-    // leaderPrem = 3 * 0.5 * (1 - 0.45) = 3 * 0.5 * 0.55 = 0.825
-    // partAPrem = 3 * 0.3 * 0.55 = 0.495
-    // partBPrem = 3 * 0.2 * 0.55 = 0.33
+    // leaderPrem = 3 * 0.5 * 0.55 = 0.825
+    // participantPrems[0] (30%) = 3 * 0.3 * 0.55 = 0.495
+    // participantPrems[1] (20%) = 3 * 0.2 * 0.55 = 0.33
     // reinPrem = 3 * 0.45 = 1.35
     expect(acc.leaderPrem).toBeCloseTo(0.825, 6);
-    expect(acc.partAPrem).toBeCloseTo(0.495, 6);
-    expect(acc.partBPrem).toBeCloseTo(0.33, 6);
+    expect(acc.participantPrems[0]).toBeCloseTo(0.495, 6);
+    expect(acc.participantPrems[1]).toBeCloseTo(0.33, 6);
     expect(acc.reinPrem).toBeCloseTo(1.35, 6);
   });
 
@@ -101,12 +116,12 @@ describe('useSettlementData', () => {
     const acc = result.current.settledAcc;
 
     // claim lNet = 5 * 0.55 * 0.5 = 1.375
-    // claim aNet = 5 * 0.55 * 0.3 = 0.825
-    // claim bNet = 5 * 0.55 * 0.2 = 0.55
+    // participantClaims[0] (30%) = 5 * 0.55 * 0.3 = 0.825
+    // participantClaims[1] (20%) = 5 * 0.55 * 0.2 = 0.55
     // claim rNet = 5 * 0.45 = 2.25
     expect(acc.leaderClaim).toBeCloseTo(1.375, 6);
-    expect(acc.partAClaim).toBeCloseTo(0.825, 6);
-    expect(acc.partBClaim).toBeCloseTo(0.55, 6);
+    expect(acc.participantClaims[0]).toBeCloseTo(0.825, 6);
+    expect(acc.participantClaims[1]).toBeCloseTo(0.55, 6);
     expect(acc.reinClaim).toBeCloseTo(2.25, 6);
   });
 });
