@@ -150,7 +150,7 @@ export function OracleConsole() {
     if (!masterAgreementPDA || !wallet) { toast(t('toast.walletNotAvailable'), 'd'); return; }
     const masterPK = new PublicKey(masterAgreementPDA);
     const [flightPolicyPDA] = getFlightPolicyPDA(masterPK, new BN(contractId));
-    const txResult = await resolveFlightDelay({ masterPolicy: masterPK, flightPolicy: flightPolicyPDA, delayMinutes: resolvedDelay, cancelled: resolvedCancelled });
+    const txResult = await resolveFlightDelay({ masterAgreement: masterPK, flightPolicy: flightPolicyPDA, delayMinutes: resolvedDelay, cancelled: resolvedCancelled });
     if (!txResult.success) {
       setResult({ type: 'error', msg: txResult.error || t('oracle.txFailed'), code: 'TX_FAILED' });
       toast(t('oracle.txFailedMsg', { error: txResult.error }), 'd');

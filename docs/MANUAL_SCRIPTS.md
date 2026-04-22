@@ -9,7 +9,7 @@
 
 | 변수 | 필수 | 기본값 | 설명 |
 |---|---|---|---|
-| `MASTER_PDA` | **필수** | — | MasterPolicy 온체인 주소 |
+| `MASTER_PDA` | **필수** | — | MasterAgreement 온체인 주소 |
 | `KEYPAIR_PATH` | 선택 | `~/.config/solana/id.json` | leader 키페어 경로 |
 
 ---
@@ -17,7 +17,7 @@
 ## 1. FlightPolicy 목록 조회
 
 ```bash
-MASTER_PDA=<MasterPolicy주소> \
+MASTER_PDA=<MasterAgreement주소> \
 yarn demo:manual-list
 ```
 
@@ -28,7 +28,7 @@ yarn demo:manual-list
 ## 2. FlightPolicy 생성
 
 ```bash
-MASTER_PDA=<MasterPolicy주소> \
+MASTER_PDA=<MasterAgreement주소> \
 FLIGHT_NO=KE001 \
 ROUTE=ICN-NRT \
 yarn demo:manual-create-flight
@@ -45,7 +45,7 @@ yarn demo:manual-create-flight
 출발 시각 직접 지정 예시:
 
 ```bash
-MASTER_PDA=<MasterPolicy주소> \
+MASTER_PDA=<MasterAgreement주소> \
 FLIGHT_NO=OZ201 \
 ROUTE=ICN-LAX \
 DEPARTURE_TS=$(date -v+2d +%s) \
@@ -59,7 +59,7 @@ yarn demo:manual-create-flight
 > AviationStack 없이 `resolve_flight_delay`를 직접 호출합니다.
 
 ```bash
-MASTER_PDA=<MasterPolicy주소> \
+MASTER_PDA=<MasterAgreement주소> \
 CHILD_POLICY_ID=4 \
 DELAY_MINUTES=150 \
 ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
@@ -75,7 +75,7 @@ yarn ts-node -P tsconfig.json scripts/manual-resolve.ts
 결항 처리:
 
 ```bash
-MASTER_PDA=<MasterPolicy주소> \
+MASTER_PDA=<MasterAgreement주소> \
 CHILD_POLICY_ID=4 \
 CANCELLED=true \
 ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
@@ -91,7 +91,7 @@ yarn ts-node -P tsconfig.json scripts/manual-resolve.ts
 > 온체인 status에 따라 `settle_flight_claim` 또는 `settle_flight_no_claim` 자동 선택.
 
 ```bash
-MASTER_PDA=<MasterPolicy주소> \
+MASTER_PDA=<MasterAgreement주소> \
 CHILD_POLICY_ID=4 \
 yarn demo:manual-settle
 ```
@@ -108,7 +108,7 @@ yarn demo:manual-settle
 
 ```bash
 # 0. 환경변수 세팅
-export MASTER_PDA=<MasterPolicy주소>
+export MASTER_PDA=<MasterAgreement주소>
 
 # 1. 현재 FlightPolicy 목록 확인
 yarn demo:manual-list

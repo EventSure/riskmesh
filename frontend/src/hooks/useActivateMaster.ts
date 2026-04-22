@@ -4,7 +4,7 @@ import { useProgram } from './useProgram';
 import { sendTx, type TxResult } from '@/lib/tx';
 
 export interface ActivateMasterInput {
-  masterPolicy: PublicKey;
+  masterAgreement: PublicKey;
 }
 
 export function useActivateMaster() {
@@ -26,7 +26,7 @@ export function useActivateMaster() {
             .activateMaster()
             .accounts({
               operator: wallet.publicKey,
-              masterPolicy: input.masterPolicy,
+              masterAgreement: input.masterAgreement,
             })
             .rpc(),
         );

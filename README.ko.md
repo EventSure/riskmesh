@@ -19,7 +19,7 @@ MVP는 **항공편 지연 보험** (주요 공항 30% 지연율의 $10B+ 시장)
 
 - **이벤트 기반 정산** — 이벤트 발생과 동시에 온체인 청구 정산, 대사 단계 없음
 - **단계별 지급 티어** — 2시간/3시간/4-5시간/6시간+ 지연 티어 및 결항 오버라이드
-- MasterPolicy + FlightPolicy 구조: 하나의 공동 인수 계약이 다수의 개별 항공 계약을 커버
+- MasterAgreement + FlightPolicy 구조: 하나의 공동 인수 계약이 다수의 개별 항공 계약을 커버
 - 리더·참여사·재보험사 공동 인수 (basis-point 비율, 온체인 확인)
 - 모듈식 오라클 연동 — 중앙화 (AviationStack API, Track A) 또는 탈중앙화 (Switchboard On-Demand, Track B)
 - REST API 서버 + 온체인 데이터 동기화 (SQLite / Firebase Firestore)
@@ -75,7 +75,7 @@ MVP는 **항공편 지연 보험** (주요 공항 30% 지연율의 $10B+ 시장)
 
 - **동일 트랜잭션 오라클 검증** — Track B의 `check_oracle_and_resolve_flight`은 Ed25519 서명 검증, Switchboard 오라클 업데이트, FlightPolicy 상태 갱신을 단일 트랜잭션에서 원자적으로 수행합니다. 솔라나의 Instructions sysvar — 같은 TX 내 다른 인스트럭션을 프로그램 안에서 검사할 수 있는 기능 — 덕분에 가능하며, EVM에서는 구조적으로 불가능합니다.
 - **PDA 기반 무신뢰 수탁** — 풀 지갑이 프로그램에서 파생된 주소(PDA)에 소유됩니다. 멀티시그도, 관리자 키도, 외부 커스터디도 없습니다. 프로그램 자체가 수탁자이며, 탈취할 관리자 키가 존재하지 않습니다.
-- **계정 수준 병렬성** — 각 MasterPolicy와 FlightPolicy가 별도의 온체인 계정입니다. 솔라나 런타임은 서로 다른 계정을 건드리는 트랜잭션을 병렬로 처리합니다. KE081 인천→뉴욕 편의 정산이 OZ201 인천→LA 편의 오라클 해소를 블로킹하지 않습니다. EVM의 단일 컨트랙트 모델에서는 모든 보험상품이 같은 스토리지를 경쟁합니다.
+- **계정 수준 병렬성** — 각 MasterAgreement와 FlightPolicy가 별도의 온체인 계정입니다. 솔라나 런타임은 서로 다른 계정을 건드리는 트랜잭션을 병렬로 처리합니다. KE081 인천→뉴욕 편의 정산이 OZ201 인천→LA 편의 오라클 해소를 블로킹하지 않습니다. EVM의 단일 컨트랙트 모델에서는 모든 보험상품이 같은 스토리지를 경쟁합니다.
 - **다자간 원자적 정산** — `settle_flight_claim`은 재보험사 및 참여사 풀에서 basis-point 비율로 나누어 단일 트랜잭션에서 이체합니다 — 전부 아니면 전무, 부분 정산은 없습니다.
 - **온체인 상태 머신 = 보험 약관** — FlightPolicy의 상태 전이(`Issued → AwaitingOracle → Claimable/NoClaim → Paid/Expired`)가 온체인에 강제됩니다. "오라클 해소 전 정산 불가"는 약관 조항이 아니라 프로그램이 거부하는 트랜잭션입니다.
 
@@ -227,14 +227,14 @@ npm run test:coverage
 
 ### 온체인 계정
 
-온체인 프로그램은 2계층 계정 구조를 사용합니다. `MasterPolicy`는 기간 단위 공동 인수 계약(리더 + 최대 8개 참여사 + 재보험사)이고, 개별 항공편마다 `FlightPolicy` PDA가 발행됩니다.
+온체인 프로그램은 2계층 계정 구조를 사용합니다. `MasterAgreement`는 기간 단위 공동 인수 계약(리더 + 최대 8개 참여사 + 재보험사)이고, 개별 항공편마다 `FlightPolicy` PDA가 발행됩니다.
 
 ```
-MasterPolicy  (보장 기간당 1개)
+MasterAgreement  (보장 기간당 1개)
   └─ FlightPolicy (가입 항공편당 1개, 온디맨드 발행)
 ```
 
-- `MasterPolicy`: 공동 인수 계약. 지급 티어, 출재/수수료 비율, 참여사 지분(bps), 풀 지갑 주소, 오라클 피드(Track B), 라이프사이클 상태를 저장합니다.
+- `MasterAgreement`: 공동 인수 계약. 지급 티어, 출재/수수료 비율, 참여사 지분(bps), 풀 지갑 주소, 오라클 피드(Track B), 라이프사이클 상태를 저장합니다.
 - `FlightPolicy`: 개별 항공편 계약. 항공편 번호, 노선, 출발 시각, 납입 보험료, 오라클로 해소된 지연, 지급액, 정산 상태를 저장합니다.
 
 풀 지갑(PDA)이 예치 자금을 보관합니다. `settle_flight_claim` 시 재보험 풀·참여사 풀에서 리더 입금 지갑으로 이체됩니다. `settle_flight_no_claim` 시 리더 입금 지갑의 보험료가 각 참여사 입금 지갑으로 반환됩니다.
@@ -244,7 +244,7 @@ MasterPolicy  (보장 기간당 1개)
 백엔드는 하나의 프로세스에서 세 가지 역할을 수행합니다:
 
 1. **오라클 스케줄러** — 크론 기반 (`ORACLE_CHECK_CRON`, 기본: 15분) 파이프라인. 온체인 정책을 스캔하고 항공 데이터를 조회하여 resolve/settle 트랜잭션 전송
-2. **DB 동기화 스케줄러** — 크론 기반 (`DB_SYNC_CRON`, 기본: 1분) 파이프라인. 온체인 MasterPolicy/FlightPolicy 계정을 읽어 SQLite 또는 Firebase Firestore에 저장
+2. **DB 동기화 스케줄러** — 크론 기반 (`DB_SYNC_CRON`, 기본: 1분) 파이프라인. 온체인 MasterAgreement/FlightPolicy 계정을 읽어 SQLite 또는 Firebase Firestore에 저장
 3. **REST API 서버** — Axum 기반 HTTP 서버. 정책 데이터 조회 및 실시간 이벤트 제공
 
 **API 엔드포인트:**
@@ -252,19 +252,19 @@ MasterPolicy  (보장 기간당 1개)
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
 | GET | `/health` | 헬스 체크 |
-| GET | `/api/master-policies` | 마스터 정책 목록 |
-| GET | `/api/master-policies/accounts` | 마스터 정책 온체인 계정 |
-| GET | `/api/master-policies/:pubkey` | 마스터 정책 상세 |
-| GET | `/api/master-policies/tree` | 마스터 정책 + 하위 FlightPolicy 트리 |
-| GET | `/api/master-policies/:pubkey/flight-policies` | 마스터 아래 FlightPolicy 목록 |
-| POST | `/api/master-policies/:pubkey/flight-policies` | FlightPolicy 생성 |
+| GET | `/api/master-agreements` | 마스터 정책 목록 |
+| GET | `/api/master-agreements/accounts` | 마스터 정책 온체인 계정 |
+| GET | `/api/master-agreements/:pubkey` | 마스터 정책 상세 |
+| GET | `/api/master-agreements/tree` | 마스터 정책 + 하위 FlightPolicy 트리 |
+| GET | `/api/master-agreements/:pubkey/flight-policies` | 마스터 아래 FlightPolicy 목록 |
+| POST | `/api/master-agreements/:pubkey/flight-policies` | FlightPolicy 생성 |
 | GET | `/api/flight-policies` | 전체 FlightPolicy 목록 |
 | GET | `/api/flight-policies/:pubkey` | FlightPolicy 상세 |
 | GET | `/api/events` | SSE 이벤트 스트림 |
 
 ## 상태 머신
 
-MasterPolicy 라이프사이클:
+MasterAgreement 라이프사이클:
 
 ```
 PendingConfirm → Active → Closed

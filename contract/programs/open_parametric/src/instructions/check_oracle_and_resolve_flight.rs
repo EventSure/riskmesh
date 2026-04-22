@@ -23,11 +23,11 @@ pub struct CheckOracleAndResolveFlight<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     /// oracle_feed 주소와 tiered payout 기준을 제공하는 마스터 계약.
-    pub master_policy: Account<'info, MasterPolicy>,
+    pub master_agreement: Account<'info, MasterAgreement>,
     /// 지연 결과가 기록될 FlightPolicy.
     #[account(mut)]
     pub flight_policy: Account<'info, FlightPolicy>,
-    /// CHECK: master_policy.oracle_feed와 일치 여부를 handler에서 검증
+    /// CHECK: master_agreement.oracle_feed와 일치 여부를 handler에서 검증
     pub oracle_feed: UncheckedAccount<'info>,
     /// CHECK: Switchboard 기본 큐 — address constraint으로 검증됨
     #[account(address = default_queue())]
@@ -39,12 +39,12 @@ pub struct CheckOracleAndResolveFlight<'info> {
 }
 
 pub fn handler(ctx: Context<CheckOracleAndResolveFlight>) -> Result<()> {
-    let master = &ctx.accounts.master_policy;
+    let master = &ctx.accounts.master_agreement;
     let flight = &mut ctx.accounts.flight_policy;
 
     // 마스터 Active 상태 확인.
     require!(
-        master.status == MasterPolicyStatus::Active as u8,
+        master.status == MasterAgreementStatus::Active as u8,
         OpenParamError::MasterNotActive
     );
     // oracle_feed 주소가 마스터에 등록된 것과 일치해야 한다.
@@ -52,7 +52,7 @@ pub fn handler(ctx: Context<CheckOracleAndResolveFlight>) -> Result<()> {
         ctx.accounts.oracle_feed.key() == master.oracle_feed,
         OpenParamError::InvalidInput
     );
-    // FlightPolicy가 이 MasterPolicy 소속인지 확인.
+    // FlightPolicy가 이 MasterAgreement 소속인지 확인.
     require!(flight.master == master.key(), OpenParamError::InvalidInput);
     // oracle 대기 중인 상태만 처리한다.
     require!(

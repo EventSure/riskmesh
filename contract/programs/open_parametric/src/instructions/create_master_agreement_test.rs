@@ -4,7 +4,7 @@ use crate::constants::MAX_MASTER_PARTICIPANTS;
 use crate::errors::OpenParamError;
 use crate::state::MasterParticipantInit;
 
-use super::create_master_policy::validate_master_participants;
+use super::create_master_agreement::validate_master_participants;
 
 #[test]
 fn master_participants_require_10000_bps_with_separate_leader_share() {

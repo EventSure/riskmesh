@@ -43,7 +43,7 @@ describe("multiple_flights", () => {
   const EFFECTIVE_BPS = 4_500n;
   const BPS_DENOM     = 10_000n;
 
-  let masterPolicyPda: PublicKey;
+  let masterAgreementPda: PublicKey;
   let leaderDeposit: PublicKey;
   let reinsurerDeposit: PublicKey;
   let leaderPool: PublicKey;
@@ -70,16 +70,16 @@ describe("multiple_flights", () => {
     const mint     = await createMint(connection, payer, payer.publicKey, null, 6);
     const masterId = new anchor.BN(40);
 
-    [masterPolicyPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("master_policy"), payer.publicKey.toBuffer(), masterId.toArrayLike(Buffer, "le", 8)],
+    [masterAgreementPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("master_agreement"), payer.publicKey.toBuffer(), masterId.toArrayLike(Buffer, "le", 8)],
       program.programId
     );
 
     leaderDeposit    = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
-    reinsurerPool    = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
-    reinsurerDeposit = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
-    leaderPool       = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
-    aPool            = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
+    reinsurerPool    = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
+    reinsurerDeposit = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
+    leaderPool       = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
+    aPool            = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
     aDeposit         = await createAccount(connection, payer, mint, participantA.publicKey);
 
     // flight1(3H=3USDC) + flight3(6H=6USDC) 정산 충당:
@@ -102,7 +102,7 @@ describe("multiple_flights", () => {
 
     const now = Math.floor(Date.now() / 1000);
     await program.methods
-      .createMasterPolicy({
+      .createMasterAgreement({
         masterId,
         coverageStartTs: new anchor.BN(now - 10),
         coverageEndTs:   new anchor.BN(now + 86400),
@@ -122,7 +122,7 @@ describe("multiple_flights", () => {
       .accountsPartial({
         leader: payer.publicKey, operator: payer.publicKey,
         reinsurer: reinsurer.publicKey, currencyMint: mint,
-        masterPolicy:           masterPolicyPda,
+        masterAgreement:           masterAgreementPda,
         leaderDepositWallet:    leaderDeposit,
         reinsurerPoolWallet:    reinsurerPool,
         reinsurerDepositWallet: reinsurerDeposit,
@@ -136,23 +136,23 @@ describe("multiple_flights", () => {
     ] as const) {
       await program.methods
         .registerParticipantWallets()
-        .accounts({ insurer: actor.publicKey, masterPolicy: masterPolicyPda, poolWallet: pool, depositWallet: deposit })
+        .accounts({ insurer: actor.publicKey, masterAgreement: masterAgreementPda, poolWallet: pool, depositWallet: deposit })
         .signers([...signers])
         .rpc();
       await program.methods
         .confirmMaster(0)
-        .accounts({ actor: actor.publicKey, masterPolicy: masterPolicyPda })
+        .accounts({ actor: actor.publicKey, masterAgreement: masterAgreementPda })
         .signers([...signers])
         .rpc();
     }
-    await program.methods.confirmMaster(1).accounts({ actor: reinsurer.publicKey, masterPolicy: masterPolicyPda }).signers([reinsurer]).rpc();
-    await program.methods.activateMaster().accounts({ operator: payer.publicKey, masterPolicy: masterPolicyPda }).rpc();
+    await program.methods.confirmMaster(1).accounts({ actor: reinsurer.publicKey, masterAgreement: masterAgreementPda }).signers([reinsurer]).rpc();
+    await program.methods.activateMaster().accounts({ operator: payer.publicKey, masterAgreement: masterAgreementPda }).rpc();
 
     // FlightPolicy PDAs
     for (const [n, ref] of [[1, "F1"], [2, "F2"], [3, "F3"]] as const) {
       const childId = new anchor.BN(n);
       const [fpPda]  = PublicKey.findProgramAddressSync(
-        [Buffer.from("flight_policy"), masterPolicyPda.toBuffer(), childId.toArrayLike(Buffer, "le", 8)],
+        [Buffer.from("flight_policy"), masterAgreementPda.toBuffer(), childId.toArrayLike(Buffer, "le", 8)],
         program.programId
       );
       await program.methods
@@ -164,7 +164,7 @@ describe("multiple_flights", () => {
           departureTs:   new anchor.BN(now + 600),
         })
         .accountsPartial({
-          creator: payer.publicKey, masterPolicy: masterPolicyPda, flightPolicy: fpPda,
+          creator: payer.publicKey, masterAgreement: masterAgreementPda, flightPolicy: fpPda,
           payerToken, leaderPoolToken: leaderPool,
           tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
         })
@@ -189,17 +189,17 @@ describe("multiple_flights", () => {
   it("resolves each flight to correct status independently", async () => {
     await program.methods
       .resolveFlightDelay(200, false) // 3H tier → Claimable
-      .accounts({ resolver: payer.publicKey, masterPolicy: masterPolicyPda, flightPolicy: flight1Pda })
+      .accounts({ resolver: payer.publicKey, masterAgreement: masterAgreementPda, flightPolicy: flight1Pda })
       .rpc();
 
     await program.methods
       .resolveFlightDelay(50, false)  // < 120min → NoClaim
-      .accounts({ resolver: payer.publicKey, masterPolicy: masterPolicyPda, flightPolicy: flight2Pda })
+      .accounts({ resolver: payer.publicKey, masterAgreement: masterAgreementPda, flightPolicy: flight2Pda })
       .rpc();
 
     await program.methods
       .resolveFlightDelay(0, true)    // cancelled → max payout
-      .accounts({ resolver: payer.publicKey, masterPolicy: masterPolicyPda, flightPolicy: flight3Pda })
+      .accounts({ resolver: payer.publicKey, masterAgreement: masterAgreementPda, flightPolicy: flight3Pda })
       .rpc();
 
     const fp1 = await program.account.flightPolicy.fetch(flight1Pda);
@@ -222,7 +222,7 @@ describe("multiple_flights", () => {
     await program.methods
       .settleFlightClaim()
       .accountsPartial({
-        executor: payer.publicKey, masterPolicy: masterPolicyPda, flightPolicy: flight1Pda,
+        executor: payer.publicKey, masterAgreement: masterAgreementPda, flightPolicy: flight1Pda,
         leaderDepositToken: leaderDeposit, leaderPoolToken: leaderPool, reinsurerPoolToken: reinsurerPool,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
@@ -246,7 +246,7 @@ describe("multiple_flights", () => {
     await program.methods
       .settleFlightNoClaim()
       .accountsPartial({
-        executor: payer.publicKey, masterPolicy: masterPolicyPda, flightPolicy: flight2Pda,
+        executor: payer.publicKey, masterAgreement: masterAgreementPda, flightPolicy: flight2Pda,
         leaderPoolToken: leaderPool, leaderDepositToken: leaderDeposit, reinsurerDepositToken: reinsurerDeposit,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
@@ -269,7 +269,7 @@ describe("multiple_flights", () => {
     await program.methods
       .settleFlightClaim()
       .accountsPartial({
-        executor: payer.publicKey, masterPolicy: masterPolicyPda, flightPolicy: flight3Pda,
+        executor: payer.publicKey, masterAgreement: masterAgreementPda, flightPolicy: flight3Pda,
         leaderDepositToken: leaderDeposit, leaderPoolToken: leaderPool, reinsurerPoolToken: reinsurerPool,
         tokenProgram: TOKEN_PROGRAM_ID,
       })

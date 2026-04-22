@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { PublicKey } from '@solana/web3.js';
-import type { MasterPolicyAccount } from '@/lib/idl/open_parametric';
+import type { MasterAgreementAccount } from '@/lib/idl/open_parametric';
 import { BACKEND_URL } from '@/lib/constants';
 
 /** Minimal BN-like wrapper for number fields the store calls .toNumber() on */
@@ -9,7 +9,7 @@ const fakeBN = (n: number) => ({
   toString: () => String(n),
 });
 
-interface BackendMasterPolicy {
+interface BackendMasterAgreement {
   pubkey: string;
   master_id: number;
   status: number;
@@ -44,7 +44,7 @@ interface BackendMasterPolicy {
   status_label: string;
 }
 
-function toMasterPolicyAccount(data: BackendMasterPolicy): MasterPolicyAccount {
+function toMasterAgreementAccount(data: BackendMasterAgreement): MasterAgreementAccount {
   const SYSTEM_PROGRAM = '11111111111111111111111111111111';
   const safePubkey = (s: string | undefined | null) =>
     new PublicKey(s && s.length > 0 ? s : SYSTEM_PROGRAM);
@@ -85,11 +85,11 @@ function toMasterPolicyAccount(data: BackendMasterPolicy): MasterPolicyAccount {
     status: data.status,
     createdAt: fakeBN(data.created_at) as unknown as import('@coral-xyz/anchor').BN,
     bump: 0,
-  } as unknown as MasterPolicyAccount;
+  } as unknown as MasterAgreementAccount;
 }
 
 export function useMasterAgreementAccount(masterAgreementPDA: PublicKey | null) {
-  const [account, setAccount] = useState<MasterPolicyAccount | null>(null);
+  const [account, setAccount] = useState<MasterAgreementAccount | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -107,14 +107,14 @@ export function useMasterAgreementAccount(masterAgreementPDA: PublicKey | null) 
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/master-policies/${pda}`);
+      const res = await fetch(`${BACKEND_URL}/api/master-agreements/${pda}`);
       if (res.status === 404) {
         setAccount(null);
         return;
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: BackendMasterPolicy = await res.json();
-      setAccount(toMasterPolicyAccount(data));
+      const data: BackendMasterAgreement = await res.json();
+      setAccount(toMasterAgreementAccount(data));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -133,11 +133,11 @@ export function useMasterAgreementAccount(masterAgreementPDA: PublicKey | null) 
 
     const es = new EventSource(`${BACKEND_URL}/api/events?master=${pdaKey}`);
 
-    es.addEventListener('master_policy_updated', (e: MessageEvent) => {
+    es.addEventListener('master_agreement_updated', (e: MessageEvent) => {
       try {
-        const data: BackendMasterPolicy = JSON.parse(e.data);
+        const data: BackendMasterAgreement = JSON.parse(e.data);
         if (data.pubkey === pdaKey) {
-          setAccount(toMasterPolicyAccount(data));
+          setAccount(toMasterAgreementAccount(data));
         }
       } catch {
         // ignore parse errors

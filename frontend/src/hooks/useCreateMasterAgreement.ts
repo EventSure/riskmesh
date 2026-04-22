@@ -2,9 +2,9 @@ import { useCallback, useState } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { useProgram } from './useProgram';
-import { getMasterPolicyPDA } from '@/lib/pda';
+import { getMasterAgreementPDA } from '@/lib/pda';
 import { sendTx, type TxResult } from '@/lib/tx';
-import type { CreateMasterPolicyParams, MasterParticipantInit } from '@/lib/idl/open_parametric';
+import type { CreateMasterAgreementParams, MasterParticipantInit } from '@/lib/idl/open_parametric';
 
 export interface CreateMasterAgreementInput {
   masterId: number;
@@ -41,9 +41,9 @@ export function useCreateMasterAgreement() {
       try {
         const masterIdBN = new BN(input.masterId);
         const leader = wallet.publicKey;
-        const [masterAgreementPDA] = getMasterPolicyPDA(leader, masterIdBN);
+        const [masterAgreementPDA] = getMasterAgreementPDA(leader, masterIdBN);
 
-        const params: CreateMasterPolicyParams = {
+        const params: CreateMasterAgreementParams = {
           masterId: masterIdBN,
           coverageStartTs: new BN(input.coverageStartTs),
           coverageEndTs: new BN(input.coverageEndTs),
@@ -68,13 +68,13 @@ export function useCreateMasterAgreement() {
         const prog = program as any;
         const result = await sendTx(provider, () =>
           prog.methods
-            .createMasterPolicy(params)
+            .createMasterAgreement(params)
             .accounts({
               leader: leader,
               operator: input.operator,
               reinsurer: input.reinsurer,
               currencyMint: input.currencyMint,
-              masterPolicy: masterAgreementPDA,
+              masterAgreement: masterAgreementPDA,
               leaderDepositWallet: input.leaderDepositWallet,
               reinsurerPoolWallet: input.reinsurerPoolWallet,
               reinsurerDepositWallet: input.reinsurerDepositWallet,

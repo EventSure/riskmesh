@@ -7,14 +7,14 @@ use crate::state::*;
 pub struct ActivateMaster<'info> {
     pub operator: Signer<'info>,
     #[account(mut)]
-    pub master_policy: Account<'info, MasterPolicy>,
+    pub master_agreement: Account<'info, MasterAgreement>,
 }
 
 pub fn handler(ctx: Context<ActivateMaster>) -> Result<()> {
-    let master = &mut ctx.accounts.master_policy;
+    let master = &mut ctx.accounts.master_agreement;
     // 마스터 계약 활성화 전 필수 승인(운영자/재보험사/참여사 지갑 등록)을 확인한다.
     require!(
-        master.status == MasterPolicyStatus::PendingConfirm as u8,
+        master.status == MasterAgreementStatus::PendingConfirm as u8,
         OpenParamError::InvalidState
     );
     require!(
@@ -33,7 +33,7 @@ pub fn handler(ctx: Context<ActivateMaster>) -> Result<()> {
     let all_confirmed = all_participants_confirmed(&master.participants);
     require!(all_confirmed, OpenParamError::MasterNotConfirmed);
 
-    master.status = MasterPolicyStatus::Active as u8;
+    master.status = MasterAgreementStatus::Active as u8;
     Ok(())
 }
 

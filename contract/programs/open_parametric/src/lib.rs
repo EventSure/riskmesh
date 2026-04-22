@@ -17,11 +17,11 @@ pub mod open_parametric {
 
     // ─── Master/Flight — Track A (수동 resolver) & Track B (Switchboard 공용) ───
 
-    pub fn create_master_policy(
-        ctx: Context<CreateMasterPolicy>,
-        params: CreateMasterPolicyParams,
+    pub fn create_master_agreement(
+        ctx: Context<CreateMasterAgreement>,
+        params: CreateMasterAgreementParams,
     ) -> Result<()> {
-        instructions::create_master_policy::handler(ctx, params)
+        instructions::create_master_agreement::handler(ctx, params)
     }
 
     pub fn register_participant_wallets(ctx: Context<RegisterParticipantWallets>) -> Result<()> {

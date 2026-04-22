@@ -52,7 +52,7 @@ export function PortalConfirm({ masterPDA, participantInfo, allRoles, onSuccess 
   useEffect(() => {
     if (!program) return;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (program as any).account.masterPolicy.fetch(masterPDA)
+    (program as any).account.masterAgreement.fetch(masterPDA)
       .then((data: typeof masterData) => setMasterData(data))
       .catch(() => { /* silent */ });
   }, [program, masterPDA]);
@@ -74,7 +74,7 @@ export function PortalConfirm({ masterPDA, participantInfo, allRoles, onSuccess 
       const prog = program as any;
       const sig: string = await prog.methods
         .confirmMaster(ConfirmRole.Reinsurer)
-        .accounts({ actor: wallet.publicKey, masterPolicy: masterPDA })
+        .accounts({ actor: wallet.publicKey, masterAgreement: masterPDA })
         .rpc({ commitment: 'confirmed' });
       setConfirmedLocally(true);
       toast(`${t('portal.confirmSuccess')} TX: ${sig.slice(0, 8)}...`, 's');
@@ -103,11 +103,11 @@ export function PortalConfirm({ masterPDA, participantInfo, allRoles, onSuccess 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const prog = program as any;
 
-      // masterPolicy에서 currencyMint를 읽어온다
-      const masterData = await prog.account.masterPolicy.fetch(masterPDA);
+      // masterAgreement에서 currencyMint를 읽어온다
+      const masterData = await prog.account.masterAgreement.fetch(masterPDA);
       const currencyMint: PublicKey = masterData.currencyMint;
 
-      // pool wallet: PDA(masterPolicy)가 owner인 새 SPL Token 계정
+      // pool wallet: PDA(masterAgreement)가 owner인 새 SPL Token 계정
       const poolKp = Keypair.generate();
       const poolRent = await provider.connection.getMinimumBalanceForRentExemption(ACCOUNT_SIZE);
 
@@ -136,7 +136,7 @@ export function PortalConfirm({ masterPDA, participantInfo, allRoles, onSuccess 
         .registerParticipantWallets()
         .accounts({
           insurer: wallet.publicKey,
-          masterPolicy: masterPDA,
+          masterAgreement: masterPDA,
           poolWallet: poolKp.publicKey,
           depositWallet,
           tokenProgram: TOKEN_PROGRAM_ID,
@@ -144,7 +144,7 @@ export function PortalConfirm({ masterPDA, participantInfo, allRoles, onSuccess 
         .instruction();
       const confirmIx = await prog.methods
         .confirmMaster(ConfirmRole.Participant)
-        .accounts({ actor: wallet.publicKey, masterPolicy: masterPDA })
+        .accounts({ actor: wallet.publicKey, masterAgreement: masterPDA })
         .instruction();
 
       const tx2 = new Transaction().add(regIx, confirmIx);

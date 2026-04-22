@@ -13,7 +13,7 @@
  *
  * 사전 조건:
  *   - oracle-feed-create 실행 완료 (feedPubkey가 .state.json에 저장)
- *   - master-setup 실행 완료 (oracle_feed가 MasterPolicy에 등록)
+ *   - master-setup 실행 완료 (oracle_feed가 MasterAgreement에 등록)
  *   - flight-create 실행 완료 (FlightPolicy가 AwaitingOracle 상태)
  *
  * 환경변수:
@@ -41,7 +41,7 @@ import {
   kp,
   makeProgram,
   RPC_URL,
-  masterPolicyPub,
+  masterAgreementPub,
   flightPolicyPub,
 } from "./common";
 
@@ -74,14 +74,14 @@ async function main() {
   const pg = makeProgram(leader);
   const masterPda = new PublicKey(s.masterPda);
 
-  // ─── MasterPolicy에서 oracle_feed 확인 ────────────────────────────────────
-  const master = await pg.account.masterPolicy.fetch(masterPda);
+  // ─── MasterAgreement에서 oracle_feed 확인 ────────────────────────────────────
+  const master = await pg.account.masterAgreement.fetch(masterPda);
   const oracleFeed: PublicKey = master.oracleFeed;
 
   if (oracleFeed.equals(PublicKey.default)) {
     throw new Error(
-      "MasterPolicy.oracle_feed가 설정되어 있지 않습니다.\n" +
-        "이 MasterPolicy는 Track A(Trusted Resolver) 전용입니다.\n" +
+      "MasterAgreement.oracle_feed가 설정되어 있지 않습니다.\n" +
+        "이 MasterAgreement는 Track A(Trusted Resolver) 전용입니다.\n" +
         "Track B를 사용하려면 oracle-feed-create 후 master-setup을 다시 실행하세요."
     );
   }
@@ -146,13 +146,13 @@ async function main() {
   }
 
   // ─── check_oracle_and_resolve_flight 인스트럭션 빌드 ─────────────────────
-  // 파라미터 없음. 계정 순서: payer, master_policy, flight_policy,
+  // 파라미터 없음. 계정 순서: payer, master_agreement, flight_policy,
   //   oracle_feed, queue, slot_hashes, instructions
   const ourIx = await pg.methods
     .checkOracleAndResolveFlight()
     .accountsPartial({
       payer:        leader.publicKey,
-      masterPolicy: masterPda,
+      masterAgreement: masterPda,
       flightPolicy: flightPda,
       oracleFeed:   oracleFeed,
       queue:        new PublicKey(ON_DEMAND_DEVNET_QUEUE),

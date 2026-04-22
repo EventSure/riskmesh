@@ -7,7 +7,7 @@ use crate::state::*;
 #[derive(Accounts)]
 pub struct ResolveFlightDelay<'info> {
     pub resolver: Signer<'info>,
-    pub master_policy: Account<'info, MasterPolicy>,
+    pub master_agreement: Account<'info, MasterAgreement>,
     #[account(mut)]
     pub flight_policy: Account<'info, FlightPolicy>,
 }
@@ -17,12 +17,12 @@ pub fn handler(
     delay_minutes: u16,
     cancelled: bool,
 ) -> Result<()> {
-    let master = &ctx.accounts.master_policy;
+    let master = &ctx.accounts.master_agreement;
     let flight = &mut ctx.accounts.flight_policy;
 
     // 지연 결과 확정은 권한자(leader/operator)만 수행할 수 있다.
     require!(
-        master.status == MasterPolicyStatus::Active as u8,
+        master.status == MasterAgreementStatus::Active as u8,
         OpenParamError::MasterNotActive
     );
     require!(

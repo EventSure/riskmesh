@@ -14,7 +14,7 @@ use crate::{
 };
 
 // TODO: persisted collection names are consumed outside backend; rename with frontend/data migration work.
-const MASTER_POLICIES: &str = "master_policies";
+const MASTER_POLICIES: &str = "master_agreements";
 const FLIGHT_POLICIES: &str = "flight_policies";
 const SYNC_METADATA: &str = "sync_metadata";
 
@@ -155,7 +155,7 @@ impl InsuranceRepository for SqliteRepository {
                 "program_id": program_id,
                 "rpc_url": rpc_url,
                 "synced_at": synced_at,
-                "master_policy_count": master_agreements.len(),
+                "master_agreement_count": master_agreements.len(),
                 "flight_policy_count": flight_policies.len(),
             });
             upsert_document(&tx, SYNC_METADATA, "current", &metadata.to_string())

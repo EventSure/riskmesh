@@ -24,15 +24,15 @@ Switchboard On-Demand의 **Pull Feed**는 Solana 온체인 계정입니다.
 
 ```
 Pull Feed 계정 (온체인 Solana 계정)
-  ├─ pubkey: <피드 주소>          ← MasterPolicy.oracle_feed에 저장하는 값
+  ├─ pubkey: <피드 주소>          ← MasterAgreement.oracle_feed에 저장하는 값
   ├─ jobs: [ OracleJob, ... ]    ← 데이터 fetch/변환 파이프라인 정의
   ├─ queue: <큐 주소>             ← 어느 오라클 네트워크가 처리할지
   ├─ latest_value: <최신값>       ← 마지막으로 기록된 오라클 결과
   └─ latest_slot: <슬롯>          ← 기록 시점 (staleness 판별용)
 ```
 
-`MasterPolicy.oracle_feed`에 넣는 주소는 **이 Pull Feed 계정의 pubkey**입니다.
-계정을 먼저 생성(1회)하고, 그 주소를 `create_master_policy` 파라미터로 전달합니다.
+`MasterAgreement.oracle_feed`에 넣는 주소는 **이 Pull Feed 계정의 pubkey**입니다.
+계정을 먼저 생성(1회)하고, 그 주소를 `create_master_agreement` 파라미터로 전달합니다.
 
 ### Job이란
 
@@ -125,8 +125,8 @@ ix[2]: check_oracle_and_resolve_flight
 
 ### oracle_feed 주소를 어떻게 얻는가
 
-Feed 계정은 **최초 1회 생성**해야 합니다. 동일한 항공편이라도 MasterPolicy마다 별도 Feed를
-생성할 수도 있고, 여러 MasterPolicy가 같은 Feed를 공유할 수도 있습니다.
+Feed 계정은 **최초 1회 생성**해야 합니다. 동일한 항공편이라도 MasterAgreement마다 별도 Feed를
+생성할 수도 있고, 여러 MasterAgreement가 같은 Feed를 공유할 수도 있습니다.
 
 내부적으로 `02-feed-create.ts`는 다음 두 단계를 수행합니다:
 
@@ -147,7 +147,7 @@ yarn demo:2-feed-create
 ```
 === Feed 생성 완료 ===
 Tx             : 3s335FL2...
-Feed Pubkey    : 278oAt1RBQLZAVfx35qYEjuhiH29nJmGpmzpKCVtDZTs   ← MasterPolicy에 등록할 주소
+Feed Pubkey    : 278oAt1RBQLZAVfx35qYEjuhiH29nJmGpmzpKCVtDZTs   ← MasterAgreement에 등록할 주소
 IPFS CID       : bafkreid7ayyw...
 Feed ID        : 0xabc123...
 항공편         : KE017
@@ -157,8 +157,8 @@ Feed ID        : 0xabc123...
 `.state.json`에 `feedPubkey`, `feedCid`, `feedHash`로 저장되어 `03-master-setup`에서 자동으로 읽힙니다.
 
 ```typescript
-// create_master_policy 호출 시
-await program.methods.createMasterPolicy({
+// create_master_agreement 호출 시
+await program.methods.createMasterAgreement({
   oracleFeed: new PublicKey("278oAt1RBQLZAVfx35qYEjuhiH29nJmGpmzpKCVtDZTs"),
   // ...
 })
@@ -168,7 +168,7 @@ await program.methods.createMasterPolicy({
 
 | 상황 | 권장 |
 |---|---|
-| 같은 항공편(KE017), 다른 MasterPolicy | ✅ 재사용 가능 |
+| 같은 항공편(KE017), 다른 MasterAgreement | ✅ 재사용 가능 |
 | 항공편 코드가 다른 경우 | ❌ 별도 Feed 생성 필요 (Job의 URL이 다름) |
 | 테스트 환경과 프로덕션 | ❌ 별도 생성 (devnet Feed는 mainnet에서 무효) |
 
@@ -181,14 +181,14 @@ Feed는 온체인 계정이므로 생성 시 약 0.01–0.05 SOL의 렌트 비�
 ### 계정 구조
 
 ```
-MasterPolicy  PDA: ["master_policy", leader, master_id_le8]
-FlightPolicy  PDA: ["flight_policy", master_policy, child_policy_id_le8]
+MasterAgreement  PDA: ["master_agreement", leader, master_id_le8]
+FlightPolicy  PDA: ["flight_policy", master_agreement, child_policy_id_le8]
 ```
 
-`MasterPolicy`에는 Track B용 Switchboard 피드 주소가 저장됩니다.
+`MasterAgreement`에는 Track B용 Switchboard 피드 주소가 저장됩니다.
 
 ```
-MasterPolicy.oracle_feed
+MasterAgreement.oracle_feed
   - Track B master: Switchboard Pull Feed 계정 주소
   - Track A master: Pubkey::default() (오라클 없음)
 ```
@@ -216,7 +216,7 @@ Claimable      NoClaim
 
 ### 티어드 지급 구조
 
-`MasterPolicy`에 설정된 4단계 지급액을 사용합니다.
+`MasterAgreement`에 설정된 4단계 지급액을 사용합니다.
 
 | 조건 | 지급 필드 |
 |---|---|
@@ -269,14 +269,14 @@ claim      no_claim
 ```rust
 pub struct ResolveFlightDelay<'info> {
     pub resolver: Signer<'info>,          // leader 또는 operator만 가능
-    pub master_policy: Account<'info, MasterPolicy>,
+    pub master_agreement: Account<'info, MasterAgreement>,
     pub flight_policy: Account<'info, FlightPolicy>,  // mut
 }
 ```
 
 ### 사전 조건
 
-1. `MasterPolicy` 가 `Active` 상태
+1. `MasterAgreement` 가 `Active` 상태
 2. `FlightPolicy` 가 `Issued` 또는 `AwaitingOracle` 상태
 3. `resolver` 가 `master.leader` 또는 `master.operator`와 일치
 4. `AVIATIONSTACK_API_KEY` 환경변수 설정 (oracle daemon 또는 스크립트)
@@ -327,7 +327,7 @@ Switchboard 오라클 네트워크가 AviationStack API를 직접 호출하여 �
 AviationStack API
        │
        ▼  (Switchboard oracle 노드가 호출)
-Pull Feed 계정 (MasterPolicy.oracle_feed)
+Pull Feed 계정 (MasterAgreement.oracle_feed)
   ← 온체인 기록 + 암호학적 서명
        │
        ▼
@@ -361,9 +361,9 @@ v0 트랜잭션(Address Lookup Table 포함)으로 전송해야 합니다.
 ```rust
 pub struct CheckOracleAndResolveFlight<'info> {
     pub payer: Signer<'info>,                   // mut — 누구나 호출 가능
-    pub master_policy: Account<'info, MasterPolicy>,
+    pub master_agreement: Account<'info, MasterAgreement>,
     pub flight_policy: Account<'info, FlightPolicy>,  // mut
-    /// CHECK: master_policy.oracle_feed와 일치 여부를 handler에서 검증
+    /// CHECK: master_agreement.oracle_feed와 일치 여부를 handler에서 검증
     pub oracle_feed: UncheckedAccount<'info>,
     /// CHECK: address = default_queue() (Switchboard 기본 큐)
     pub queue: UncheckedAccount<'info>,
@@ -381,14 +381,14 @@ pub struct CheckOracleAndResolveFlight<'info> {
 5. `QuoteVerifier` — staleness ≤ `ORACLE_MAX_STALENESS_SLOTS` (150 slots ≈ 60–90s)
 6. 피드 값 파싱: `scale == 0`, `mantissa ≥ 0`, `mantissa ≤ u16::MAX` → `delay_minutes`
 
-### MasterPolicy에 oracle_feed 등록
+### MasterAgreement에 oracle_feed 등록
 
-Track B를 사용하려면 `create_master_policy` 호출 시 `oracle_feed` 파라미터에 Switchboard
+Track B를 사용하려면 `create_master_agreement` 호출 시 `oracle_feed` 파라미터에 Switchboard
 Pull Feed 주소를 지정해야 합니다.
 
 ```typescript
 await program.methods
-  .createMasterPolicy({
+  .createMasterAgreement({
     // ... 기타 파라미터 ...
     oracleFeed: feedPubkey,   // Track B: Switchboard Pull Feed 주소
                               // Track A: PublicKey.default() (오라클 없음)
@@ -405,7 +405,7 @@ await program.methods
 scan FlightPolicy (AwaitingOracle | Claimable | NoClaim)
   │
   ├─ AwaitingOracle: departure_ts 지난 경우만 처리
-  │    1. MasterPolicy 조회 → oracle_feed 추출
+  │    1. MasterAgreement 조회 → oracle_feed 추출
   │    2. Switchboard Crossbar API에서 서명된 oracle update 수신
   │    3. [Ed25519, verified_update, check_oracle_and_resolve_flight] v0 tx 전송
   │    4. FlightPolicy 재조회 → settle
@@ -437,7 +437,7 @@ scan FlightPolicy (AwaitingOracle | Claimable | NoClaim)
 ```rust
 pub struct SettleFlightClaim<'info> {
     pub executor: Signer<'info>,            // leader 또는 operator
-    pub master_policy: Account<'info, MasterPolicy>,
+    pub master_agreement: Account<'info, MasterAgreement>,
     pub flight_policy: Account<'info, FlightPolicy>,  // mut
     pub leader_deposit_token: InterfaceAccount<'info, TokenAccount>,  // mut
     pub reinsurer_pool_token: InterfaceAccount<'info, TokenAccount>,  // mut
@@ -451,7 +451,7 @@ pub struct SettleFlightClaim<'info> {
 ```rust
 pub struct SettleFlightNoClaim<'info> {
     pub executor: Signer<'info>,            // leader 또는 operator
-    pub master_policy: Account<'info, MasterPolicy>,
+    pub master_agreement: Account<'info, MasterAgreement>,
     pub flight_policy: Account<'info, FlightPolicy>,  // mut
     pub leader_deposit_token: InterfaceAccount<'info, TokenAccount>,  // mut
     pub reinsurer_deposit_token: InterfaceAccount<'info, TokenAccount>,  // mut
@@ -473,7 +473,7 @@ pub struct SettleFlightNoClaim<'info> {
 | **결항 처리** | `cancelled=true` 파라미터 | 불가 (숫자 피드만) |
 | **tx 구조** | 일반 트랜잭션 | v0 트랜잭션 (3 instructions + LUT) |
 | **네트워크** | localnet / devnet / mainnet | devnet 이상 필수 |
-| **oracle_feed** | `MasterPolicy.oracle_feed = Pubkey::default()` | Switchboard Pull Feed 주소 |
+| **oracle_feed** | `MasterAgreement.oracle_feed = Pubkey::default()` | Switchboard Pull Feed 주소 |
 | **자동화** | oracle daemon Track A | oracle daemon Track B |
 
 ---
@@ -502,7 +502,7 @@ cd contract
 # 1. 초기 셋업 (최초 1회)
 yarn demo:1-setup
 
-# 2. MasterPolicy 생성 (oracle_feed = Pubkey::default())
+# 2. MasterAgreement 생성 (oracle_feed = Pubkey::default())
 yarn demo:3-master-setup
 
 # 3. FlightPolicy 생성
@@ -526,7 +526,7 @@ yarn demo:1-setup
 # 2. Switchboard Pull Feed 생성 (1회, feedPubkey가 .state.json에 저장됨)
 AVIATIONSTACK_API_KEY=<키> FLIGHT_NO=KE017 yarn demo:2-feed-create
 
-# 3. MasterPolicy 생성 (oracle_feed = 위에서 얻은 feedPubkey 자동 적용)
+# 3. MasterAgreement 생성 (oracle_feed = 위에서 얻은 feedPubkey 자동 적용)
 yarn demo:3-master-setup
 
 # 4. FlightPolicy 생성

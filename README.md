@@ -21,7 +21,7 @@ The MVP targets **flight delay insurance** (a $10B+ market with 30% of flights d
 
 - **Event-driven settlement** — claims settle on-chain as the event happens, no reconciliation step
 - **Tiered payouts** — 2h / 3h / 4-5h / 6h+ delay tiers, plus cancellation override
-- MasterPolicy + FlightPolicy architecture: one co-insurance agreement covers many individual flight contracts
+- MasterAgreement + FlightPolicy architecture: one co-insurance agreement covers many individual flight contracts
 - Co-underwriting with leader, participants, and reinsurer (basis-point ratios, on-chain confirmation)
 - Modular oracle integration — centralized (AviationStack API via Track A) or decentralized (Switchboard On-Demand via Track B)
 - REST API server with on-chain data sync (SQLite / Firebase Firestore)
@@ -118,7 +118,7 @@ Specifically, Solana enables five architectural properties that this protocol re
 
 - **Atomic oracle verification** — Track B's `check_oracle_and_resolve_flight` performs Ed25519 signature verification, Switchboard oracle update, and FlightPolicy state update in a single transaction. Solana's Instructions sysvar allows a program to inspect other instructions within the same TX — structurally impossible on EVM.
 - **Trustless custody via PDAs** — Pool wallets are owned by program-derived addresses. No multisig, no admin key, no external custodian. The program itself is the custodian — there is no admin key to compromise because none exists.
-- **Account-level parallelism** — Each MasterPolicy and FlightPolicy is a separate on-chain account. The Solana runtime processes transactions touching different accounts in parallel. KE081 ICN→JFK settlement never blocks OZ201 ICN→LAX oracle resolution. In EVM's single-contract model, all policies compete for the same storage.
+- **Account-level parallelism** — Each MasterAgreement and FlightPolicy is a separate on-chain account. The Solana runtime processes transactions touching different accounts in parallel. KE081 ICN→JFK settlement never blocks OZ201 ICN→LAX oracle resolution. In EVM's single-contract model, all policies compete for the same storage.
 - **Multi-party atomic settlement** — `settle_flight_claim` splits payouts across reinsurer and participants by basis-point ratios and executes all transfers in one transaction — all or nothing, no partial settlement.
 - **On-chain state machine as policy terms** — FlightPolicy's state transition (`Issued → AwaitingOracle → Claimable/NoClaim → Paid/Expired`) is enforced on-chain. "Cannot settle before oracle resolves" is not a contractual clause subject to interpretation — it's a transaction the program rejects.
 
@@ -229,14 +229,14 @@ For detailed guides, see:
 
 ### On-Chain Accounts
 
-The on-chain program uses a two-tier account structure. A `MasterPolicy` is a period-based co-insurance agreement (leader + up to 8 participants + reinsurer). Each individual flight is issued as a `FlightPolicy` PDA under the master.
+The on-chain program uses a two-tier account structure. A `MasterAgreement` is a period-based co-insurance agreement (leader + up to 8 participants + reinsurer). Each individual flight is issued as a `FlightPolicy` PDA under the master.
 
 ```
-MasterPolicy  (one per coverage period)
+MasterAgreement  (one per coverage period)
   └─ FlightPolicy (one per insured flight, issued on-demand)
 ```
 
-- `MasterPolicy`: Co-insurance agreement. Stores tiered payout amounts, ceded/commission ratios, participant shares (bps), pool wallet addresses, oracle feed (Track B), and lifecycle status.
+- `MasterAgreement`: Co-insurance agreement. Stores tiered payout amounts, ceded/commission ratios, participant shares (bps), pool wallet addresses, oracle feed (Track B), and lifecycle status.
 - `FlightPolicy`: Individual flight contract. Stores flight number, route, departure timestamp, premium paid, oracle-resolved delay, payout amount, and settlement status.
 
 Pool wallets (PDAs) hold escrowed funds. On `settle_flight_claim`, payouts flow from the reinsurer pool and participant pools to the leader's deposit wallet. On `settle_flight_no_claim`, premiums flow from the leader's deposit wallet back to each participant's deposit wallet.
@@ -246,7 +246,7 @@ Pool wallets (PDAs) hold escrowed funds. On `settle_flight_claim`, payouts flow 
 The backend runs as a single process with three responsibilities:
 
 1. **Oracle scheduler** — cron-based (`ORACLE_CHECK_CRON`, default: 15min) pipeline that scans on-chain policies, fetches flight data, and sends resolve/settle transactions
-2. **DB sync scheduler** — cron-based (`DB_SYNC_CRON`, default: 1min) pipeline that reads on-chain MasterPolicy/FlightPolicy accounts and persists them to SQLite or Firebase Firestore
+2. **DB sync scheduler** — cron-based (`DB_SYNC_CRON`, default: 1min) pipeline that reads on-chain MasterAgreement/FlightPolicy accounts and persists them to SQLite or Firebase Firestore
 3. **REST API server** — Axum-based HTTP server exposing policy data and real-time events
 
 **API Endpoints:**
@@ -254,19 +254,19 @@ The backend runs as a single process with three responsibilities:
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Health check |
-| GET | `/api/master-policies` | List all master policies |
-| GET | `/api/master-policies/accounts` | List master policy on-chain accounts |
-| GET | `/api/master-policies/:pubkey` | Get single master policy |
-| GET | `/api/master-policies/tree` | Master policies with nested flight policies |
-| GET | `/api/master-policies/:pubkey/flight-policies` | Flight policies under a master |
-| POST | `/api/master-policies/:pubkey/flight-policies` | Create a flight policy |
+| GET | `/api/master-agreements` | List all master policies |
+| GET | `/api/master-agreements/accounts` | List master agreement on-chain accounts |
+| GET | `/api/master-agreements/:pubkey` | Get single master agreement |
+| GET | `/api/master-agreements/tree` | Master policies with nested flight policies |
+| GET | `/api/master-agreements/:pubkey/flight-policies` | Flight policies under a master |
+| POST | `/api/master-agreements/:pubkey/flight-policies` | Create a flight policy |
 | GET | `/api/flight-policies` | List all flight policies |
 | GET | `/api/flight-policies/:pubkey` | Get single flight policy |
 | GET | `/api/events` | SSE event stream |
 
 ## State Machines
 
-MasterPolicy lifecycle:
+MasterAgreement lifecycle:
 
 ```
 PendingConfirm → Active → Closed

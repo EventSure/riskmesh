@@ -83,10 +83,10 @@ export function makeProgram(payer: Keypair): any {
 
 // ─── Master/Flight PDA 헬퍼 ───────────────────────────────────────────────────
 
-export function masterPolicyPub(leader: PublicKey, masterId: number): PublicKey {
+export function masterAgreementPub(leader: PublicKey, masterId: number): PublicKey {
   return PublicKey.findProgramAddressSync(
     [
-      Buffer.from("master_policy"),
+      Buffer.from("master_agreement"),
       leader.toBuffer(),
       new BN(masterId).toArrayLike(Buffer, "le", 8),
     ],
@@ -95,13 +95,13 @@ export function masterPolicyPub(leader: PublicKey, masterId: number): PublicKey 
 }
 
 export function flightPolicyPub(
-  masterPolicy: PublicKey,
+  masterAgreement: PublicKey,
   childPolicyId: number
 ): PublicKey {
   return PublicKey.findProgramAddressSync(
     [
       Buffer.from("flight_policy"),
-      masterPolicy.toBuffer(),
+      masterAgreement.toBuffer(),
       new BN(childPolicyId).toArrayLike(Buffer, "le", 8),
     ],
     PROGRAM_ID

@@ -1,10 +1,10 @@
 /**
  * yarn demo:manual-settle
  *
- * .state.json 없이 온체인 MasterPolicy에서 wallet 주소를 읽어 정산합니다.
+ * .state.json 없이 온체인 MasterAgreement에서 wallet 주소를 읽어 정산합니다.
  *
  * 환경변수:
- *   MASTER_PDA       MasterPolicy 주소 (필수)
+ *   MASTER_PDA       MasterAgreement 주소 (필수)
  *   CHILD_POLICY_ID  FlightPolicy child ID (기본값: 4)
  *   KEYPAIR_PATH     leader 키페어 경로 (기본값: ~/.config/solana/riskmesh-leader.json)
  */
@@ -37,11 +37,11 @@ function loadKeypair(p: string): Keypair {
   return Keypair.fromSecretKey(Uint8Array.from(raw));
 }
 
-function flightPolicyPub(masterPolicy: PublicKey, childId: number, programId: PublicKey): PublicKey {
+function flightPolicyPub(masterAgreement: PublicKey, childId: number, programId: PublicKey): PublicKey {
   return PublicKey.findProgramAddressSync(
     [
       Buffer.from("flight_policy"),
-      masterPolicy.toBuffer(),
+      masterAgreement.toBuffer(),
       new BN(childId).toArrayLike(Buffer, "le", 8),
     ],
     programId
@@ -63,7 +63,7 @@ async function main() {
   const flightPda = flightPolicyPub(masterPda, CHILD_ID, programId);
 
   // 온체인 계정 fetch
-  const master = await (pg.account as any).masterPolicy.fetch(masterPda);
+  const master = await (pg.account as any).masterAgreement.fetch(masterPda);
   const fp = await (pg.account as any).flightPolicy.fetch(flightPda);
 
   console.log("=== manual-settle ===");
@@ -90,7 +90,7 @@ async function main() {
       .settleFlightClaim()
       .accountsPartial({
         executor:           leader.publicKey,
-        masterPolicy:       masterPda,
+        masterAgreement:       masterPda,
         flightPolicy:       flightPda,
         leaderDepositToken: master.leaderDepositWallet,
         leaderPoolToken:    master.leaderPoolWallet,
@@ -121,7 +121,7 @@ async function main() {
       .settleFlightNoClaim()
       .accountsPartial({
         executor:              leader.publicKey,
-        masterPolicy:          masterPda,
+        masterAgreement:          masterPda,
         flightPolicy:          flightPda,
         leaderPoolToken:       master.leaderPoolWallet,
         leaderDepositToken:    master.leaderDepositWallet,

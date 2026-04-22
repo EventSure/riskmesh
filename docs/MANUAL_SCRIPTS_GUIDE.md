@@ -4,7 +4,7 @@ AviationStack API, Switchboard Oracle, `.state.json` 없이 FlightPolicy 상태�
 
 ## 전제 조건
 
-- MasterPolicy가 이미 생성되어 Active 상태여야 합니다 (`yarn demo:3-master-setup`)
+- MasterAgreement가 이미 생성되어 Active 상태여야 합니다 (`yarn demo:3-master-setup`)
 - FlightPolicy가 이미 생성되어 있어야 합니다 (`yarn demo:4-flight-create`)
 - Leader 키페어 파일이 로컬에 있어야 합니다 (기본: `~/.config/solana/id.json`)
 - `target/idl/open_parametric.json` IDL 파일이 존재해야 합니다 (`anchor build` 후 생성)
@@ -20,7 +20,7 @@ FlightPolicy의 오라클 결과를 수동으로 기록합니다.
 
 | 변수 | 필수 | 기본값 | 설명 |
 |---|---|---|---|
-| `MASTER_PDA` | **필수** | - | MasterPolicy 온체인 주소 |
+| `MASTER_PDA` | **필수** | - | MasterAgreement 온체인 주소 |
 | `CHILD_POLICY_ID` | 선택 | `4` | FlightPolicy의 child ID |
 | `DELAY_MINUTES` | 선택 | `150` | 지연 시간 (분) |
 | `CANCELLED` | 선택 | `false` | 결항 여부 (`true` / `false`) |
@@ -80,7 +80,7 @@ status        : 2 (2=Claimable, 4=NoClaim)
 
 ## 2. manual-settle.ts
 
-FlightPolicy의 정산을 실행합니다. 온체인 MasterPolicy 계정에서 wallet 주소를 자동으로 읽어오므로 `.state.json`이 필요 없습니다.
+FlightPolicy의 정산을 실행합니다. 온체인 MasterAgreement 계정에서 wallet 주소를 자동으로 읽어오므로 `.state.json`이 필요 없습니다.
 
 - `Claimable(2)` → `settle_flight_claim` → **Paid(3)**: 참여사 pool에서 leader deposit으로 payout 이체
 - `NoClaim(4)` → `settle_flight_no_claim` → **Expired(5)**: leader deposit에서 참여사 deposit으로 premium 분배
@@ -89,7 +89,7 @@ FlightPolicy의 정산을 실행합니다. 온체인 MasterPolicy 계정에서 w
 
 | 변수 | 필수 | 기본값 | 설명 |
 |---|---|---|---|
-| `MASTER_PDA` | **필수** | - | MasterPolicy 온체인 주소 |
+| `MASTER_PDA` | **필수** | - | MasterAgreement 온체인 주소 |
 | `CHILD_POLICY_ID` | 선택 | `4` | FlightPolicy의 child ID |
 | `KEYPAIR_PATH` | 선택 | `~/.config/solana/id.json` | Leader 키페어 경로 |
 | `ANCHOR_PROVIDER_URL` | 선택 | `https://api.devnet.solana.com` | Solana RPC URL |

@@ -8,7 +8,7 @@ use crate::state::*;
 #[derive(Accounts)]
 pub struct SettleFlightNoClaim<'info> {
     pub executor: Signer<'info>,
-    pub master_policy: Account<'info, MasterPolicy>,
+    pub master_agreement: Account<'info, MasterAgreement>,
     #[account(mut)]
     pub flight_policy: Account<'info, FlightPolicy>,
     #[account(mut)]
@@ -21,12 +21,12 @@ pub struct SettleFlightNoClaim<'info> {
 }
 
 pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightNoClaim<'a>>) -> Result<()> {
-    let master = &ctx.accounts.master_policy;
+    let master = &ctx.accounts.master_agreement;
     let flight = &mut ctx.accounts.flight_policy;
 
     // NoClaim 상태의 child 정책만 프리미엄 정산을 수행한다.
     require!(
-        master.status == MasterPolicyStatus::Active as u8,
+        master.status == MasterAgreementStatus::Active as u8,
         OpenParamError::MasterNotActive
     );
     require!(
@@ -90,7 +90,7 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightNoClaim<'a>>) -> Res
 
     let seed_master_id = master.master_id.to_le_bytes();
     let seeds = &[
-        b"master_policy".as_ref(),
+        b"master_agreement".as_ref(),
         master.leader.as_ref(),
         seed_master_id.as_ref(),
         &[master.bump],
@@ -104,7 +104,7 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightNoClaim<'a>>) -> Res
             Transfer {
                 from: ctx.accounts.leader_pool_token.to_account_info(),
                 to: ctx.accounts.reinsurer_deposit_token.to_account_info(),
-                authority: ctx.accounts.master_policy.to_account_info(),
+                authority: ctx.accounts.master_agreement.to_account_info(),
             },
             signer,
         );
@@ -119,7 +119,7 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightNoClaim<'a>>) -> Res
             Transfer {
                 from: ctx.accounts.leader_pool_token.to_account_info(),
                 to: ctx.accounts.leader_deposit_token.to_account_info(),
-                authority: ctx.accounts.master_policy.to_account_info(),
+                authority: ctx.accounts.master_agreement.to_account_info(),
             },
             signer,
         );
@@ -149,7 +149,7 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightNoClaim<'a>>) -> Res
             Transfer {
                 from: ctx.accounts.leader_pool_token.to_account_info(),
                 to: deposit_info.to_account_info(),
-                authority: ctx.accounts.master_policy.to_account_info(),
+                authority: ctx.accounts.master_agreement.to_account_info(),
             },
             signer,
         );

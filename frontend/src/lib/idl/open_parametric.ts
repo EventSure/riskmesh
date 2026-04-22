@@ -9,7 +9,7 @@ import type { BN } from '@coral-xyz/anchor';
 
 // ── Enums ─────────────────────────────────────────────────────────────────────
 
-export enum MasterPolicyStatus {
+export enum MasterAgreementStatus {
   Draft = 0,
   PendingConfirm = 1,
   Active = 2,
@@ -43,11 +43,11 @@ export enum FlightPolicyStatus {
 }
 
 export const MASTER_STATUS_LABELS: Record<number, string> = {
-  [MasterPolicyStatus.Draft]: 'Draft',
-  [MasterPolicyStatus.PendingConfirm]: 'PendingConfirm',
-  [MasterPolicyStatus.Active]: 'Active',
-  [MasterPolicyStatus.Closed]: 'Closed',
-  [MasterPolicyStatus.Cancelled]: 'Cancelled',
+  [MasterAgreementStatus.Draft]: 'Draft',
+  [MasterAgreementStatus.PendingConfirm]: 'PendingConfirm',
+  [MasterAgreementStatus.Active]: 'Active',
+  [MasterAgreementStatus.Closed]: 'Closed',
+  [MasterAgreementStatus.Cancelled]: 'Cancelled',
 };
 
 export const POLICY_STATE_LABELS: Record<number, string> = {
@@ -80,8 +80,8 @@ export interface MasterParticipant {
   depositWallet: PublicKey;
 }
 
-/** Mirrors the on-chain MasterPolicy account layout (state.rs). */
-export interface MasterPolicyAccount {
+/** Mirrors the on-chain MasterAgreement account layout (state.rs). */
+export interface MasterAgreementAccount {
   masterId: BN;
   leader: PublicKey;
   operator: PublicKey;
@@ -137,7 +137,7 @@ export interface MasterParticipantInit {
   shareBps: number;
 }
 
-export interface CreateMasterPolicyParams {
+export interface CreateMasterAgreementParams {
   masterId: BN;
   coverageStartTs: BN;
   coverageEndTs: BN;
@@ -233,7 +233,7 @@ export type OpenParametric = {
           "signer": true
         },
         {
-          "name": "masterPolicy",
+          "name": "masterAgreement",
           "writable": true
         }
       ],
@@ -264,7 +264,7 @@ export type OpenParametric = {
           "signer": true
         },
         {
-          "name": "masterPolicy",
+          "name": "masterAgreement",
           "docs": [
             "oracle_feed 주소와 tiered payout 기준을 제공하는 마스터 계약."
           ]
@@ -312,7 +312,7 @@ export type OpenParametric = {
           "signer": true
         },
         {
-          "name": "masterPolicy",
+          "name": "masterAgreement",
           "writable": true
         }
       ],
@@ -342,7 +342,7 @@ export type OpenParametric = {
           "signer": true
         },
         {
-          "name": "masterPolicy",
+          "name": "masterAgreement",
           "writable": true
         },
         {
@@ -370,7 +370,7 @@ export type OpenParametric = {
               },
               {
                 "kind": "account",
-                "path": "masterPolicy"
+                "path": "masterAgreement"
               },
               {
                 "kind": "arg",
@@ -408,7 +408,7 @@ export type OpenParametric = {
       ]
     },
     {
-      "name": "createMasterPolicy",
+      "name": "createMasterAgreement",
       "discriminator": [
         60,
         218,
@@ -435,7 +435,7 @@ export type OpenParametric = {
           "name": "currencyMint"
         },
         {
-          "name": "masterPolicy",
+          "name": "masterAgreement",
           "writable": true,
           "pda": {
             "seeds": [
@@ -490,7 +490,7 @@ export type OpenParametric = {
           "name": "params",
           "type": {
             "defined": {
-              "name": "createMasterPolicyParams"
+              "name": "createMasterAgreementParams"
             }
           }
         }
@@ -515,7 +515,7 @@ export type OpenParametric = {
           "signer": true
         },
         {
-          "name": "masterPolicy",
+          "name": "masterAgreement",
           "writable": true
         },
         {
@@ -545,7 +545,7 @@ export type OpenParametric = {
           "signer": true
         },
         {
-          "name": "masterPolicy"
+          "name": "masterAgreement"
         },
         {
           "name": "flightPolicy",
@@ -581,7 +581,7 @@ export type OpenParametric = {
           "signer": true
         },
         {
-          "name": "masterPolicy"
+          "name": "masterAgreement"
         },
         {
           "name": "flightPolicy",
@@ -624,7 +624,7 @@ export type OpenParametric = {
           "signer": true
         },
         {
-          "name": "masterPolicy"
+          "name": "masterAgreement"
         },
         {
           "name": "flightPolicy",
@@ -665,7 +665,7 @@ export type OpenParametric = {
       ]
     },
     {
-      "name": "masterPolicy",
+      "name": "masterAgreement",
       "discriminator": [
         244,
         57,
@@ -800,7 +800,7 @@ export type OpenParametric = {
       }
     },
     {
-      "name": "createMasterPolicyParams",
+      "name": "createMasterAgreementParams",
       "type": {
         "kind": "struct",
         "fields": [
@@ -982,7 +982,7 @@ export type OpenParametric = {
       }
     },
     {
-      "name": "masterPolicy",
+      "name": "masterAgreement",
       "type": {
         "kind": "struct",
         "fields": [

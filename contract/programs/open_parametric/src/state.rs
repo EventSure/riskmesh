@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq)]
-pub enum MasterPolicyStatus {
+pub enum MasterAgreementStatus {
     PendingConfirm = 1,
     Active = 2,
     Closed = 3,
@@ -44,7 +44,7 @@ pub struct MasterParticipant {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct CreateMasterPolicyParams {
+pub struct CreateMasterAgreementParams {
     pub master_id: u64,
     pub coverage_start_ts: i64,
     pub coverage_end_ts: i64,
@@ -72,7 +72,7 @@ pub struct CreateFlightPolicyParams {
 // ─── Account Structs ──────────────────────────────────────────────────────────
 
 #[account]
-pub struct MasterPolicy {
+pub struct MasterAgreement {
     pub master_id: u64,
     pub leader: Pubkey,
     pub operator: Pubkey,

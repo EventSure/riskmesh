@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import {
-  getMasterPolicyPDA,
+  getMasterAgreementPDA,
   getFlightPolicyPDA,
   getPolicyPDA,
   getUnderwritingPDA,
@@ -22,28 +22,28 @@ const POLICY = Keypair.fromSeed(new Uint8Array(32).fill(3)).publicKey;
 const POLICY2 = Keypair.fromSeed(new Uint8Array(32).fill(4)).publicKey;
 
 describe('PDA derivation functions', () => {
-  describe('getMasterPolicyPDA', () => {
+  describe('getMasterAgreementPDA', () => {
     it('returns deterministic result for same inputs', () => {
-      const [pda1, bump1] = getMasterPolicyPDA(LEADER, new BN(1), TEST_PROGRAM_ID);
-      const [pda2, bump2] = getMasterPolicyPDA(LEADER, new BN(1), TEST_PROGRAM_ID);
+      const [pda1, bump1] = getMasterAgreementPDA(LEADER, new BN(1), TEST_PROGRAM_ID);
+      const [pda2, bump2] = getMasterAgreementPDA(LEADER, new BN(1), TEST_PROGRAM_ID);
       expect(pda1.equals(pda2)).toBe(true);
       expect(bump1).toBe(bump2);
     });
 
     it('returns different PDA for different master IDs', () => {
-      const [pda1] = getMasterPolicyPDA(LEADER, new BN(1), TEST_PROGRAM_ID);
-      const [pda2] = getMasterPolicyPDA(LEADER, new BN(2), TEST_PROGRAM_ID);
+      const [pda1] = getMasterAgreementPDA(LEADER, new BN(1), TEST_PROGRAM_ID);
+      const [pda2] = getMasterAgreementPDA(LEADER, new BN(2), TEST_PROGRAM_ID);
       expect(pda1.equals(pda2)).toBe(false);
     });
 
     it('returns different PDA for different leaders', () => {
-      const [pda1] = getMasterPolicyPDA(LEADER, new BN(1), TEST_PROGRAM_ID);
-      const [pda2] = getMasterPolicyPDA(LEADER2, new BN(1), TEST_PROGRAM_ID);
+      const [pda1] = getMasterAgreementPDA(LEADER, new BN(1), TEST_PROGRAM_ID);
+      const [pda2] = getMasterAgreementPDA(LEADER2, new BN(1), TEST_PROGRAM_ID);
       expect(pda1.equals(pda2)).toBe(false);
     });
 
     it('bump is within valid range', () => {
-      const [, bump] = getMasterPolicyPDA(LEADER, new BN(1), TEST_PROGRAM_ID);
+      const [, bump] = getMasterAgreementPDA(LEADER, new BN(1), TEST_PROGRAM_ID);
       expect(bump).toBeGreaterThanOrEqual(0);
       expect(bump).toBeLessThanOrEqual(255);
     });
@@ -70,8 +70,8 @@ describe('PDA derivation functions', () => {
       expect(pda1.equals(pda2)).toBe(true);
     });
 
-    it('uses different seed from getMasterPolicyPDA', () => {
-      const [masterPda] = getMasterPolicyPDA(LEADER, new BN(1), TEST_PROGRAM_ID);
+    it('uses different seed from getMasterAgreementPDA', () => {
+      const [masterPda] = getMasterAgreementPDA(LEADER, new BN(1), TEST_PROGRAM_ID);
       const [policyPda] = getPolicyPDA(LEADER, new BN(1), TEST_PROGRAM_ID);
       expect(masterPda.equals(policyPda)).toBe(false);
     });

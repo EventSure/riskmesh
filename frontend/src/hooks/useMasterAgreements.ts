@@ -3,7 +3,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import type { MasterAgreementSummary } from '@/store/useProtocolStore';
 import { BACKEND_URL } from '@/lib/constants';
 
-interface BackendMasterPolicyItem {
+interface BackendMasterAgreementItem {
   pubkey: string;
   master_id: number;
   leader: string;
@@ -14,7 +14,7 @@ interface BackendMasterPolicyItem {
   participants: Array<{ insurer: string; share_bps: number; confirmed: boolean }>;
 }
 
-function detectRole(m: BackendMasterPolicyItem, wallet: string): MasterAgreementSummary['myRole'] {
+function detectRole(m: BackendMasterAgreementItem, wallet: string): MasterAgreementSummary['myRole'] {
   if (m.leader === wallet) return 'leader';
   if (m.reinsurer === wallet) return 'rein';
   const nonLeaders = m.participants.filter(p => p.insurer !== m.leader);
@@ -36,12 +36,12 @@ export function useMasterAgreements() {
     setLoading(true);
     try {
       const walletKey = publicKey.toBase58();
-      const url = `${BACKEND_URL}/api/master-policies?wallet=${walletKey}`;
+      const url = `${BACKEND_URL}/api/master-agreements?wallet=${walletKey}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json: { master_policies: BackendMasterPolicyItem[] } = await res.json();
+      const json: { master_agreements: BackendMasterAgreementItem[] } = await res.json();
 
-      const mapped: MasterAgreementSummary[] = json.master_policies.map((m) => ({
+      const mapped: MasterAgreementSummary[] = json.master_agreements.map((m) => ({
         pda: m.pubkey,
         masterId: String(m.master_id),
         status: m.status,

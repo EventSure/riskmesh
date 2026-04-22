@@ -66,7 +66,7 @@ impl EventBus {
 
             if changed {
                 // TODO: SSE event name is consumed outside backend; rename with frontend contract update.
-                self.send_json("master_policy_updated", policy);
+                self.send_json("master_agreement_updated", policy);
             }
         }
 

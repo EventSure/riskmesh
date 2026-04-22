@@ -4,7 +4,7 @@
  * AviationStack 없이 resolve_flight_delay를 직접 호출합니다.
  *
  * 환경변수:
- *   MASTER_PDA       MasterPolicy 주소 (필수)
+ *   MASTER_PDA       MasterAgreement 주소 (필수)
  *   CHILD_POLICY_ID  FlightPolicy child ID (기본값: 4)
  *   DELAY_MINUTES    지연 분 (기본값: 150 → Claimable)
  *   CANCELLED        결항 여부 "true" / "false" (기본값: false)
@@ -31,11 +31,11 @@ function loadKeypair(p: string): Keypair {
   return Keypair.fromSecretKey(Uint8Array.from(raw));
 }
 
-function flightPolicyPub(masterPolicy: PublicKey, childId: number, programId: PublicKey): PublicKey {
+function flightPolicyPub(masterAgreement: PublicKey, childId: number, programId: PublicKey): PublicKey {
   return PublicKey.findProgramAddressSync(
     [
       Buffer.from("flight_policy"),
-      masterPolicy.toBuffer(),
+      masterAgreement.toBuffer(),
       new BN(childId).toArrayLike(Buffer, "le", 8),
     ],
     programId
@@ -70,7 +70,7 @@ async function main() {
     .resolveFlightDelay(DELAY_MIN, CANCELLED)
     .accountsPartial({
       resolver: leader.publicKey,
-      masterPolicy: masterPda,
+      masterAgreement: masterPda,
       flightPolicy: flightPda,
     })
     .signers([leader])

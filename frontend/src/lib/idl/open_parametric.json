@@ -25,7 +25,7 @@
           "signer": true
         },
         {
-          "name": "master_policy",
+          "name": "master_agreement",
           "writable": true
         }
       ],
@@ -56,7 +56,7 @@
           "signer": true
         },
         {
-          "name": "master_policy",
+          "name": "master_agreement",
           "docs": [
             "oracle_feed 주소와 tiered payout 기준을 제공하는 마스터 계약."
           ]
@@ -104,7 +104,7 @@
           "signer": true
         },
         {
-          "name": "master_policy",
+          "name": "master_agreement",
           "writable": true
         }
       ],
@@ -134,7 +134,7 @@
           "signer": true
         },
         {
-          "name": "master_policy",
+          "name": "master_agreement",
           "writable": true
         },
         {
@@ -162,7 +162,7 @@
               },
               {
                 "kind": "account",
-                "path": "master_policy"
+                "path": "master_agreement"
               },
               {
                 "kind": "arg",
@@ -200,7 +200,7 @@
       ]
     },
     {
-      "name": "create_master_policy",
+      "name": "create_master_agreement",
       "discriminator": [
         60,
         218,
@@ -227,7 +227,7 @@
           "name": "currency_mint"
         },
         {
-          "name": "master_policy",
+          "name": "master_agreement",
           "writable": true,
           "pda": {
             "seeds": [
@@ -282,7 +282,7 @@
           "name": "params",
           "type": {
             "defined": {
-              "name": "CreateMasterPolicyParams"
+              "name": "CreateMasterAgreementParams"
             }
           }
         }
@@ -307,7 +307,7 @@
           "signer": true
         },
         {
-          "name": "master_policy",
+          "name": "master_agreement",
           "writable": true
         },
         {
@@ -337,7 +337,7 @@
           "signer": true
         },
         {
-          "name": "master_policy"
+          "name": "master_agreement"
         },
         {
           "name": "flight_policy",
@@ -373,7 +373,7 @@
           "signer": true
         },
         {
-          "name": "master_policy"
+          "name": "master_agreement"
         },
         {
           "name": "flight_policy",
@@ -416,7 +416,7 @@
           "signer": true
         },
         {
-          "name": "master_policy"
+          "name": "master_agreement"
         },
         {
           "name": "flight_policy",
@@ -457,7 +457,7 @@
       ]
     },
     {
-      "name": "MasterPolicy",
+      "name": "MasterAgreement",
       "discriminator": [
         244,
         57,
@@ -592,7 +592,7 @@
       }
     },
     {
-      "name": "CreateMasterPolicyParams",
+      "name": "CreateMasterAgreementParams",
       "type": {
         "kind": "struct",
         "fields": [
@@ -774,7 +774,7 @@
       }
     },
     {
-      "name": "MasterPolicy",
+      "name": "MasterAgreement",
       "type": {
         "kind": "struct",
         "fields": [
