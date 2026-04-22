@@ -4,9 +4,9 @@
 
 관련 코드:
 
-- [web.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/web.rs)
-- [program_accounts.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/oracle/program_accounts.rs)
-- [state.rs](/Users/deaver/Desktop/Repo/riskmesh/contract/programs/open_parametric/src/state.rs)
+- [web.rs](../src/api/router.rs)
+- [program_accounts.rs](../src/oracle/program_accounts/mod.rs)
+- [state.rs](../../contract/programs/open_parametric/src/state.rs)
 
 ## 1. 응답 구조 한눈에 보기
 

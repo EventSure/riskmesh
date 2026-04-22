@@ -1,6 +1,6 @@
 # Master Agreement 전환 TODO
 
-이 문서는 backend 내부에서 `master agreement` 용어를 `master agreement`로 전환하면서, 외부 계약 호환성을 위해 의도적으로 유지한 지점을 정리한다.
+이 문서는 backend 내부에서 `master policy` 용어를 `master agreement`로 전환하면서, 외부 계약 호환성을 위해 의도적으로 유지한 지점을 정리한다.
 
 ## 원칙
 

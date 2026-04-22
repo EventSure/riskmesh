@@ -24,10 +24,10 @@
 
 관련 코드:
 
-- [create_master_agreement.rs](/Users/deaver/Desktop/Repo/riskmesh/contract/programs/open_parametric/src/instructions/create_master_agreement.rs)
-- [register_participant_wallets.rs](/Users/deaver/Desktop/Repo/riskmesh/contract/programs/open_parametric/src/instructions/register_participant_wallets.rs)
-- [confirm_master.rs](/Users/deaver/Desktop/Repo/riskmesh/contract/programs/open_parametric/src/instructions/confirm_master.rs)
-- [create_flight_policy_from_master.rs](/Users/deaver/Desktop/Repo/riskmesh/contract/programs/open_parametric/src/instructions/create_flight_policy_from_master.rs)
+- [create_master_agreement.rs](../../contract/programs/open_parametric/src/instructions/create_master_agreement.rs)
+- [register_participant_wallets.rs](../../contract/programs/open_parametric/src/instructions/register_participant_wallets.rs)
+- [confirm_master.rs](../../contract/programs/open_parametric/src/instructions/confirm_master.rs)
+- [create_flight_policy_from_master.rs](../../contract/programs/open_parametric/src/instructions/create_flight_policy_from_master.rs)
 
 ### "리더사와 원수사/재보험사가 지분을 나누면 MasterAgreement가 구성된다"는 표현은 맞나
 
@@ -61,7 +61,7 @@
 
 중요한 점은 현재 온체인에서 `FlightPolicy` 생성 권한이 아무에게나 열려 있지 않다는 것입니다.
 
-[create_flight_policy_from_master.rs](/Users/deaver/Desktop/Repo/riskmesh/contract/programs/open_parametric/src/instructions/create_flight_policy_from_master.rs) 기준:
+[create_flight_policy_from_master.rs](../../contract/programs/open_parametric/src/instructions/create_flight_policy_from_master.rs) 기준:
 
 - `master.status == Active`
 - `creator == master.leader || creator == master.operator`
@@ -91,9 +91,9 @@
 
 ## 4. "main.rs에 endpoint를 추가"는 정확히 어디를 고쳐야 하나
 
-현재 구조에서 실제 HTTP 라우트는 [web.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/web.rs) 에 있습니다.
+현재 구조에서 실제 HTTP 라우트는 [api/router.rs](../src/api/router.rs) 에 있습니다.
 
-[main.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/main.rs) 는:
+[main.rs](../src/main.rs) 는:
 
 - 설정 로드
 - 스케줄러 시작
@@ -103,7 +103,7 @@
 
 따라서 새 endpoint를 추가하려면 실질적인 수정 포인트는:
 
-- [web.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/web.rs)
+- [api/router.rs](../src/api/router.rs)
 - 필요하면 요청/응답 DTO용 새 모듈
 - 온체인 트랜잭션 전송용 서비스 모듈
 
@@ -254,8 +254,8 @@
 
 관련 코드:
 
-- [create_master_agreement.rs](/Users/deaver/Desktop/Repo/riskmesh/contract/programs/open_parametric/src/instructions/create_master_agreement.rs#L19)
-- [pda.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/solana/pda.rs#L29)
+- [create_master_agreement.rs](../../contract/programs/open_parametric/src/instructions/create_master_agreement.rs)
+- [pda.rs](../src/solana/pda.rs)
 
 즉:
 
@@ -321,7 +321,7 @@
 
 ### Phase 2. 백엔드 endpoint 추가
 
-- [web.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/web.rs) 에 POST 라우트 추가
+- [web.rs](../src/api/router.rs) 에 POST 라우트 추가
 - 요청 DTO/응답 DTO 추가
 - 인증 미들웨어 또는 간단한 토큰 검사 추가
 

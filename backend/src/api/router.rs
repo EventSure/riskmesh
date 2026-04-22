@@ -12,7 +12,6 @@ use super::{handlers::*, state::AppState};
 pub(super) fn build_router(state: AppState) -> Router {
     Router::new()
         .route("/health", get(health))
-        // TODO: route paths are consumed outside backend; rename with frontend contract update.
         .route("/api/master-agreements", get(get_master_agreements))
         .route("/api/master-agreements/accounts", get(get_master_agreement_accounts))
         .route("/api/master-agreements/:master_agreement_pubkey", get(get_master_agreement))

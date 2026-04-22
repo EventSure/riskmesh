@@ -18,7 +18,6 @@ pub(super) struct MasterAgreementsResponse {
 pub(super) struct MasterAgreementAccountsResponse {
     pub program_id: String,
     pub count: usize,
-    // TODO: response field is consumed outside backend; rename with frontend contract update.
     #[serde(rename = "master_agreement_pubkeys")]
     pub master_agreement_pubkeys: Vec<String>,
 }
@@ -39,7 +38,6 @@ pub(super) struct MasterAgreementsTreeResponse {
 #[derive(Serialize)]
 pub(super) struct MasterAgreementFlightPoliciesResponse {
     pub program_id: String,
-    // TODO: response field is consumed outside backend; rename with frontend contract update.
     #[serde(rename = "master_agreement_pubkey")]
     pub master_agreement_pubkey: String,
     pub count: usize,
@@ -48,7 +46,6 @@ pub(super) struct MasterAgreementFlightPoliciesResponse {
 
 #[derive(Serialize)]
 pub(super) struct MasterAgreementAccountTree {
-    // TODO: response field is consumed outside backend; rename with frontend contract update.
     #[serde(rename = "master_agreement_pubkey")]
     pub master_agreement_pubkey: String,
     pub flight_policy_pubkeys: Vec<String>,
@@ -65,7 +62,6 @@ pub(super) struct CreateFlightPolicyRequest {
 #[derive(Serialize)]
 pub(super) struct CreateFlightPolicyResponse {
     pub program_id: String,
-    // TODO: response field is consumed outside backend; rename with frontend contract update.
     #[serde(rename = "master_agreement_pubkey")]
     pub master_agreement_pubkey: String,
     pub child_policy_id: u64,
