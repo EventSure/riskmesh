@@ -9,24 +9,24 @@ pub struct RegisterParticipantWallets<'info> {
     #[account(mut)]
     pub insurer: Signer<'info>,
     #[account(mut)]
-    pub master_policy: Account<'info, MasterPolicy>,
+    pub master_agreement: Account<'info, MasterAgreement>,
     pub pool_wallet: Account<'info, TokenAccount>,
     pub deposit_wallet: Account<'info, TokenAccount>,
 }
 
 pub fn handler(ctx: Context<RegisterParticipantWallets>) -> Result<()> {
-    let master = &mut ctx.accounts.master_policy;
+    let master = &mut ctx.accounts.master_agreement;
     // 활성 이후에는 정산 지갑 정보를 바꿀 수 없도록 막는다.
     require!(
-        master.status != MasterPolicyStatus::Closed as u8,
+        master.status != MasterAgreementStatus::Closed as u8,
         OpenParamError::InvalidState
     );
     require!(
-        master.status != MasterPolicyStatus::Cancelled as u8,
+        master.status != MasterAgreementStatus::Cancelled as u8,
         OpenParamError::InvalidState
     );
     require!(
-        master.status != MasterPolicyStatus::Active as u8,
+        master.status != MasterAgreementStatus::Active as u8,
         OpenParamError::InvalidState
     );
     require!(

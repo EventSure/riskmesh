@@ -37,7 +37,7 @@
 
 ### TX 구조 변경
 - 현재: TX1 (pool+fund+ATA) → TX2 (createMaster+regLeader+confirmLeader)
-- **프로덕션**: TX1 불필요 (데모 계정 생성 로직). createMasterPolicy만 별도 TX로 전송.
+- **프로덕션**: TX1 불필요 (데모 계정 생성 로직). createMasterAgreement만 별도 TX로 전송.
   pool 계정은 각 참여사가 생성하거나, leader가 init 후 참여사에게 알림.
 
 ---

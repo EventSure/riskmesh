@@ -79,7 +79,7 @@ export function ParticipantConfirm() {
     // On-chain
     if (!masterAgreementPDA) { toast('No master agreement PDA', 'd'); return; }
     const result = await activateMasterOnChain({
-      masterPolicy: new PublicKey(masterAgreementPDA),
+      masterAgreement: new PublicKey(masterAgreementPDA),
     });
     if (!result.success) { toast(`TX failed: ${result.error}`, 'd'); return; }
     onChainActivate(result.signature, masterAgreementPDA);

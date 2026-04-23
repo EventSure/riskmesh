@@ -3,10 +3,10 @@ import { PublicKey } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { useProgram } from './useProgram';
 import { sendTx, type TxResult } from '@/lib/tx';
-import type { MasterPolicyAccount } from '@/lib/idl/open_parametric';
+import type { MasterAgreementAccount } from '@/lib/idl/open_parametric';
 
 export interface SettleFlightClaimInput {
-  masterPolicy: PublicKey;
+  masterAgreement: PublicKey;
   flightPolicy: PublicKey;
   leaderDepositToken: PublicKey;
   leaderPoolToken: PublicKey;
@@ -16,7 +16,7 @@ export interface SettleFlightClaimInput {
 }
 
 export interface SettleFlightNoClaimInput {
-  masterPolicy: PublicKey;
+  masterAgreement: PublicKey;
   flightPolicy: PublicKey;
   leaderDepositToken: PublicKey;
   reinsurerDepositToken: PublicKey;
@@ -43,7 +43,7 @@ export function useSettleFlight() {
             .settleFlightClaim()
             .accounts({
               executor: wallet.publicKey,
-              masterPolicy: input.masterPolicy,
+              masterAgreement: input.masterAgreement,
               flightPolicy: input.flightPolicy,
               leaderDepositToken: input.leaderDepositToken,
               leaderPoolToken: input.leaderPoolToken,
@@ -85,7 +85,7 @@ export function useSettleFlight() {
             .settleFlightNoClaim()
             .accounts({
               executor: wallet.publicKey,
-              masterPolicy: input.masterPolicy,
+              masterAgreement: input.masterAgreement,
               flightPolicy: input.flightPolicy,
               leaderDepositToken: input.leaderDepositToken,
               reinsurerDepositToken: input.reinsurerDepositToken,
@@ -112,7 +112,7 @@ export function useSettleFlight() {
   );
 
   /** Helper to build wallet arrays from master agreement account data */
-  const buildSettleAccounts = (master: MasterPolicyAccount) => ({
+  const buildSettleAccounts = (master: MasterAgreementAccount) => ({
     participantPoolWallets: master.participants.map((p) => p.poolWallet),
     participantDepositWallets: master.participants.map((p) => p.depositWallet),
     leaderPoolWallet: master.leaderPoolWallet,

@@ -1,6 +1,6 @@
 # `track_b.rs` 상세 설명
 
-이 문서는 [track_b.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/oracle/track_b.rs)를 중심으로, Track B 오라클 파이프라인이 어떤 역할을 하고 어떤 순서로 동작하는지 설명합니다.
+이 문서는 [track_b.rs](../src/oracle/track_b.rs)를 중심으로, Track B 오라클 파이프라인이 어떤 역할을 하고 어떤 순서로 동작하는지 설명합니다.
 
 Track B는 Switchboard On-Demand 오라클을 사용하는 경로입니다.  
 핵심 목표는 다음 한 줄로 요약할 수 있습니다.
@@ -11,7 +11,7 @@ Track B는 Switchboard On-Demand 오라클을 사용하는 경로입니다.
 
 Track B는 스케줄러 사이클 안에서 실행됩니다.
 
-관련 코드는 [scheduler.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/scheduler.rs#L35)에 있습니다.
+관련 코드는 [scheduler.rs](../src/scheduler.rs#L35)에 있습니다.
 
 흐름:
 
@@ -24,13 +24,13 @@ Track B는 스케줄러 사이클 안에서 실행됩니다.
 
 ### `SolanaClient`가 무엇인가
 
-스케줄러는 먼저 [scheduler.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/scheduler.rs#L42)에서 `SolanaClient`를 만듭니다.
+스케줄러는 먼저 [scheduler.rs](../src/scheduler.rs#L42)에서 `SolanaClient`를 만듭니다.
 
 ```rust
 let client = SolanaClient::new(&config.rpc_url);
 ```
 
-`SolanaClient`는 [client.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/solana/client.rs#L18)에 정의된, 이 프로젝트 전용 Solana RPC 래퍼입니다.
+`SolanaClient`는 [client.rs](../src/solana/client.rs#L18)에 정의된, 이 프로젝트 전용 Solana RPC 래퍼입니다.
 
 쉽게 말하면:
 
@@ -60,7 +60,7 @@ pub struct SolanaClient {
 
 ### 리더 키페어가 무엇인가
 
-그 다음 스케줄러는 [scheduler.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/scheduler.rs#L44)에서 리더 키페어를 파일에서 읽습니다.
+그 다음 스케줄러는 [scheduler.rs](../src/scheduler.rs#L44)에서 리더 키페어를 파일에서 읽습니다.
 
 ```rust
 let keypair_path = shellexpand::tilde(&config.leader_keypair_path).to_string();
@@ -97,7 +97,7 @@ client.send_v0_transaction(instructions, &oracle_update.luts, leader)
 
 ## 1-1. `Config`의 핵심 필드 4개
 
-Track B를 이해할 때 자주 헷갈리는 설정이 [config.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/config.rs) 의 아래 4개입니다.
+Track B를 이해할 때 자주 헷갈리는 설정이 [config.rs](../src/config.rs) 의 아래 4개입니다.
 
 ```rust
 pub program_id: Pubkey,
@@ -271,7 +271,7 @@ leader_pubkey = LeaderAAA111
 
 ## 2. 파일의 큰 역할
 
-[track_b.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/oracle/track_b.rs)는 크게 4가지 책임을 가집니다.
+[track_b.rs](../src/oracle/track_b.rs)는 크게 4가지 책임을 가집니다.
 
 1. 온체인에서 Track B용 `Policy` 계정을 찾기
 2. 계정 바이트를 읽어서 필요한 필드를 파싱하기
@@ -280,7 +280,7 @@ leader_pubkey = LeaderAAA111
 
 ## 3. 파일 상단 주석의 의미
 
-파일 첫머리 주석 [track_b.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/oracle/track_b.rs#L1)는 전체 로직을 아주 압축해서 적어둔 것입니다.
+파일 첫머리 주석 [track_b.rs](../src/oracle/track_b.rs#L1)는 전체 로직을 아주 압축해서 적어둔 것입니다.
 
 ```rust
 /// 흐름:
@@ -293,7 +293,7 @@ leader_pubkey = LeaderAAA111
 
 ## 4. `PolicyInfo` 구조체
 
-[track_b.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/oracle/track_b.rs#L22)의 `PolicyInfo`는 온체인 `Policy` 계정 전체를 다 들고 있지 않고, Track B 실행에 필요한 최소 정보만 뽑아서 저장합니다.
+[track_b.rs](../src/oracle/track_b.rs#L22)의 `PolicyInfo`는 온체인 `Policy` 계정 전체를 다 들고 있지 않고, Track B 실행에 필요한 최소 정보만 뽑아서 저장합니다.
 
 ```rust
 pub struct PolicyInfo {
@@ -322,7 +322,7 @@ pub struct PolicyInfo {
 
 ## 5. `scan_active_policies()`: 처리 대상 찾기
 
-[track_b.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/oracle/track_b.rs#L35)의 `scan_active_policies()`는 Track B 처리 대상을 수집하는 함수입니다.
+[track_b.rs](../src/oracle/track_b.rs#L35)의 `scan_active_policies()`는 Track B 처리 대상을 수집하는 함수입니다.
 
 시그니처:
 
@@ -409,7 +409,7 @@ match parse_policy(&pubkey, &account.data) {
 
 ## 6. `parse_policy()`: 온체인 바이트를 구조체로 해석
 
-[track_b.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/oracle/track_b.rs#L77)의 `parse_policy()`는 raw bytes를 `PolicyInfo`로 바꾸는 함수입니다.
+[track_b.rs](../src/oracle/track_b.rs#L77)의 `parse_policy()`는 raw bytes를 `PolicyInfo`로 바꾸는 함수입니다.
 
 ```rust
 fn parse_policy(pubkey: &Pubkey, data: &[u8]) -> Result<PolicyInfo>
@@ -456,7 +456,7 @@ let state = read_u8(data, &mut offset)?;
 
 ## 7. `run()`: Policy 1개 실제 처리
 
-[track_b.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/oracle/track_b.rs#L106)의 `run()`은 `PolicyInfo` 하나를 받아 실제 오라클 처리까지 수행합니다.
+[track_b.rs](../src/oracle/track_b.rs#L106)의 `run()`은 `PolicyInfo` 하나를 받아 실제 오라클 처리까지 수행합니다.
 
 시그니처:
 
@@ -505,7 +505,7 @@ let oracle_update =
         .context("Switchboard oracle update 수신 실패")?;
 ```
 
-이 부분은 [switchboard.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/switchboard.rs#L50)로 넘어가서 Crossbar HTTP API를 호출합니다.
+이 부분은 [switchboard.rs](../src/switchboard.rs#L50)로 넘어가서 Crossbar HTTP API를 호출합니다.
 
 받아오는 값은 `OracleUpdate`이며 주요 내용은:
 
@@ -533,7 +533,7 @@ let (claim_key, _) = claim_pda(&config.program_id, &policy.pubkey, oracle_round)
 여기서는 현재 슬롯을 `oracle_round`로 사용합니다.
 
 이 값은 Claim PDA seed에도 들어갑니다.  
-관련 PDA 정의는 [pda.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/solana/pda.rs#L11)에 있습니다.
+관련 PDA 정의는 [pda.rs](../src/solana/pda.rs#L11)에 있습니다.
 
 ```rust
 ["claim", policy, oracle_round_le8]
@@ -591,11 +591,11 @@ let sig = client
 ```
 
 Track B는 LUT를 포함할 수 있기 때문에 legacy transaction이 아니라 v0 transaction을 사용합니다.  
-이 부분은 [client.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/solana/client.rs#L65)의 `send_v0_transaction()`이 담당합니다.
+이 부분은 [client.rs](../src/solana/client.rs#L65)의 `send_v0_transaction()`이 담당합니다.
 
 ## 8. `build_check_oracle_ix()`: Anchor instruction 수동 조립
 
-[track_b.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/oracle/track_b.rs#L179)의 `build_check_oracle_ix()`는 우리 프로그램 호출용 `Instruction`을 직접 만듭니다.
+[track_b.rs](../src/oracle/track_b.rs#L179)의 `build_check_oracle_ix()`는 우리 프로그램 호출용 `Instruction`을 직접 만듭니다.
 
 ### 8-1. discriminator 생성
 
@@ -700,11 +700,11 @@ Track B는 이 LUT를 써야 할 수 있으므로 v0 transaction 경로를 사�
 
 ## 12. 관련 파일 같이 보면 좋은 것
 
-- [backend/src/oracle/track_b.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/oracle/track_b.rs)
-- [backend/src/switchboard.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/switchboard.rs)
-- [backend/src/solana/client.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/solana/client.rs)
-- [backend/src/solana/pda.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/solana/pda.rs)
-- [backend/src/scheduler.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/scheduler.rs)
+- [backend/src/oracle/track_b.rs](../src/oracle/track_b.rs)
+- [backend/src/switchboard.rs](../src/switchboard.rs)
+- [backend/src/solana/client.rs](../src/solana/client.rs)
+- [backend/src/solana/pda.rs](../src/solana/pda.rs)
+- [backend/src/scheduler.rs](../src/scheduler.rs)
 
 ## 13. 한 줄 정리
 

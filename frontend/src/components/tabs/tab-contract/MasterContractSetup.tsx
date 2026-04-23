@@ -7,7 +7,7 @@ import { useProtocolStore, PARTICIPANT_COLORS, REINSURER_COLOR } from '@/store/u
 import { useToast } from '@/components/common';
 import { useTranslation } from 'react-i18next';
 import { useProgram } from '@/hooks/useProgram';
-import { getMasterPolicyPDA } from '@/lib/pda';
+import { getMasterAgreementPDA } from '@/lib/pda';
 import { CURRENCY_MINT } from '@/lib/constants';
 import { setPoolWallet } from '@/lib/demo-keypairs';
 import { ConfirmRole } from '@/lib/idl/open_parametric';
@@ -86,7 +86,7 @@ export function MasterContractSetup() {
 
       const masterId = Date.now();
       const masterIdBN = new BN(masterId);
-      const [masterAgreementPDA] = getMasterPolicyPDA(leaderKey, masterIdBN);
+      const [masterAgreementPDA] = getMasterAgreementPDA(leaderKey, masterIdBN);
 
       const operatorKey = leaderKey;
 
@@ -137,7 +137,7 @@ export function MasterContractSetup() {
         : leaderATA;
 
       const createMasterIx = await prog.methods
-        .createMasterPolicy({
+        .createMasterAgreement({
           masterId: masterIdBN,
           coverageStartTs: new BN(Math.floor(new Date(coverageStart).getTime() / 1000)),
           coverageEndTs: new BN(Math.floor(new Date(coverageEnd).getTime() / 1000)),
@@ -156,7 +156,7 @@ export function MasterContractSetup() {
           operator: operatorKey,
           reinsurer: reinsurerKey,
           currencyMint: CURRENCY_MINT,
-          masterPolicy: masterAgreementPDA,
+          masterAgreement: masterAgreementPDA,
           leaderDepositWallet: leaderATA,
           reinsurerPoolWallet: reinsurerPoolKp?.publicKey ?? leaderPoolKp.publicKey,
           reinsurerDepositWallet,
@@ -169,7 +169,7 @@ export function MasterContractSetup() {
         .registerParticipantWallets()
         .accounts({
           insurer: leaderKey,
-          masterPolicy: masterAgreementPDA,
+          masterAgreement: masterAgreementPDA,
           poolWallet: leaderPoolKp.publicKey,
           depositWallet: leaderATA,
           tokenProgram: TOKEN_PROGRAM_ID,
@@ -178,7 +178,7 @@ export function MasterContractSetup() {
 
       const confirmLeaderIx = await prog.methods
         .confirmMaster(ConfirmRole.Participant)
-        .accounts({ actor: leaderKey, masterPolicy: masterAgreementPDA })
+        .accounts({ actor: leaderKey, masterAgreement: masterAgreementPDA })
         .instruction();
 
       // ATA 생성 (idempotent)
@@ -244,7 +244,7 @@ export function MasterContractSetup() {
     try {
       const masterPK = new PublicKey(masterAgreementPDA);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const masterData = await (program as any).account.masterPolicy.fetch(masterPK);
+      const masterData = await (program as any).account.masterAgreement.fetch(masterPK);
 
       const NUM_CLAIMS = 5;
       const maxPayoutRaw: number = masterData.payoutDelay6HOrCancelled.toNumber();

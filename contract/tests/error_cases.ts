@@ -44,15 +44,15 @@ describe("error_cases", () => {
   /** masterId에 해당하는 Master PDA 반환 */
   function masterPda(masterId: anchor.BN): PublicKey {
     return PublicKey.findProgramAddressSync(
-      [Buffer.from("master_policy"), payer.publicKey.toBuffer(), masterId.toArrayLike(Buffer, "le", 8)],
+      [Buffer.from("master_agreement"), payer.publicKey.toBuffer(), masterId.toArrayLike(Buffer, "le", 8)],
       program.programId
     )[0];
   }
 
   /** flightPolicyId에 해당하는 Flight PDA 반환 */
-  function flightPda(masterPolicyPda: PublicKey, childId: anchor.BN): PublicKey {
+  function flightPda(masterAgreementPda: PublicKey, childId: anchor.BN): PublicKey {
     return PublicKey.findProgramAddressSync(
-      [Buffer.from("flight_policy"), masterPolicyPda.toBuffer(), childId.toArrayLike(Buffer, "le", 8)],
+      [Buffer.from("flight_policy"), masterAgreementPda.toBuffer(), childId.toArrayLike(Buffer, "le", 8)],
       program.programId
     )[0];
   }
@@ -74,7 +74,7 @@ describe("error_cases", () => {
     const now = Math.floor(Date.now() / 1000);
 
     await program.methods
-      .createMasterPolicy({
+      .createMasterAgreement({
         masterId,
         coverageStartTs: new anchor.BN(now - 10),
         coverageEndTs:   new anchor.BN(now + 3600),
@@ -91,7 +91,7 @@ describe("error_cases", () => {
       })
       .accountsPartial({
         leader: payer.publicKey, operator: payer.publicKey,
-        reinsurer: reinsurer.publicKey, currencyMint: mint, masterPolicy: pda,
+        reinsurer: reinsurer.publicKey, currencyMint: mint, masterAgreement: pda,
         leaderDepositWallet: leaderDeposit, reinsurerPoolWallet: reinsurerPool,
         reinsurerDepositWallet: reinsurerDeposit, systemProgram: SystemProgram.programId,
       })
@@ -99,16 +99,16 @@ describe("error_cases", () => {
 
     await program.methods
       .registerParticipantWallets()
-      .accounts({ insurer: payer.publicKey, masterPolicy: pda, poolWallet: leaderPool, depositWallet: leaderDeposit })
+      .accounts({ insurer: payer.publicKey, masterAgreement: pda, poolWallet: leaderPool, depositWallet: leaderDeposit })
       .rpc();
     await program.methods
       .registerParticipantWallets()
-      .accounts({ insurer: participant.publicKey, masterPolicy: pda, poolWallet: participantPool, depositWallet: participantDeposit })
+      .accounts({ insurer: participant.publicKey, masterAgreement: pda, poolWallet: participantPool, depositWallet: participantDeposit })
       .signers([participant])
       .rpc();
-    await program.methods.confirmMaster(0).accounts({ actor: payer.publicKey, masterPolicy: pda }).rpc();
-    await program.methods.confirmMaster(0).accounts({ actor: participant.publicKey, masterPolicy: pda }).signers([participant]).rpc();
-    await program.methods.activateMaster().accounts({ operator: payer.publicKey, masterPolicy: pda }).rpc();
+    await program.methods.confirmMaster(0).accounts({ actor: payer.publicKey, masterAgreement: pda }).rpc();
+    await program.methods.confirmMaster(0).accounts({ actor: participant.publicKey, masterAgreement: pda }).signers([participant]).rpc();
+    await program.methods.activateMaster().accounts({ operator: payer.publicKey, masterAgreement: pda }).rpc();
 
     return { pda, leaderDeposit, reinsurerDeposit, leaderPool, participantPool, participantDeposit, reinsurer };
   }
@@ -117,9 +117,9 @@ describe("error_cases", () => {
     mint = await createMint(connection, payer, payer.publicKey, null, 6);
   });
 
-  // ── createMasterPolicy 입력 검증 ─────────────────────────────────────────────
+  // ── createMasterAgreement 입력 검증 ─────────────────────────────────────────────
 
-  describe("createMasterPolicy validation", () => {
+  describe("createMasterAgreement validation", () => {
     it("rejects participants whose share_bps do not sum to 10000", async () => {
       const pda = masterPda(new anchor.BN(200));
       const leaderDeposit = await createAccount(connection, payer, mint, pda, Keypair.generate());
@@ -129,7 +129,7 @@ describe("error_cases", () => {
 
       try {
         await program.methods
-          .createMasterPolicy({
+          .createMasterAgreement({
             masterId: new anchor.BN(200),
             coverageStartTs: new anchor.BN(now),
             coverageEndTs:   new anchor.BN(now + 3600),
@@ -146,7 +146,7 @@ describe("error_cases", () => {
           })
           .accountsPartial({
             leader: payer.publicKey, operator: payer.publicKey,
-            reinsurer: Keypair.generate().publicKey, currencyMint: mint, masterPolicy: pda,
+            reinsurer: Keypair.generate().publicKey, currencyMint: mint, masterAgreement: pda,
             leaderDepositWallet: leaderDeposit, reinsurerPoolWallet: reinsurerPool,
             reinsurerDepositWallet: reinsurerDeposit, systemProgram: SystemProgram.programId,
           })
@@ -167,7 +167,7 @@ describe("error_cases", () => {
 
       try {
         await program.methods
-          .createMasterPolicy({
+          .createMasterAgreement({
             masterId: new anchor.BN(201),
             coverageStartTs: new anchor.BN(now),
             coverageEndTs:   new anchor.BN(now + 3600),
@@ -184,7 +184,7 @@ describe("error_cases", () => {
           })
           .accountsPartial({
             leader: payer.publicKey, operator: payer.publicKey,
-            reinsurer: Keypair.generate().publicKey, currencyMint: mint, masterPolicy: pda,
+            reinsurer: Keypair.generate().publicKey, currencyMint: mint, masterAgreement: pda,
             leaderDepositWallet: leaderDeposit, reinsurerPoolWallet: reinsurerPool,
             reinsurerDepositWallet: reinsurerDeposit, systemProgram: SystemProgram.programId,
           })
@@ -212,7 +212,7 @@ describe("error_cases", () => {
       const now = Math.floor(Date.now() / 1000);
 
       await program.methods
-        .createMasterPolicy({
+        .createMasterAgreement({
           masterId,
           coverageStartTs: new anchor.BN(now - 10),
           coverageEndTs:   new anchor.BN(now + 3600),
@@ -226,7 +226,7 @@ describe("error_cases", () => {
         })
         .accountsPartial({
           leader: payer.publicKey, operator: payer.publicKey,
-          reinsurer: reinsurer.publicKey, currencyMint: mint, masterPolicy: pda,
+          reinsurer: reinsurer.publicKey, currencyMint: mint, masterAgreement: pda,
           leaderDepositWallet: leaderDeposit, reinsurerPoolWallet: reinsurerPool,
           reinsurerDepositWallet: reinsurerDeposit, systemProgram: SystemProgram.programId,
         })
@@ -240,7 +240,7 @@ describe("error_cases", () => {
       try {
         await program.methods
           .confirmMaster(0)
-          .accounts({ actor: stranger.publicKey, masterPolicy: pda })
+          .accounts({ actor: stranger.publicKey, masterAgreement: pda })
           .signers([stranger])
           .rpc();
         assert.fail("실패해야 하는데 성공함");
@@ -254,7 +254,7 @@ describe("error_cases", () => {
       try {
         await program.methods
           .confirmMaster(0)
-          .accounts({ actor: payer.publicKey, masterPolicy: pda })
+          .accounts({ actor: payer.publicKey, masterAgreement: pda })
           .rpc();
         assert.fail("실패해야 하는데 성공함");
       } catch (err) {
@@ -266,7 +266,7 @@ describe("error_cases", () => {
       try {
         await program.methods
           .confirmMaster(2) // 유효하지 않은 role
-          .accounts({ actor: payer.publicKey, masterPolicy: pda })
+          .accounts({ actor: payer.publicKey, masterAgreement: pda })
           .rpc();
         assert.fail("실패해야 하는데 성공함");
       } catch (err) {
@@ -294,7 +294,7 @@ describe("error_cases", () => {
       const now = Math.floor(Date.now() / 1000);
 
       await program.methods
-        .createMasterPolicy({
+        .createMasterAgreement({
           masterId,
           coverageStartTs: new anchor.BN(now - 10),
           coverageEndTs:   new anchor.BN(now + 3600),
@@ -308,7 +308,7 @@ describe("error_cases", () => {
         })
         .accountsPartial({
           leader: payer.publicKey, operator: payer.publicKey,
-          reinsurer: reinsurer.publicKey, currencyMint: mint, masterPolicy: pda,
+          reinsurer: reinsurer.publicKey, currencyMint: mint, masterAgreement: pda,
           leaderDepositWallet: leaderDeposit, reinsurerPoolWallet: reinsurerPool,
           reinsurerDepositWallet: reinsurerDeposit, systemProgram: SystemProgram.programId,
         })
@@ -317,17 +317,17 @@ describe("error_cases", () => {
       // leader만 등록/승인, participantA는 미승인 상태로 남겨 activation 실패를 확인한다.
       await program.methods
         .registerParticipantWallets()
-        .accounts({ insurer: payer.publicKey, masterPolicy: pda, poolWallet: leaderPool, depositWallet: leaderDeposit })
+        .accounts({ insurer: payer.publicKey, masterAgreement: pda, poolWallet: leaderPool, depositWallet: leaderDeposit })
         .rpc();
       await program.methods
         .registerParticipantWallets()
-        .accounts({ insurer: participantA.publicKey, masterPolicy: pda, poolWallet: aPool, depositWallet: aDeposit })
+        .accounts({ insurer: participantA.publicKey, masterAgreement: pda, poolWallet: aPool, depositWallet: aDeposit })
         .signers([participantA])
         .rpc();
-      await program.methods.confirmMaster(0).accounts({ actor: payer.publicKey, masterPolicy: pda }).rpc();
+      await program.methods.confirmMaster(0).accounts({ actor: payer.publicKey, masterAgreement: pda }).rpc();
 
       try {
-        await program.methods.activateMaster().accounts({ operator: payer.publicKey, masterPolicy: pda }).rpc();
+        await program.methods.activateMaster().accounts({ operator: payer.publicKey, masterAgreement: pda }).rpc();
         assert.fail("실패해야 하는데 성공함");
       } catch (err) {
         assertAnchorError(err, "MasterNotConfirmed");
@@ -343,8 +343,8 @@ describe("error_cases", () => {
     let leaderPool: PublicKey;
 
     before(async () => {
-      const { pda: masterPolicyPda, leaderPool: lp } = await createActiveMaster(new anchor.BN(230));
-      pda = masterPolicyPda;
+      const { pda: masterAgreementPda, leaderPool: lp } = await createActiveMaster(new anchor.BN(230));
+      pda = masterAgreementPda;
       leaderPool = lp;
 
       const childPolicyId = new anchor.BN(1);
@@ -358,7 +358,7 @@ describe("error_cases", () => {
           departureTs: new anchor.BN(Math.floor(Date.now() / 1000) + 600),
         })
         .accountsPartial({
-          creator: payer.publicKey, masterPolicy: pda, flightPolicy: flightPolicyPda,
+          creator: payer.publicKey, masterAgreement: pda, flightPolicy: flightPolicyPda,
           payerToken, leaderPoolToken: leaderPool,
           tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
         })
@@ -372,7 +372,7 @@ describe("error_cases", () => {
       try {
         await program.methods
           .resolveFlightDelay(200, false)
-          .accounts({ resolver: stranger.publicKey, masterPolicy: pda, flightPolicy: flightPolicyPda })
+          .accounts({ resolver: stranger.publicKey, masterAgreement: pda, flightPolicy: flightPolicyPda })
           .signers([stranger])
           .rpc();
         assert.fail("실패해야 하는데 성공함");
@@ -385,14 +385,14 @@ describe("error_cases", () => {
       // 첫 번째 resolve 성공
       await program.methods
         .resolveFlightDelay(200, false)
-        .accounts({ resolver: payer.publicKey, masterPolicy: pda, flightPolicy: flightPolicyPda })
+        .accounts({ resolver: payer.publicKey, masterAgreement: pda, flightPolicy: flightPolicyPda })
         .rpc();
 
       // 두 번째 resolve는 상태가 이미 Claimable이므로 실패
       try {
         await program.methods
           .resolveFlightDelay(300, false)
-          .accounts({ resolver: payer.publicKey, masterPolicy: pda, flightPolicy: flightPolicyPda })
+          .accounts({ resolver: payer.publicKey, masterAgreement: pda, flightPolicy: flightPolicyPda })
           .rpc();
         assert.fail("실패해야 하는데 성공함");
       } catch (err) {
@@ -418,7 +418,7 @@ describe("error_cases", () => {
           departureTs: new anchor.BN(Math.floor(Date.now() / 1000) + 600),
         })
         .accountsPartial({
-          creator: payer.publicKey, masterPolicy: pda, flightPolicy: flightPolicyPda,
+          creator: payer.publicKey, masterAgreement: pda, flightPolicy: flightPolicyPda,
           payerToken, leaderPoolToken: leaderPool,
           tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
         })
@@ -429,7 +429,7 @@ describe("error_cases", () => {
         await program.methods
           .settleFlightClaim()
           .accountsPartial({
-            executor: payer.publicKey, masterPolicy: pda, flightPolicy: flightPolicyPda,
+            executor: payer.publicKey, masterAgreement: pda, flightPolicy: flightPolicyPda,
             leaderDepositToken: leaderDeposit, leaderPoolToken: leaderPool, reinsurerPoolToken: reinsurerDeposit,
             tokenProgram: TOKEN_PROGRAM_ID,
           })
@@ -459,7 +459,7 @@ describe("error_cases", () => {
           departureTs: new anchor.BN(Math.floor(Date.now() / 1000) + 600),
         })
         .accountsPartial({
-          creator: payer.publicKey, masterPolicy: pda, flightPolicy: flightPolicyPda,
+          creator: payer.publicKey, masterAgreement: pda, flightPolicy: flightPolicyPda,
           payerToken, leaderPoolToken: leaderPool,
           tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
         })
@@ -468,14 +468,14 @@ describe("error_cases", () => {
       // delay=0 → NoClaim
       await program.methods
         .resolveFlightDelay(0, false)
-        .accounts({ resolver: payer.publicKey, masterPolicy: pda, flightPolicy: flightPolicyPda })
+        .accounts({ resolver: payer.publicKey, masterAgreement: pda, flightPolicy: flightPolicyPda })
         .rpc();
 
       // 첫 번째 settle (성공)
       await program.methods
         .settleFlightNoClaim()
         .accountsPartial({
-          executor: payer.publicKey, masterPolicy: pda, flightPolicy: flightPolicyPda,
+          executor: payer.publicKey, masterAgreement: pda, flightPolicy: flightPolicyPda,
           leaderPoolToken: leaderPool, leaderDepositToken: leaderDeposit, reinsurerDepositToken: reinsurerDeposit,
           tokenProgram: TOKEN_PROGRAM_ID,
         })
@@ -487,7 +487,7 @@ describe("error_cases", () => {
         await program.methods
           .settleFlightNoClaim()
           .accountsPartial({
-            executor: payer.publicKey, masterPolicy: pda, flightPolicy: flightPolicyPda,
+            executor: payer.publicKey, masterAgreement: pda, flightPolicy: flightPolicyPda,
             leaderPoolToken: leaderPool, leaderDepositToken: leaderDeposit,
             reinsurerDepositToken: reinsurerDeposit,
             tokenProgram: TOKEN_PROGRAM_ID,

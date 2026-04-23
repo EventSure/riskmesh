@@ -142,7 +142,7 @@ export function InspectorPanel() {
   const accounts = [
     {
       icon: '📋', name: 'MasterAgreement',
-      seeds: isOnChain ? ['master_policy', 'leader', 'master_id'] : ['master', '2026', 'flight_delay'],
+      seeds: isOnChain ? ['master_agreement', 'leader', 'master_id'] : ['master', '2026', 'flight_delay'],
       addr: masterAddr,
       fields: [
         { k: 'coverage', v: '2026-01-01 ~ 2026-12-31', c: '' },
@@ -157,7 +157,7 @@ export function InspectorPanel() {
     },
     {
       icon: '🏦', name: 'RiskPool / Vault',
-      seeds: isOnChain ? ['ATA', 'master_policy_pda'] : ['pool', 'master_contract'],
+      seeds: isOnChain ? ['ATA', 'master_agreement_pda'] : ['pool', 'master_contract'],
       addr: poolAddr,
       fields: [
         { k: 'vault', v: vaultAddr.substring(0, 14) + '...', c: '' },

@@ -76,7 +76,7 @@ yarn ts-mocha -p ./tsconfig.json -t 1000000 tests/settle_flight_claim.ts
 |---|---|---|---|
 | 1 | `demo:1-setup` | `01-setup.ts` | 리더 키페어 + SPL 민트 생성, `.state.json` 초기화 |
 | 2 | `demo:2-feed-create` | `02-feed-create.ts` | **Track B 전용** — Switchboard Pull Feed 생성 (1회) |
-| 3 | `demo:3-master-setup` | `03-master-setup.ts` | MasterPolicy 생성·활성화 + 토큰 계정 셋업 |
+| 3 | `demo:3-master-setup` | `03-master-setup.ts` | MasterAgreement 생성·활성화 + 토큰 계정 셋업 |
 | 4 | `demo:4-flight-create` | `04-flight-create.ts` | FlightPolicy 발행 (프리미엄 이체) |
 | 5a | `demo:5a-resolve` | `05a-resolve.ts` | **Track A** — AviationStack API → `resolve_flight_delay` |
 | 5b | `demo:5b-claim` | `05b-claim.ts` | **Track B** — Switchboard oracle → `check_oracle_and_resolve_flight` |
@@ -94,7 +94,7 @@ cd contract
 # 1. 초기 셋업 (리더 키페어·민트 생성, 최초 1회)
 yarn demo:1-setup
 
-# 2. MasterPolicy 생성 및 활성화
+# 2. MasterAgreement 생성 및 활성화
 #    oracle_feed = PublicKey.default (Track A 전용)
 #    이미 MASTER_ID=1 계정이 있으면: MASTER_ID=2 yarn demo:3-master-setup
 yarn demo:3-master-setup
@@ -123,7 +123,7 @@ yarn demo:1-setup
 #    생성된 feedPubkey가 .state.json에 저장됨
 AVIATIONSTACK_API_KEY=<키> FLIGHT_NO=KE017 yarn demo:2-feed-create
 
-# 3. MasterPolicy 생성 및 활성화
+# 3. MasterAgreement 생성 및 활성화
 #    oracle_feed = state.json의 feedPubkey (자동으로 읽어 등록)
 #    이미 MASTER_ID=1 계정이 있으면: MASTER_ID=2 yarn demo:3-master-setup
 yarn demo:3-master-setup
@@ -146,7 +146,7 @@ yarn demo:6-settle
 | 변수 | 대상 스크립트 | 설명 |
 |---|---|---|
 | `ANCHOR_PROVIDER_URL` | 2–6 | RPC 엔드포인트 (기본: `http://localhost:8899`) |
-| `MASTER_ID` | `3-master-setup` | MasterPolicy ID (기본: `1`). ID=1 계정이 이미 존재하면 `MASTER_ID=2` 등으로 증가 |
+| `MASTER_ID` | `3-master-setup` | MasterAgreement ID (기본: `1`). ID=1 계정이 이미 존재하면 `MASTER_ID=2` 등으로 증가 |
 | `AVIATIONSTACK_API_KEY` | `2-feed-create`, `5a-resolve` | AviationStack API 키 |
 | `FLIGHT_NO` | `2-feed-create`, `4-flight-create`, `5a-resolve` | 항공편 코드 (기본: `KE017`) |
 | `FLIGHT_DATE` | `5a-resolve` | 날짜 `YYYY-MM-DD` (기본: FlightPolicy의 departure_ts) |

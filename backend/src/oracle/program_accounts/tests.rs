@@ -25,7 +25,7 @@ fn build_master_agreement_bytes() -> (Pubkey, Vec<u8>, Vec<Pubkey>) {
     let participant_deposit_wallet = Pubkey::new_unique();
     let oracle_feed = Pubkey::new_unique();
 
-    let mut data = anchor_account_discriminator("MasterPolicy").to_vec();
+    let mut data = anchor_account_discriminator("MasterAgreement").to_vec();
     data.extend_from_slice(&7u64.to_le_bytes());
     push_pubkey(&mut data, &leader);
     push_pubkey(&mut data, &operator);

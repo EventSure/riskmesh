@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { MasterPolicyStatus, FlightPolicyStatus, type MasterPolicyAccount } from '@/lib/idl/open_parametric';
+import { MasterAgreementStatus, FlightPolicyStatus, type MasterAgreementAccount } from '@/lib/idl/open_parametric';
 import type { FlightPolicyWithKey } from '@/hooks/useFlightPolicies';
 import i18n from '@/i18n';
 
@@ -266,7 +266,7 @@ interface ProtocolState {
   refreshPool: () => void;
   setPoolBalance: (balance: number) => void;
   resetAll: () => void;
-  syncMasterFromChain: (data: MasterPolicyAccount) => void;
+  syncMasterFromChain: (data: MasterAgreementAccount) => void;
   syncFlightPoliciesFromChain: (policies: FlightPolicyWithKey[]) => void;
 }
 
@@ -627,7 +627,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     const ps = opts?.participants ?? participants;
     const shareDetail = `L${ls}/${ps.map((p, i) => `P${i + 1}:${p.share}`).join('/')}`;
     get().addLog(
-      i18n.t('store.termsSet'), '#9945FF', 'create_master_policy',
+      i18n.t('store.termsSet'), '#9945FF', 'create_master_agreement',
       shareDetail,
       txSignature,
     );
@@ -811,8 +811,8 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     get().addLog(i18n.t('store.resetMsg'), '#9945FF', 'system_init');
   },
 
-  syncMasterFromChain: (data: MasterPolicyAccount) => {
-    const isActive = data.status === MasterPolicyStatus.Active;
+  syncMasterFromChain: (data: MasterAgreementAccount) => {
+    const isActive = data.status === MasterAgreementStatus.Active;
 
     // Map on-chain participants (leader is separate; participants[] contains only non-leaders).
     // Preserve existing store participant id/name by matching on address — this

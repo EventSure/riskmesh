@@ -15,7 +15,7 @@
        └─ Track B: Switchboard On-Demand → check_oracle_and_resolve_flight (FlightPolicy)
 ```
 
-두 Track 모두 동일한 MasterPolicy + FlightPolicy 계정 구조를 사용합니다.
+두 Track 모두 동일한 MasterAgreement + FlightPolicy 계정 구조를 사용합니다.
 오라클 방식만 다를 뿐 — Track A는 신뢰된 resolver(서명자 인증), Track B는 Switchboard 암호학적 검증입니다.
 실제 운영에서는 두 Track 모두 같은 데몬 프로세스 하나가 처리합니다.
 
@@ -91,30 +91,30 @@ ORACLE_CHECK_CRON=0 */15 * * * *   # 15분마다 (기본값)
 ### 흐름 개요
 
 ```
-1. master-setup  →  MasterPolicy 온체인 생성 & Active
+1. master-setup  →  MasterAgreement 온체인 생성 & Active
 2. flight-create →  FlightPolicy 생성 + 프리미엄 이체 (status: Issued → AwaitingOracle)
 3. [데몬 자동]   →  AviationStack 조회 → resolve_flight_delay
                     (status: AwaitingOracle → Claimable 또는 NoClaim)
 4. settle        →  정산 실행 (status: Paid 또는 Expired)
 ```
 
-### Step 1. MasterPolicy 셋업
+### Step 1. MasterAgreement 셋업
 
 ```bash
 cd contract
 yarn install
 
-# 최초 1회 실행 (devnet 상에 MasterPolicy 생성)
+# 최초 1회 실행 (devnet 상에 MasterAgreement 생성)
 yarn demo:master-setup
 ```
 
 완료 후 `contract/scripts/.state.json`에 아래 정보가 저장됩니다:
 - `mint` — SPL 토큰 mint 주소
-- `masterId`, `masterPda` — MasterPolicy ID / PDA
+- `masterId`, `masterPda` — MasterAgreement ID / PDA
 - `leaderKey`, `leaderAta`, `leaderDepositWallet`, `leaderPoolWallet` 등
 
-> **참고:** `oracle-master-setup.ts`는 이미 Active 상태인 MasterPolicy가 있으면 자동으로 스킵합니다.
-> MasterPolicy는 보통 한 번만 생성하며, 여러 FlightPolicy가 이 MasterPolicy를 공유합니다.
+> **참고:** `oracle-master-setup.ts`는 이미 Active 상태인 MasterAgreement가 있으면 자동으로 스킵합니다.
+> MasterAgreement는 보통 한 번만 생성하며, 여러 FlightPolicy가 이 MasterAgreement를 공유합니다.
 
 리더 키페어도 자동으로 `~/.config/solana/riskmesh-leader.json`에 저장됩니다.
 백엔드 `.env`의 `LEADER_KEYPAIR_PATH`를 이 경로로 맞춰주세요.
@@ -189,15 +189,15 @@ CHILD_POLICY_ID=2 yarn demo:settle
 
 ```
 1. feed-create   →  Switchboard Pull Feed 생성 (devnet, 최초 1회)
-2. master-setup  →  MasterPolicy 생성·확인·활성화 (oracle_feed = 피드 주소)
+2. master-setup  →  MasterAgreement 생성·확인·활성화 (oracle_feed = 피드 주소)
 3. flight-create →  FlightPolicy 생성 (Issued → AwaitingOracle)
 4. [데몬 자동]   →  Switchboard Crossbar → check_oracle_and_resolve_flight
                     (AwaitingOracle → Claimable 또는 NoClaim)
 5. settle        →  정산 실행 (Paid 또는 Expired)
 ```
 
-Track B는 Track A와 동일한 MasterPolicy/FlightPolicy 계정 구조를 사용합니다.
-차이점: MasterPolicy의 `oracle_feed`가 Switchboard Pull Feed 주소이고, oracle 해석 instruction이 다릅니다.
+Track B는 Track A와 동일한 MasterAgreement/FlightPolicy 계정 구조를 사용합니다.
+차이점: MasterAgreement의 `oracle_feed`가 Switchboard Pull Feed 주소이고, oracle 해석 instruction이 다릅니다.
 
 ### Step 1. Switchboard Feed 생성 (최초 1회)
 
@@ -212,10 +212,10 @@ AVIATIONSTACK_API_KEY=<키> FLIGHT_NO=KE017 yarn demo:2-feed-create
 > Switchboard oracle 노드는 HTTPS만 허용하므로, Track B 실사용 시 HTTPS를 지원하는 API나
 > Cloudflare Worker 같은 프록시가 필요합니다.
 
-### Step 2–4. MasterPolicy & FlightPolicy 셋업
+### Step 2–4. MasterAgreement & FlightPolicy 셋업
 
 ```bash
-# MasterPolicy 생성 (oracle_feed = state.json의 feedPubkey)
+# MasterAgreement 생성 (oracle_feed = state.json의 feedPubkey)
 yarn demo:3-master-setup
 
 # FlightPolicy 생성
@@ -295,6 +295,6 @@ sudo journalctl -u riskmesh-daemon -f
 | `PROGRAM_ID 환경변수 필요` 오류 | `.env` 미설정 | `.env.example` 복사 후 작성 |
 | `FlightPolicy 파싱 실패` 경고 | 다른 account 타입이 섞임 | discriminator 필터 정상 동작 중, 무시 가능 |
 | `AviationStack 조회 실패` | API 키 없음 또는 과거 데이터 무료 플랜 제한 | 유료 플랜 사용 또는 `demo:oracle-resolve` 수동 실행 |
-| `Switchboard oracle update 수신 실패` | 피드 주소 불일치 또는 devnet queue 오류 | `demo:2-feed-create` 재실행 후 MasterPolicy 재생성 |
+| `Switchboard oracle update 수신 실패` | 피드 주소 불일치 또는 devnet queue 오류 | `demo:2-feed-create` 재실행 후 MasterAgreement 재생성 |
 | `departure_ts 이전이면 스킵` 로그 | 출발 전 항공편 | 정상 동작. 출발 이후 재실행 |
 | `키페어 파일 읽기 실패` | `LEADER_KEYPAIR_PATH` 경로 오류 | `~` 경로 지원됨. 절대경로로 변경하거나 `master-setup` 재실행 |

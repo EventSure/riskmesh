@@ -11,12 +11,12 @@ pub struct CreateFlightPolicyFromMaster<'info> {
     #[account(mut)]
     pub creator: Signer<'info>,
     #[account(mut)]
-    pub master_policy: Account<'info, MasterPolicy>,
+    pub master_agreement: Account<'info, MasterAgreement>,
     #[account(
         init,
         payer = creator,
         space = FLIGHT_POLICY_SPACE,
-        seeds = [b"flight_policy", master_policy.key().as_ref(), &params.child_policy_id.to_le_bytes()],
+        seeds = [b"flight_policy", master_agreement.key().as_ref(), &params.child_policy_id.to_le_bytes()],
         bump
     )]
     pub flight_policy: Account<'info, FlightPolicy>,
@@ -32,10 +32,10 @@ pub fn handler(
     ctx: Context<CreateFlightPolicyFromMaster>,
     params: CreateFlightPolicyParams,
 ) -> Result<()> {
-    let master = &ctx.accounts.master_policy;
+    let master = &ctx.accounts.master_agreement;
     // 마스터 활성 상태/호출 권한/입력 길이를 먼저 검증한다.
     require!(
-        master.status == MasterPolicyStatus::Active as u8,
+        master.status == MasterAgreementStatus::Active as u8,
         OpenParamError::MasterNotActive
     );
     require!(

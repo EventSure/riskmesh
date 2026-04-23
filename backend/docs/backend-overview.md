@@ -6,7 +6,7 @@
 하나의 비동기 프로세스에서 세 가지 역할을 수행한다:
 
 1. **오라클 스케줄러** — 비행 지연 보험 정책을 주기적으로 스캔하여, 출발 시간이 지난 정책에 대해 외부 API에서 실제 지연 데이터를 가져온 뒤 온체인 트랜잭션을 발행한다.
-2. **DB 동기화 스케줄러** — 온체인 MasterPolicy/FlightPolicy 계정을 주기적으로 읽어 SQLite 또는 Firebase Firestore에 저장한다.
+2. **DB 동기화 스케줄러** — 온체인 MasterAgreement/FlightPolicy 계정을 주기적으로 읽어 SQLite 또는 Firebase Firestore에 저장한다.
 3. **REST API 서버** — Axum 기반 HTTP 서버로 정책 데이터 조회 및 SSE 실시간 이벤트 스트리밍을 제공한다.
 
 두 가지 독립적인 오라클 경로(Track A, Track B)를 하나의 비동기 프로세스에서 운용한다.
@@ -50,7 +50,7 @@ backend/
     │   └── mod.rs
     ├── oracle/
     │   ├── mod.rs          # 모듈 export
-    │   ├── program_accounts.rs  # 온체인 계정 파싱/조회 (MasterPolicy, FlightPolicy)
+    │   ├── program_accounts.rs  # 온체인 계정 파싱/조회 (MasterAgreement, FlightPolicy)
     │   ├── track_a.rs      # Track A: AviationStack 오라클 파이프라인
     │   └── track_b.rs      # Track B: Switchboard 오라클 파이프라인
     └── solana/
@@ -113,7 +113,7 @@ backend/
 **DB 동기화 잡** (`DB_SYNC_CRON`, 기본: 1분):
 ```
 [run_db_sync]
-  1. 온체인 MasterPolicy 계정 전체 조회 (get_program_accounts)
+  1. 온체인 MasterAgreement 계정 전체 조회 (get_program_accounts)
   2. 온체인 FlightPolicy 계정 전체 조회
   3. PolicyRepository.sync()로 DB에 저장 (upsert)
   4. EventBus로 변경 이벤트 브로드캐스트
@@ -126,12 +126,12 @@ Axum 기반 HTTP 서버. `AppState`에 `PolicyRepository`와 `EventBus`를 공�
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
 | GET | `/health` | 서비스 상태/설정 확인 |
-| GET | `/api/master-policies` | DB에서 마스터 정책 목록 조회 |
-| GET | `/api/master-policies/accounts` | 온체인 계정 직접 조회 |
-| GET | `/api/master-policies/:pubkey` | 마스터 정책 상세 |
-| GET | `/api/master-policies/tree` | 마스터 + 하위 FlightPolicy 트리 |
-| GET | `/api/master-policies/:pubkey/flight-policies` | 마스터 아래 FlightPolicy 목록 |
-| POST | `/api/master-policies/:pubkey/flight-policies` | FlightPolicy 생성 (온체인 트랜잭션) |
+| GET | `/api/master-agreements` | DB에서 마스터 정책 목록 조회 |
+| GET | `/api/master-agreements/accounts` | 온체인 계정 직접 조회 |
+| GET | `/api/master-agreements/:pubkey` | 마스터 정책 상세 |
+| GET | `/api/master-agreements/tree` | 마스터 + 하위 FlightPolicy 트리 |
+| GET | `/api/master-agreements/:pubkey/flight-policies` | 마스터 아래 FlightPolicy 목록 |
+| POST | `/api/master-agreements/:pubkey/flight-policies` | FlightPolicy 생성 (온체인 트랜잭션) |
 | GET | `/api/flight-policies` | 전체 FlightPolicy 목록 |
 | GET | `/api/flight-policies/:pubkey` | FlightPolicy 상세 |
 | GET | `/api/events` | SSE 이벤트 스트림 |
@@ -175,7 +175,7 @@ flight_api::fetch_flight_delay(flight_no)
 resolve_flight_delay 인스트럭션 빌드
   → discriminator: sha256("global:resolve_flight_delay")[..8]
   → data: discriminator + delay_minutes(u16 LE) + cancelled(u8)
-  → accounts: [resolver(signer), master_policy, flight_policy(writable)]
+  → accounts: [resolver(signer), master_agreement, flight_policy(writable)]
   ↓
 레거시 트랜잭션 전송
 ```
@@ -261,8 +261,8 @@ Anchor가 어카운트 타입을 식별하는 8바이트 해시:
 | `claim_pda` | `["claim", policy, oracle_round_le8]` |
 | `underwriting_pda` | `["underwriting", policy]` |
 | `risk_pool_pda` | `["pool", policy]` |
-| `master_policy_pda` | `["master_policy", leader, master_id_le8]` |
-| `flight_policy_pda` | `["flight_policy", master_policy, child_id_le8]` |
+| `master_agreement_pda` | `["master_agreement", leader, master_id_le8]` |
+| `flight_policy_pda` | `["flight_policy", master_agreement, child_id_le8]` |
 
 ### RPC 클라이언트 (`solana/client.rs`)
 
@@ -286,7 +286,7 @@ Solana `RpcClient`의 래퍼. commitment level = `Confirmed`.
 ```
 [8 bytes]  Anchor discriminator (건너뜀)
 [8 bytes]  policy_id / child_policy_id (u64 LE)
-[32 bytes] leader / master_policy / creator (Pubkey)
+[32 bytes] leader / master_agreement / creator (Pubkey)
 ...
 [4 bytes]  문자열 길이 (u32 LE)
 [N bytes]  문자열 데이터 (UTF-8)

@@ -2,19 +2,19 @@ import { useCallback, useState } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { useProgram } from './useProgram';
-import { getMasterPolicyPDA } from '@/lib/pda';
+import { getMasterAgreementPDA } from '@/lib/pda';
 import { sendTx, type TxResult } from '@/lib/tx';
-import type { CreateMasterPolicyParams, MasterParticipantInit } from '@/lib/idl/open_parametric';
+import type { CreateMasterAgreementParams, MasterParticipantInit } from '@/lib/idl/open_parametric';
 
 export interface CreateMasterAgreementInput {
   masterId: number;
   coverageStartTs: number; // unix seconds
   coverageEndTs: number;
   premiumPerPolicy: number; // in token base units
-  payoutDelay2h: number;
-  payoutDelay3h: number;
-  payoutDelay4to5h: number;
-  payoutDelay6hOrCancelled: number;
+  payoutDelay2H: number;
+  payoutDelay3H: number;
+  payoutDelay4To5H: number;
+  payoutDelay6HOrCancelled: number;
   leaderShareBps: number;
   cededRatioBps: number;
   reinsCommissionBps: number;
@@ -41,17 +41,17 @@ export function useCreateMasterAgreement() {
       try {
         const masterIdBN = new BN(input.masterId);
         const leader = wallet.publicKey;
-        const [masterAgreementPDA] = getMasterPolicyPDA(leader, masterIdBN);
+        const [masterAgreementPDA] = getMasterAgreementPDA(leader, masterIdBN);
 
-        const params: CreateMasterPolicyParams = {
+        const params: CreateMasterAgreementParams = {
           masterId: masterIdBN,
           coverageStartTs: new BN(input.coverageStartTs),
           coverageEndTs: new BN(input.coverageEndTs),
           premiumPerPolicy: new BN(input.premiumPerPolicy),
-          payoutDelay2H: new BN(input.payoutDelay2h),
-          payoutDelay3H: new BN(input.payoutDelay3h),
-          payoutDelay4To5H: new BN(input.payoutDelay4to5h),
-          payoutDelay6HOrCancelled: new BN(input.payoutDelay6hOrCancelled),
+          payoutDelay2H: new BN(input.payoutDelay2H),
+          payoutDelay3H: new BN(input.payoutDelay3H),
+          payoutDelay4To5H: new BN(input.payoutDelay4To5H),
+          payoutDelay6HOrCancelled: new BN(input.payoutDelay6HOrCancelled),
           leaderShareBps: input.leaderShareBps,
           cededRatioBps: input.cededRatioBps,
           reinsCommissionBps: input.reinsCommissionBps,
@@ -68,13 +68,13 @@ export function useCreateMasterAgreement() {
         const prog = program as any;
         const result = await sendTx(provider, () =>
           prog.methods
-            .createMasterPolicy(params)
+            .createMasterAgreement(params)
             .accounts({
               leader: leader,
               operator: input.operator,
               reinsurer: input.reinsurer,
               currencyMint: input.currencyMint,
-              masterPolicy: masterAgreementPDA,
+              masterAgreement: masterAgreementPDA,
               leaderDepositWallet: input.leaderDepositWallet,
               reinsurerPoolWallet: input.reinsurerPoolWallet,
               reinsurerDepositWallet: input.reinsurerDepositWallet,

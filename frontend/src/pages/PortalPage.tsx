@@ -16,7 +16,7 @@ import { PortalConfirm } from '@/components/tabs/tab-portal/PortalConfirm';
 import { PortalRiskDashboard } from '@/components/tabs/tab-portal/PortalRiskDashboard';
 import { PortalSettlement } from '@/components/tabs/tab-portal/PortalSettlement';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { MasterPolicyStatus, POLICY_STATE_LABELS, PolicyState } from '@/lib/idl/open_parametric';
+import { MasterAgreementStatus, POLICY_STATE_LABELS, PolicyState } from '@/lib/idl/open_parametric';
 
 const CenterBox = styled.div`
   display: flex;
@@ -107,19 +107,19 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<number, string> = {
-  [MasterPolicyStatus.Draft]: 'Draft',
-  [MasterPolicyStatus.PendingConfirm]: 'Pending',
-  [MasterPolicyStatus.Active]: 'Active',
-  [MasterPolicyStatus.Closed]: 'Closed',
-  [MasterPolicyStatus.Cancelled]: 'Cancelled',
+  [MasterAgreementStatus.Draft]: 'Draft',
+  [MasterAgreementStatus.PendingConfirm]: 'Pending',
+  [MasterAgreementStatus.Active]: 'Active',
+  [MasterAgreementStatus.Closed]: 'Closed',
+  [MasterAgreementStatus.Cancelled]: 'Cancelled',
 };
 
 const STATUS_COLORS: Record<number, string> = {
-  [MasterPolicyStatus.Draft]: '#94A3B8',
-  [MasterPolicyStatus.PendingConfirm]: '#F59E0B',
-  [MasterPolicyStatus.Active]: '#22C55E',
-  [MasterPolicyStatus.Closed]: '#64748B',
-  [MasterPolicyStatus.Cancelled]: '#EF4444',
+  [MasterAgreementStatus.Draft]: '#94A3B8',
+  [MasterAgreementStatus.PendingConfirm]: '#F59E0B',
+  [MasterAgreementStatus.Active]: '#22C55E',
+  [MasterAgreementStatus.Closed]: '#64748B',
+  [MasterAgreementStatus.Cancelled]: '#EF4444',
 };
 
 const TRACK_B_STATUS_COLORS: Record<number, string> = {

@@ -56,7 +56,7 @@ async function main() {
       .settleFlightClaim()
       .accountsPartial({
         executor:            leader.publicKey,
-        masterPolicy:        masterPda,
+        masterAgreement:        masterPda,
         flightPolicy:        flightPda,
         leaderDepositToken:  new PublicKey(s.leaderDepositWallet),
         leaderPoolToken:     new PublicKey(s.leaderPoolWallet),
@@ -85,7 +85,7 @@ async function main() {
       .settleFlightNoClaim()
       .accountsPartial({
         executor:               leader.publicKey,
-        masterPolicy:           masterPda,
+        masterAgreement:           masterPda,
         flightPolicy:           flightPda,
         leaderPoolToken:        new PublicKey(s.leaderPoolWallet),
         leaderDepositToken:     new PublicKey(s.leaderDepositWallet),

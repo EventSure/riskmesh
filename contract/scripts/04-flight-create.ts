@@ -56,7 +56,7 @@ async function main() {
     })
     .accounts({
       creator:            leader.publicKey,
-      masterPolicy:       masterPda,
+      masterAgreement:       masterPda,
       flightPolicy:       flightPda,
       payerToken:      new PublicKey(s.leaderAta),
       leaderPoolToken: new PublicKey(s.leaderPoolWallet),

@@ -58,7 +58,7 @@ solana address -k contract/target/deploy/open_parametric-keypair.json
 **두 값이 다르면:**
 - Program 인스턴스는 프로그램 A를 호출하는데
 - PDA는 프로그램 B 기준으로 파생됨
-- → 모든 PDA 기반 계정(MasterPolicy, FlightPolicy 등)이 불일치
+- → 모든 PDA 기반 계정(MasterAgreement, FlightPolicy 등)이 불일치
 - → `AccountNotInitialized`, `AccountOwnedByWrongProgram` 등의 에러 발생
 
 ## 3. CURRENCY_MINT 설정
@@ -89,7 +89,7 @@ spl-token mint <MINT_ADDRESS> 1000
 
 컨트랙트의 모든 금융 흐름이 SPL 토큰으로 처리됩니다:
 
-- `create_master_policy` — `currency_mint` 필드에 mint 주소 저장
+- `create_master_agreement` — `currency_mint` 필드에 mint 주소 저장
 - `create_flight_policy_from_master` — premium을 `payer_token` → `leader_deposit_token`으로 전송
 - `settle_flight_claim` / `settle_flight_no_claim` — payout 분배
 

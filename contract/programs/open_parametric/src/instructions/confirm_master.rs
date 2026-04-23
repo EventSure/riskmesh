@@ -7,14 +7,14 @@ use crate::state::*;
 pub struct ConfirmMaster<'info> {
     pub actor: Signer<'info>,
     #[account(mut)]
-    pub master_policy: Account<'info, MasterPolicy>,
+    pub master_agreement: Account<'info, MasterAgreement>,
 }
 
 pub fn handler(ctx: Context<ConfirmMaster>, role: u8) -> Result<()> {
-    let master = &mut ctx.accounts.master_policy;
+    let master = &mut ctx.accounts.master_agreement;
     // PendingConfirm 단계에서만 참여자/재보험사 확인을 받는다.
     require!(
-        master.status == MasterPolicyStatus::PendingConfirm as u8,
+        master.status == MasterAgreementStatus::PendingConfirm as u8,
         OpenParamError::InvalidState
     );
 
