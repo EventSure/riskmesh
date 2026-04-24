@@ -157,6 +157,77 @@ describe("error_cases", () => {
       }
     });
 
+    it("rejects when no participants are provided (leader-only)", async () => {
+      const pda = masterPda(new anchor.BN(202));
+      const leaderDeposit    = await createAccount(connection, payer, mint, pda, Keypair.generate());
+      const reinsurerPool    = await createAccount(connection, payer, mint, pda, Keypair.generate());
+      const reinsurerDeposit = await createAccount(connection, payer, mint, pda, Keypair.generate());
+      const now = Math.floor(Date.now() / 1000);
+
+      try {
+        await program.methods
+          .createMasterAgreement({
+            masterId: new anchor.BN(202),
+            coverageStartTs: new anchor.BN(now),
+            coverageEndTs:   new anchor.BN(now + 3600),
+            premiumPerPolicy: new anchor.BN(1_000_000),
+            payoutDelay2H: new anchor.BN(0), payoutDelay3H: new anchor.BN(0),
+            payoutDelay4To5H: new anchor.BN(0), payoutDelay6HOrCancelled: new anchor.BN(0),
+            leaderShareBps: 10_000,
+            cededRatioBps: 0, reinsCommissionBps: 0,
+            participants: [],
+            oracleFeed: PublicKey.default,
+          })
+          .accountsPartial({
+            leader: payer.publicKey, operator: payer.publicKey,
+            reinsurer: Keypair.generate().publicKey, currencyMint: mint, masterAgreement: pda,
+            leaderDepositWallet: leaderDeposit, reinsurerPoolWallet: reinsurerPool,
+            reinsurerDepositWallet: reinsurerDeposit, systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+        assert.fail("실패해야 하는데 성공함");
+      } catch (err) {
+        assertAnchorError(err, "InvalidInput");
+      }
+    });
+
+    it("rejects when participant count exceeds MAX_MASTER_PARTICIPANTS (6명)", async () => {
+      const pda = masterPda(new anchor.BN(203));
+      const leaderDeposit    = await createAccount(connection, payer, mint, pda, Keypair.generate());
+      const reinsurerPool    = await createAccount(connection, payer, mint, pda, Keypair.generate());
+      const reinsurerDeposit = await createAccount(connection, payer, mint, pda, Keypair.generate());
+      const now = Math.floor(Date.now() / 1000);
+
+      try {
+        await program.methods
+          .createMasterAgreement({
+            masterId: new anchor.BN(203),
+            coverageStartTs: new anchor.BN(now),
+            coverageEndTs:   new anchor.BN(now + 3600),
+            premiumPerPolicy: new anchor.BN(1_000_000),
+            payoutDelay2H: new anchor.BN(0), payoutDelay3H: new anchor.BN(0),
+            payoutDelay4To5H: new anchor.BN(0), payoutDelay6HOrCancelled: new anchor.BN(0),
+            leaderShareBps: 4_000,
+            cededRatioBps: 0, reinsCommissionBps: 0,
+            participants: Array.from({ length: 6 }, () => ({
+              insurer: Keypair.generate().publicKey,
+              shareBps: 1_000,
+            })),
+            oracleFeed: PublicKey.default,
+          })
+          .accountsPartial({
+            leader: payer.publicKey, operator: payer.publicKey,
+            reinsurer: Keypair.generate().publicKey, currencyMint: mint, masterAgreement: pda,
+            leaderDepositWallet: leaderDeposit, reinsurerPoolWallet: reinsurerPool,
+            reinsurerDepositWallet: reinsurerDeposit, systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+        assert.fail("실패해야 하는데 성공함");
+      } catch (err) {
+        assertAnchorError(err, "InvalidInput");
+      }
+    });
+
     it("rejects when leader is included in the participants list", async () => {
       const pda = masterPda(new anchor.BN(201));
       const leaderDeposit    = await createAccount(connection, payer, mint, pda, Keypair.generate());

@@ -100,17 +100,17 @@ fn master_participants_single_participant_plus_leader_is_valid() {
 
 #[test]
 fn master_participants_accept_exactly_max_count() {
-    // 리더 지분 + MAX_MASTER_PARTICIPANTS명이 정확히 10000 bps를 나눠 가지면 유효하다.
+    // 리더 4000 bps + 참여사 합계 6000 bps = 10000이면 유효하다.
     let leader = Pubkey::new_unique();
-    let per_bps = 1_500u16;
+    let participant_total: u16 = 6_000;
+    let per_bps = participant_total / MAX_MASTER_PARTICIPANTS as u16;
     let mut participants: Vec<MasterParticipantInit> = (0..MAX_MASTER_PARTICIPANTS)
         .map(|_| MasterParticipantInit {
             insurer: Pubkey::new_unique(),
             share_bps: per_bps,
         })
         .collect();
-    // 리더 4000bps + 참여사 6000bps.
     let total: u16 = participants.iter().map(|p| p.share_bps).sum();
-    participants[0].share_bps += 6_000u16 - total;
+    participants[0].share_bps += participant_total - total;
     assert!(validate_master_participants(4_000, &participants, leader).is_ok());
 }
