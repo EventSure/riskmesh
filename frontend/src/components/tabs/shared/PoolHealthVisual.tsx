@@ -1,4 +1,5 @@
 import styled from '@emotion/styled';
+import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardBody, Tag } from '@/components/common';
 import type { CollateralPartyStatus, CollateralState, CollateralStatus } from '@/lib/collateral';
 import { formatNum } from '@/store/useProtocolStore';
@@ -15,42 +16,60 @@ type StateMeta = {
   colorKey: 'accent' | 'warning' | 'danger';
 };
 
-function getStateMeta(state: CollateralState): StateMeta {
+type Translate = ReturnType<typeof useTranslation>['t'];
+
+function getStateMeta(state: CollateralState, t: Translate): StateMeta {
   if (state === 'ready') {
-    return { label: 'Ready', tagVariant: 'accent', colorKey: 'accent' };
+    return { label: t('pool.healthStateReady'), tagVariant: 'accent', colorKey: 'accent' };
   }
 
   if (state === 'pending_confirm') {
-    return { label: 'Pending Confirm', tagVariant: 'warning', colorKey: 'warning' };
+    return { label: t('pool.healthStatePending'), tagVariant: 'warning', colorKey: 'warning' };
   }
 
-  return { label: 'Underfunded', tagVariant: 'danger', colorKey: 'danger' };
+  return { label: t('pool.healthStateUnderfunded'), tagVariant: 'danger', colorKey: 'danger' };
 }
 
-function getAggregateMeta(status: CollateralStatus): StateMeta {
+function getAggregateMeta(status: CollateralStatus, t: Translate): StateMeta {
   if (status.aggregateReady) {
-    return { label: 'Pool Ready', tagVariant: 'accent', colorKey: 'accent' };
+    return { label: t('pool.healthAggregateReady'), tagVariant: 'accent', colorKey: 'accent' };
   }
 
   if (status.parties.some(party => party.state === 'pending_confirm')) {
-    return { label: 'Pending Confirm', tagVariant: 'warning', colorKey: 'warning' };
+    return { label: t('pool.healthStatePending'), tagVariant: 'warning', colorKey: 'warning' };
   }
 
   if (status.parties.some(party => party.state === 'underfunded') || status.totalDeficit > 0) {
-    return { label: 'Underfunded', tagVariant: 'danger', colorKey: 'danger' };
+    return { label: t('pool.healthStateUnderfunded'), tagVariant: 'danger', colorKey: 'danger' };
   }
 
-  return { label: 'Action Needed', tagVariant: 'warning', colorKey: 'warning' };
+  return { label: t('pool.healthAggregateActionNeeded'), tagVariant: 'warning', colorKey: 'warning' };
 }
 
-function getRoleLabel(party: CollateralPartyStatus): string {
-  if (party.role === 'leader') return 'Leader';
-  if (party.role === 'reinsurer') return 'Reinsurer';
-  return 'Participant';
+function getRoleLabel(party: CollateralPartyStatus, t: Translate): string {
+  if (party.role === 'leader') return t('pool.healthRoleLeader');
+  if (party.role === 'reinsurer') return t('pool.healthRoleReinsurer');
+  return t('pool.healthRoleParticipant');
+}
+
+function getPartyDisplayName(party: CollateralPartyStatus, t: Translate): string {
+  if (party.role === 'leader') return t('pool.healthRoleLeader');
+  if (party.role === 'reinsurer') return t('pool.healthRoleReinsurer');
+
+  const participantNumber = party.id.startsWith('participant-')
+    ? Number(party.id.replace('participant-', ''))
+    : NaN;
+
+  if (Number.isInteger(participantNumber) && participantNumber > 0) {
+    return t('pool.healthParticipantName', { number: participantNumber });
+  }
+
+  return party.label;
 }
 
 export function PoolHealthVisual({ title, status, activePartyId }: PoolHealthVisualProps) {
-  const aggregateMeta = getAggregateMeta(status);
+  const { t } = useTranslation();
+  const aggregateMeta = getAggregateMeta(status, t);
 
   return (
     <Card>
@@ -63,19 +82,19 @@ export function PoolHealthVisual({ title, status, activePartyId }: PoolHealthVis
           <TopSection>
             <SummaryGrid>
               <MetricBlock>
-                <MetricLabel>Total Health</MetricLabel>
+                <MetricLabel>{t('pool.healthTotal')}</MetricLabel>
                 <MetricValue>{formatNum(status.totalHealthPct, 1)}%</MetricValue>
               </MetricBlock>
               <MetricBlock>
-                <MetricLabel>Funded</MetricLabel>
+                <MetricLabel>{t('pool.healthFunded')}</MetricLabel>
                 <MetricValue>{formatNum(status.totalFunded, 2)} USDC</MetricValue>
               </MetricBlock>
               <MetricBlock>
-                <MetricLabel>Required</MetricLabel>
+                <MetricLabel>{t('pool.healthRequired')}</MetricLabel>
                 <MetricValue>{formatNum(status.totalRequired, 2)} USDC</MetricValue>
               </MetricBlock>
               <MetricBlock>
-                <MetricLabel>Deficit</MetricLabel>
+                <MetricLabel>{t('pool.healthDeficit')}</MetricLabel>
                 <MetricValue tone={status.totalDeficit > 0 ? 'danger' : 'sub'}>
                   {formatNum(status.totalDeficit, 2)} USDC
                 </MetricValue>
@@ -83,7 +102,7 @@ export function PoolHealthVisual({ title, status, activePartyId }: PoolHealthVis
             </SummaryGrid>
             <TotalBarSection>
               <TotalBarMeta>
-                <TotalBarLabel>Pool solvency coverage</TotalBarLabel>
+                <TotalBarLabel>{t('pool.healthCoverage')}</TotalBarLabel>
                 <TotalBarValue>{formatNum(status.totalFunded, 2)} / {formatNum(status.totalRequired, 2)} USDC</TotalBarValue>
               </TotalBarMeta>
               <BarTrack>
@@ -97,25 +116,28 @@ export function PoolHealthVisual({ title, status, activePartyId }: PoolHealthVis
 
           <PartyList>
             {status.parties.map((party) => {
-              const stateMeta = getStateMeta(party.state);
+              const stateMeta = getStateMeta(party.state, t);
               const isActive = activePartyId === party.id;
-              const deltaLabel = party.deficit > 0 ? 'Deficit' : party.surplus > 0 ? 'Surplus' : 'Balanced';
+              const deltaLabel = party.deficit > 0
+                ? t('pool.healthDeficit')
+                : party.surplus > 0 ? t('pool.healthSurplus') : t('pool.healthBalanced');
               const deltaValue = party.deficit > 0 ? party.deficit : party.surplus;
               const deltaTone = party.deficit > 0 ? 'danger' : party.surplus > 0 ? 'accent' : 'sub';
+              const displayName = getPartyDisplayName(party, t);
 
               return (
                 <PartyRow key={party.id} active={isActive}>
                   <PartyHeader>
                     <PartyIdentity>
-                      <PartyName title={party.label}>{party.label}</PartyName>
+                      <PartyName title={displayName}>{displayName}</PartyName>
                       <PartyMeta>
-                        <PartyMetaText>{getRoleLabel(party)}</PartyMetaText>
+                        <PartyMetaText>{getRoleLabel(party, t)}</PartyMetaText>
                         <PartyMetaDot aria-hidden="true" />
                         <PartyMetaText>{formatNum(party.shareBps / 100, 0)}%</PartyMetaText>
                         {isActive ? (
                           <>
                             <PartyMetaDot aria-hidden="true" />
-                            <PartyMetaText tone="accent">Active</PartyMetaText>
+                            <PartyMetaText tone="accent">{t('pool.healthActive')}</PartyMetaText>
                           </>
                         ) : null}
                       </PartyMeta>
@@ -132,11 +154,11 @@ export function PoolHealthVisual({ title, status, activePartyId }: PoolHealthVis
 
                   <PartyMetrics>
                     <PartyMetric>
-                      <PartyMetricLabel>Funded</PartyMetricLabel>
+                      <PartyMetricLabel>{t('pool.healthFunded')}</PartyMetricLabel>
                       <PartyMetricValue>{formatNum(party.balance, 2)} USDC</PartyMetricValue>
                     </PartyMetric>
                     <PartyMetric>
-                      <PartyMetricLabel>Required</PartyMetricLabel>
+                      <PartyMetricLabel>{t('pool.healthRequired')}</PartyMetricLabel>
                       <PartyMetricValue>{formatNum(party.required, 2)} USDC</PartyMetricValue>
                     </PartyMetric>
                     <PartyMetric>
