@@ -40,7 +40,7 @@ export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
       setCoverage({ start: coverageStart, end: coverageEnd });
       const result = setTerms();
       if (!result.ok) { toast(result.msg!, 'd'); return; }
-      toast(t('toast.termsSet'), 'i');
+      toast(t('toast.termsSet'), 's');
       onTermsSet?.();
       return;
     }
