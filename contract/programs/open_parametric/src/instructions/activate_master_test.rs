@@ -2,7 +2,7 @@ use anchor_lang::prelude::Pubkey;
 
 use crate::state::MasterParticipant;
 
-use super::activate_master::all_participants_confirmed;
+use super::activate_master::{all_participants_confirmed, has_underfunded_pool};
 
 fn participant(confirmed: bool, has_wallets: bool) -> MasterParticipant {
     MasterParticipant {
@@ -58,4 +58,20 @@ fn returns_false_when_last_participant_missing_deposit_wallet() {
     let mut participants: Vec<_> = (0..4).map(|_| participant(true, true)).collect();
     participants.push(participant(true, false));
     assert!(!all_participants_confirmed(&participants));
+}
+
+#[test]
+fn collateral_status_requires_each_party_ready() {
+    let required = vec![100, 75, 25];
+    let balances = vec![100, 74, 1_000];
+
+    assert!(has_underfunded_pool(&required, &balances));
+}
+
+#[test]
+fn collateral_status_accepts_all_ready() {
+    let required = vec![100, 75, 25];
+    let balances = vec![100, 75, 30];
+
+    assert!(!has_underfunded_pool(&required, &balances));
 }

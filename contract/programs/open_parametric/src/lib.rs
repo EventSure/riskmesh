@@ -32,8 +32,12 @@ pub mod open_parametric {
         instructions::confirm_master::handler(ctx, role)
     }
 
-    pub fn activate_master(ctx: Context<ActivateMaster>) -> Result<()> {
+    pub fn activate_master<'a>(ctx: Context<'_, '_, 'a, 'a, ActivateMaster<'a>>) -> Result<()> {
         instructions::activate_master::handler(ctx)
+    }
+
+    pub fn fund_pool(ctx: Context<FundPool>, role: u8, amount: u64) -> Result<()> {
+        instructions::fund_pool::handler(ctx, role, amount)
     }
 
     pub fn create_flight_policy_from_master(
