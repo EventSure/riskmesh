@@ -12,7 +12,11 @@ import { CURRENCY_MINT } from '@/lib/constants';
 import { setPoolWallet } from '@/lib/demo-keypairs';
 import { ConfirmRole } from '@/lib/idl/open_parametric';
 
-export function MasterContractSetup() {
+type MasterContractSetupProps = {
+  onTermsSet?: () => void;
+};
+
+export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
   const store = useProtocolStore();
   const { mode, masterActive, processStep, leaderShare, participants, reinsurer, masterAgreementPDA, setTerms, onChainSetTerms, setMasterAgreementPDA, refreshPool, setCoverage } = store;
   const { toast } = useToast();
@@ -37,6 +41,7 @@ export function MasterContractSetup() {
       const result = setTerms();
       if (!result.ok) { toast(result.msg!, 'd'); return; }
       toast(t('toast.termsSet'), 'i');
+      onTermsSet?.();
       return;
     }
 
@@ -223,6 +228,7 @@ export function MasterContractSetup() {
       });
 
       toast(`Master policy created! TX: ${sig.slice(0, 8)}...`, 's');
+      onTermsSet?.();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       if (message.includes('AlreadyProcessed') || message.includes('already been processed')) {

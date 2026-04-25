@@ -211,12 +211,20 @@ function getStepStatus(step: MasterAgreementReviewStep, processStep: number, mas
   return masterActive ? 'done' : 'active';
 }
 
-function StepContent({ step }: { step: MasterAgreementReviewStep }) {
+function StepContent({
+  step,
+  onTermsSet,
+  onActivated,
+}: {
+  step: MasterAgreementReviewStep;
+  onTermsSet: () => void;
+  onActivated: () => void;
+}) {
   if (step === 'basic') {
-    return <MasterContractSetup />;
+    return <MasterContractSetup onTermsSet={onTermsSet} />;
   }
 
-  return <ParticipantConfirm />;
+  return <ParticipantConfirm onActivated={onActivated} />;
 }
 
 export function MasterAgreementWorkbench() {
@@ -226,6 +234,8 @@ export function MasterAgreementWorkbench() {
     masterActive: state.masterActive,
   })));
   const [activeStep, setActiveStep] = useState<MasterAgreementReviewStep>(() => getRecommendedStep(processStep, masterActive));
+  const handleTermsSet = () => setActiveStep('participants');
+  const handleActivated = () => setActiveStep('activate');
 
   useEffect(() => {
     setActiveStep(getRecommendedStep(processStep, masterActive));
@@ -277,7 +287,7 @@ export function MasterAgreementWorkbench() {
       <Body>
         <MainColumn>
           <WorkArea>
-            <StepContent step={activeStep} />
+            <StepContent step={activeStep} onTermsSet={handleTermsSet} onActivated={handleActivated} />
           </WorkArea>
         </MainColumn>
         <ReviewColumn>

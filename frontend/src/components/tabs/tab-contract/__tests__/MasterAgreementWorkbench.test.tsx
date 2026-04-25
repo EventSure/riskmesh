@@ -1,29 +1,37 @@
 import '@testing-library/jest-dom/vitest';
 import { ThemeProvider } from '@emotion/react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import i18n from '@/i18n';
 import { useProtocolStore, type Participant } from '@/store/useProtocolStore';
 import { darkTheme } from '@/styles/theme';
-import { TabContract } from '../TabContract';
+import { MasterAgreementWorkbench } from '../MasterAgreementWorkbench';
 
-// Keep the boundary test focused on TabContract composition, not child runtime setup.
-vi.mock('../ContractStepPanel', () => ({
-  ContractStepPanel: () => (
-    <section data-testid="legacy-contract-step-panel">Legacy setup panel</section>
+vi.mock('../MasterContractSetup', () => ({
+  MasterContractSetup: ({ onTermsSet }: { onTermsSet?: () => void }) => (
+    <section>
+      <div>Mock basic step</div>
+      <button type="button" onClick={() => onTermsSet?.()}>
+        Mock set terms
+      </button>
+    </section>
   ),
 }));
 
-vi.mock('../StateMachine', () => ({
-  StateMachine: () => <section>Policy State Machine</section>,
+vi.mock('../ParticipantConfirm', () => ({
+  ParticipantConfirm: ({ onActivated }: { onActivated?: () => void }) => (
+    <section>
+      <div>Mock participant step</div>
+      <button type="button" onClick={() => onActivated?.()}>
+        Mock activate
+      </button>
+    </section>
+  ),
 }));
 
-vi.mock('../PoolStatus', () => ({
-  PoolStatus: () => <section>Pool Status</section>,
-}));
-
-vi.mock('../EventLog', () => ({
-  EventLog: () => <section>Protocol Event Log</section>,
+vi.mock('../MasterAgreementReviewPanel', () => ({
+  MasterAgreementReviewPanel: ({ selectedStep }: { selectedStep: string }) => (
+    <aside data-testid="selected-step">{selectedStep}</aside>
+  ),
 }));
 
 vi.mock('@/hooks/useProgram', () => ({
@@ -55,15 +63,15 @@ const makeParticipants = (): Participant[] => [
 const renderSubject = () =>
   render(
     <ThemeProvider theme={darkTheme}>
-      <TabContract />
+      <MasterAgreementWorkbench />
     </ThemeProvider>,
   );
 
 beforeEach(() => {
   useProtocolStore.getState().resetAll();
   useProtocolStore.setState({
-    mode: 'onchain',
-    processStep: 1,
+    mode: 'simulation',
+    processStep: 0,
     masterActive: false,
     coverageStart: '2026-01-01',
     coverageEnd: '2026-12-31',
@@ -81,43 +89,32 @@ beforeEach(() => {
   });
 });
 
-describe('TabContract workbench boundary', () => {
-  test('shows master agreement workbench as the primary contract screen', () => {
+describe('MasterAgreementWorkbench', () => {
+  test('advances to the participants step after the terms callback fires', () => {
     renderSubject();
 
-    expect(screen.getByTestId('master-agreement-workbench')).toBeInTheDocument();
-    expect(screen.getByTestId('master-agreement-review-panel')).toBeInTheDocument();
-    expect(screen.getByText(i18n.t('master.review.coverage'))).toBeInTheDocument();
-    expect(screen.getByText(i18n.t('master.review.premium'))).toBeInTheDocument();
-    expect(screen.getByText(i18n.t('master.review.shareTotal'))).toBeInTheDocument();
-    expect(screen.getByText(i18n.t('master.review.nextAction'))).toBeInTheDocument();
-    expect(screen.getByText(i18n.t('master.review.next.confirmParticipants'))).toBeInTheDocument();
+    expect(screen.getByText('Mock basic step')).toBeInTheDocument();
+    expect(screen.getByTestId('selected-step')).toHaveTextContent('basic');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mock set terms' }));
+
+    expect(screen.queryByText('Mock basic step')).not.toBeInTheDocument();
+    expect(screen.getByText('Mock participant step')).toBeInTheDocument();
+    expect(screen.getByTestId('selected-step')).toHaveTextContent('participants');
   });
 
-  test('keeps participant approval as the next action until the reinsurer is confirmed', () => {
+  test('lands on the activate step after the activation callback fires', () => {
     useProtocolStore.setState({
-      processStep: 3,
-      participants: makeParticipants().map(participant => ({ ...participant, confirmed: true })),
-      reinsurer: {
-        enabled: true,
-        name: 'Korean Re',
-        address: '',
-        confirmed: false,
-      },
+      processStep: 1,
     });
 
     renderSubject();
 
-    expect(screen.getByText(i18n.t('master.review.next.confirmParticipants'))).toBeInTheDocument();
-    expect(screen.queryByText(i18n.t('master.review.next.activate'))).not.toBeInTheDocument();
-  });
+    expect(screen.getByText('Mock participant step')).toBeInTheDocument();
+    expect(screen.getByTestId('selected-step')).toHaveTextContent('participants');
 
-  test('does not render auxiliary state, pool, or event log cards in contract tab', () => {
-    renderSubject();
+    fireEvent.click(screen.getByRole('button', { name: 'Mock activate' }));
 
-    expect(screen.queryByTestId('legacy-contract-step-panel')).not.toBeInTheDocument();
-    expect(screen.queryByText(/Policy State Machine/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Pool 현황|Pool Status/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/프로토콜 이벤트 로그|Protocol Event Log/i)).not.toBeInTheDocument();
+    expect(screen.getByTestId('selected-step')).toHaveTextContent('activate');
   });
 });
