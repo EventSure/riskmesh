@@ -13,6 +13,8 @@ pub mod settle_flight_no_claim;
 #[cfg(test)]
 mod activate_master_test;
 #[cfg(test)]
+mod check_oracle_and_resolve_flight_test;
+#[cfg(test)]
 mod confirm_master_test;
 #[cfg(test)]
 mod create_flight_policy_test;
