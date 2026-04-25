@@ -28,6 +28,7 @@ pub struct CreateFlightPolicyFromMaster<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn validate_flight_policy_params(
     master_status: u8,
     creator: Pubkey,

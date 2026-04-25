@@ -63,21 +63,44 @@ fn no_claim_split_with_max_participants_preserves_total() {
 
 // --- validate_settle_no_claim 테스트 ---
 
-fn valid_no_claim_args() -> (u8, Pubkey, Pubkey, Pubkey, Pubkey, Pubkey, u8, bool, Pubkey, Pubkey, Pubkey, Pubkey, Pubkey, usize, usize) {
+#[allow(clippy::type_complexity)]
+fn valid_no_claim_args() -> (
+    u8,
+    Pubkey,
+    Pubkey,
+    Pubkey,
+    Pubkey,
+    Pubkey,
+    u8,
+    bool,
+    Pubkey,
+    Pubkey,
+    Pubkey,
+    Pubkey,
+    Pubkey,
+    usize,
+    usize,
+) {
     let leader = Pubkey::new_unique();
     let master_key = Pubkey::new_unique();
     let pool_key = Pubkey::new_unique();
     let deposit_key = Pubkey::new_unique();
     (
         MasterAgreementStatus::Active as u8,
-        leader, leader, leader,     // executor, leader, operator
-        master_key, master_key,     // flight_master, master_key
+        leader,
+        leader,
+        leader, // executor, leader, operator
+        master_key,
+        master_key, // flight_master, master_key
         FlightPolicyStatus::NoClaim as u8,
-        false,                      // premium_distributed
-        pool_key, pool_key,         // leader_pool_key, stored_pool
-        master_key,                 // pool_owner
-        deposit_key, deposit_key,   // leader_deposit_key, stored_deposit
-        2, 2,                       // remaining_len, participants_len
+        false, // premium_distributed
+        pool_key,
+        pool_key,   // leader_pool_key, stored_pool
+        master_key, // pool_owner
+        deposit_key,
+        deposit_key, // leader_deposit_key, stored_deposit
+        2,
+        2, // remaining_len, participants_len
     )
 }
 
@@ -85,7 +108,23 @@ fn valid_no_claim_args() -> (u8, Pubkey, Pubkey, Pubkey, Pubkey, Pubkey, u8, boo
 fn validate_no_claim_rejects_inactive_master() {
     let (_, ex, l, op, fm, mk, fs, pd, lpk, sp, po, ldk, sd, rl, pl) = valid_no_claim_args();
     assert!(matches!(
-        validate_settle_no_claim(MasterAgreementStatus::PendingConfirm as u8, ex, l, op, fm, mk, fs, pd, lpk, sp, po, ldk, sd, rl, pl),
+        validate_settle_no_claim(
+            MasterAgreementStatus::PendingConfirm as u8,
+            ex,
+            l,
+            op,
+            fm,
+            mk,
+            fs,
+            pd,
+            lpk,
+            sp,
+            po,
+            ldk,
+            sd,
+            rl,
+            pl
+        ),
         Err(OpenParamError::MasterNotActive)
     ));
 }
@@ -103,7 +142,10 @@ fn validate_no_claim_rejects_unauthorized_executor() {
 #[test]
 fn validate_no_claim_rejects_wrong_flight_status() {
     let (ms, ex, l, op, fm, mk, _, pd, lpk, sp, po, ldk, sd, rl, pl) = valid_no_claim_args();
-    for bad in [FlightPolicyStatus::Claimable as u8, FlightPolicyStatus::Paid as u8] {
+    for bad in [
+        FlightPolicyStatus::Claimable as u8,
+        FlightPolicyStatus::Paid as u8,
+    ] {
         assert!(matches!(
             validate_settle_no_claim(ms, ex, l, op, fm, mk, bad, pd, lpk, sp, po, ldk, sd, rl, pl),
             Err(OpenParamError::InvalidState)
@@ -132,5 +174,8 @@ fn validate_no_claim_rejects_wrong_remaining_accounts_count() {
 #[test]
 fn validate_no_claim_accepts_all_valid() {
     let a = valid_no_claim_args();
-    assert!(validate_settle_no_claim(a.0, a.1, a.2, a.3, a.4, a.5, a.6, a.7, a.8, a.9, a.10, a.11, a.12, a.13, a.14).is_ok());
+    assert!(validate_settle_no_claim(
+        a.0, a.1, a.2, a.3, a.4, a.5, a.6, a.7, a.8, a.9, a.10, a.11, a.12, a.13, a.14
+    )
+    .is_ok());
 }

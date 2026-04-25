@@ -20,6 +20,7 @@ pub struct SettleFlightNoClaim<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn validate_settle_no_claim(
     master_status: u8,
     executor: Pubkey,
