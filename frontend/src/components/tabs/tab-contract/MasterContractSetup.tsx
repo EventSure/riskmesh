@@ -1,8 +1,8 @@
 import styled from '@emotion/styled';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import BN from 'bn.js';
 import { Transaction, TransactionInstruction, SystemProgram, Keypair, PublicKey } from '@solana/web3.js';
-import { getAssociatedTokenAddress, createInitializeAccount3Instruction, createTransferInstruction, createAssociatedTokenAccountIdempotentInstruction, ACCOUNT_SIZE, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { getAssociatedTokenAddress, createInitializeAccount3Instruction, createAssociatedTokenAccountIdempotentInstruction, ACCOUNT_SIZE, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { Card, CardHeader, CardTitle, CardBody, Button, FormGroup, FormLabel, FormInput, Divider, Tag } from '@/components/common';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { useToast } from '@/components/common';
@@ -89,7 +89,20 @@ const TierUnit = styled.span`
 
 export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
   const store = useProtocolStore();
-  const { mode, masterActive, processStep, leaderShare, participants, reinsurer, masterAgreementPDA, setTerms, onChainSetTerms, setMasterAgreementPDA, refreshPool, setCoverage } = store;
+  const {
+    mode,
+    masterActive,
+    processStep,
+    leaderShare,
+    participants,
+    reinsurer,
+    collateralClaimCount,
+    setTerms,
+    onChainSetTerms,
+    setMasterAgreementPDA,
+    setCoverage,
+    setCollateralClaimCount,
+  } = store;
   const { toast } = useToast();
   const { t } = useTranslation();
   const { program, provider, wallet, connected } = useProgram();
@@ -103,8 +116,8 @@ export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
   const [payout3h, setPayout3h] = useState(store.payoutTiers.delay3h);
   const [payout4to5h, setPayout4to5h] = useState(store.payoutTiers.delay4to5h);
   const [payout6h, setPayout6h] = useState(store.payoutTiers.delay6hOrCancelled);
+  const [localCollateralClaimCount, setLocalCollateralClaimCount] = useState(collateralClaimCount);
   const [loading, setLoading] = useState(false);
-  const [fundLoading, setFundLoading] = useState(false);
   const payoutTiers = [
     { label: '2h~2h59m', color: '#F59E0B', value: locked ? store.payoutTiers.delay2h : payout2h, set: setPayout2h },
     { label: '3h~3h59m', color: '#f97316', value: locked ? store.payoutTiers.delay3h : payout3h, set: setPayout3h },
@@ -112,9 +125,14 @@ export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
     { label: t('master.tier.6h'), color: '#fca5a5', value: locked ? store.payoutTiers.delay6hOrCancelled : payout6h, set: setPayout6h },
   ] as const;
 
+  useEffect(() => {
+    setLocalCollateralClaimCount(collateralClaimCount);
+  }, [collateralClaimCount]);
+
   const handleSetTerms = async () => {
     if (mode === 'simulation') {
       setCoverage({ start: coverageStart, end: coverageEnd });
+      setCollateralClaimCount(localCollateralClaimCount);
       const result = setTerms();
       if (!result.ok) { toast(result.msg!, 'd'); return; }
       toast(t('toast.termsSet'), 's');
@@ -154,6 +172,7 @@ export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
       }
     }
 
+    setCollateralClaimCount(localCollateralClaimCount);
     setLoading(true);
     try {
       const leaderKey = wallet.publicKey;
@@ -228,6 +247,7 @@ export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
           payoutDelay3H: new BN(payout3h * 1_000_000),
           payoutDelay4To5H: new BN(payout4to5h * 1_000_000),
           payoutDelay6HOrCancelled: new BN(payout6h * 1_000_000),
+          collateralClaimCount: localCollateralClaimCount,
           leaderShareBps: leaderShare * 100,
           cededRatioBps: reinsurer.enabled ? 5000 : 0,
           reinsCommissionBps: reinsurer.enabled ? 1000 : 0,
@@ -297,6 +317,7 @@ export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
         cededRatioBps: reinsurer.enabled ? 5000 : 0,
         reinsCommissionBps: reinsurer.enabled ? 1000 : 0,
         premium,
+        collateralClaimCount: localCollateralClaimCount,
         payoutTiers: { delay2h: payout2h, delay3h: payout3h, delay4to5h: payout4to5h, delay6hOrCancelled: payout6h },
         coverageDates: { start: coverageStart, end: coverageEnd },
         leaderShare,
@@ -332,66 +353,6 @@ export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
       }
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleFundPools = async () => {
-    if (!masterAgreementPDA || !wallet || !program || !provider) {
-      toast('Wallet not connected or no master agreement selected', 'd');
-      return;
-    }
-    setFundLoading(true);
-    try {
-      const masterPK = new PublicKey(masterAgreementPDA);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const masterData = await (program as any).account.masterAgreement.fetch(masterPK);
-
-      const NUM_CLAIMS = 5;
-      const maxPayoutRaw: number = masterData.payoutDelay6HOrCancelled.toNumber();
-      const totalPayout = maxPayoutRaw * NUM_CLAIMS;
-
-      const reinsurerEffBps: number = masterData.reinsurerEffectiveBps;
-      const reinsurerAmount = Math.floor(totalPayout * reinsurerEffBps / 10_000);
-      const insurerTotal = totalPayout - reinsurerAmount;
-
-      const currencyMint: PublicKey = masterData.currencyMint;
-      const leaderATA = await getAssociatedTokenAddress(currencyMint, wallet.publicKey);
-      const ixs = [];
-
-      // reinsurer pool 충전
-      if (reinsurerAmount > 0 && masterData.reinsurerPoolWallet) {
-        ixs.push(createTransferInstruction(
-          leaderATA, masterData.reinsurerPoolWallet, wallet.publicKey, reinsurerAmount,
-        ));
-      }
-
-      const leaderAmount = Math.floor(insurerTotal * masterData.leaderShareBps / 10_000);
-      if (leaderAmount > 0) {
-        ixs.push(createTransferInstruction(
-          leaderATA, masterData.leaderPoolWallet, wallet.publicKey, leaderAmount,
-        ));
-      }
-
-      // 각 참여사 pool 충전 (지분율 기반)
-      for (const p of masterData.participants) {
-        const amount = Math.floor(insurerTotal * p.shareBps / 10_000);
-        if (amount > 0) {
-          ixs.push(createTransferInstruction(
-            leaderATA, p.poolWallet, wallet.publicKey, amount,
-          ));
-        }
-      }
-
-      const tx = new Transaction().add(...ixs);
-      const sig = await provider.sendAndConfirm(tx, []);
-      refreshPool();
-      const totalUsdc = (totalPayout / 1_000_000).toFixed(2);
-      toast(`Pool funded (${totalUsdc} USDC total)! TX: ${sig.slice(0, 8)}...`, 's');
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      toast(`Fund failed: ${message}`, 'd');
-    } finally {
-      setFundLoading(false);
     }
   };
 
@@ -458,6 +419,18 @@ export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
             </TierField>
           ))}
         </TierGrid>
+        <FormGroup>
+          <FormLabel>{t('master.collateralClaimCount')}</FormLabel>
+          <FormInput
+            type="number"
+            value={locked ? collateralClaimCount : localCollateralClaimCount}
+            onChange={e => setLocalCollateralClaimCount(Math.min(100, Math.max(1, parseInt(e.target.value, 10) || 1)))}
+            min={1}
+            max={100}
+            readOnly={locked}
+            style={{ fontFamily: "'DM Mono', monospace", opacity: locked ? 0.6 : 1 }}
+          />
+        </FormGroup>
         <Divider />
         <ParticipationStructure mode={mode} locked={locked} />
         {mode === 'onchain' && !connected && (
@@ -468,11 +441,6 @@ export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
         <Button variant="primary" fullWidth onClick={handleSetTerms} disabled={processStep >= 1 || loading} data-guide="set-terms-btn">
           {loading ? 'Sending TX...' : t('master.setTermsBtn')}
         </Button>
-        {mode === 'onchain' && masterActive && (
-          <Button variant="warning" fullWidth onClick={handleFundPools} disabled={fundLoading} style={{ marginTop: 6 }} data-guide="fund-pool-btn">
-            {fundLoading ? 'Funding...' : t('master.fundAllPools')}
-          </Button>
-        )}
       </CardBody>
     </Card>
   );
