@@ -23,7 +23,7 @@ export interface MyPolicySummary {
   payoutAmount?: number;
 }
 
-interface BackendMasterPolicyFull {
+interface BackendMasterAgreementFull {
   pubkey: string;
   master_id: number;
   leader: string;
@@ -42,7 +42,7 @@ interface BackendMasterPolicyFull {
 
 /**
  * Fetch policies where the connected wallet appears as leader, reinsurer,
- * or participant. Uses backend API for Master Policies (Track A) and
+ * or participant. Uses backend API for Master Agreements (Track A) and
  * direct Solana RPC for Track B Policy accounts.
  */
 export function useMyPolicies() {
@@ -65,12 +65,12 @@ export function useMyPolicies() {
       // Fetch only master policies involving this wallet (server-side filter
       // across leader / reinsurer / participants)
       const res = await fetch(
-        `${BACKEND_URL}/api/master-policies?wallet=${encodeURIComponent(walletBase58)}`,
+        `${BACKEND_URL}/api/master-agreements?wallet=${encodeURIComponent(walletBase58)}`,
       );
       if (res.ok) {
-        const json: { master_policies: BackendMasterPolicyFull[] } = await res.json();
+        const json: { master_agreements: BackendMasterAgreementFull[] } = await res.json();
 
-        for (const mp of json.master_policies) {
+        for (const mp of json.master_agreements) {
           const roles: MyPolicyRole[] = [];
 
           // Check leader

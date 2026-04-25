@@ -58,7 +58,7 @@ export function ClaimApproval() {
     // demo: pool 지갑에 USDC 잔액이 없으면 InsufficientFunds 에러 발생
     // (Step 4: 데모 풀 충전 기능 구현 후 해결)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const masterData = await (program as any).account.masterPolicy.fetch(masterPK);
+    const masterData = await (program as any).account.masterAgreement.fetch(masterPK);
     const { participantPoolWallets, reinsurerPoolWallet, leaderDepositWallet, leaderPoolWallet } = buildSettleAccounts(masterData);
 
     let settled = 0;
@@ -66,7 +66,7 @@ export function ClaimApproval() {
     for (const claim of claimable) {
       const [flightPolicyPDA] = getFlightPolicyPDA(masterPK, new BN(claim.contractId));
       const result = await settleFlightClaim({
-        masterPolicy: masterPK,
+        masterAgreement: masterPK,
         flightPolicy: flightPolicyPDA,
         leaderDepositToken: leaderDepositWallet,
         leaderPoolToken: leaderPoolWallet,

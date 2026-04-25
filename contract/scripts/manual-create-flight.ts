@@ -5,7 +5,7 @@
  * child_policy_id는 온체인의 기존 FlightPolicy를 조회하여 자동 증가합니다.
  *
  * 환경변수:
- *   MASTER_PDA       MasterPolicy 주소 (필수)
+ *   MASTER_PDA       MasterAgreement 주소 (필수)
  *   FLIGHT_NO        항공편명 (기본값: KE001)
  *   ROUTE            노선 (기본값: ICN-NRT)
  *   DEPARTURE_TS     출발 Unix timestamp (기본값: 현재+24시간)
@@ -40,11 +40,11 @@ function loadKeypair(p: string): Keypair {
   return Keypair.fromSecretKey(Uint8Array.from(raw));
 }
 
-function flightPolicyPub(masterPolicy: PublicKey, childId: number, programId: PublicKey): PublicKey {
+function flightPolicyPub(masterAgreement: PublicKey, childId: number, programId: PublicKey): PublicKey {
   return PublicKey.findProgramAddressSync(
     [
       Buffer.from("flight_policy"),
-      masterPolicy.toBuffer(),
+      masterAgreement.toBuffer(),
       new BN(childId).toArrayLike(Buffer, "le", 8),
     ],
     programId
@@ -64,8 +64,8 @@ async function main() {
 
   const masterPda = new PublicKey(MASTER_PDA);
 
-  // 온체인 MasterPolicy 조회
-  const master = await (pg.account as any).masterPolicy.fetch(masterPda);
+  // 온체인 MasterAgreement 조회
+  const master = await (pg.account as any).masterAgreement.fetch(masterPda);
 
   // child_policy_id 결정: 환경변수 지정 또는 자동 증가
   let childId: number;
@@ -113,7 +113,7 @@ async function main() {
     .createFlightPolicyFromMaster(params)
     .accountsPartial({
       creator:            leader.publicKey,
-      masterPolicy:       masterPda,
+      masterAgreement:       masterPda,
       flightPolicy:       flightPda,
       payerToken:         payerAta,
       leaderPoolToken:    master.leaderPoolWallet,

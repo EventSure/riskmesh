@@ -4,7 +4,7 @@ import { useProgram } from './useProgram';
 import { sendTx, type TxResult } from '@/lib/tx';
 
 export interface RegisterWalletsInput {
-  masterPolicy: PublicKey;
+  masterAgreement: PublicKey;
   poolWallet: PublicKey;
   depositWallet: PublicKey;
 }
@@ -28,7 +28,7 @@ export function useRegisterParticipantWallets() {
             .registerParticipantWallets()
             .accounts({
               insurer: wallet.publicKey,
-              masterPolicy: input.masterPolicy,
+              masterAgreement: input.masterAgreement,
               poolWallet: input.poolWallet,
               depositWallet: input.depositWallet,
             })

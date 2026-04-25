@@ -215,7 +215,7 @@ async fn create_db_test_document_uses_legacy_field_name_with_agreement_count() {
     let response = create_db_test_document(&repository).await.unwrap();
 
     assert_eq!(response["status"], "ok");
-    assert_eq!(response["master_policy_count"], 2);
+    assert_eq!(response["master_agreement_count"], 2);
 }
 
 #[tokio::test]
@@ -290,7 +290,7 @@ fn message_matches_filter_handles_master_and_flight_events() {
     assert!(!message_matches_filter(&flight_message, Some("master-2")));
 
     let agreement_message = SseMessage {
-        event: "master_policy_updated".to_string(),
+        event: "master_agreement_updated".to_string(),
         data: r#"{"pubkey":"master-1"}"#.to_string(),
     };
     assert!(message_matches_filter(&agreement_message, Some("master-1")));

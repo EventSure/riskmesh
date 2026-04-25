@@ -53,9 +53,9 @@ describe("settle_flight_claim", () => {
     );
 
     const masterId = new anchor.BN(1);
-    const [masterPolicyPda] = PublicKey.findProgramAddressSync(
+    const [masterAgreementPda] = PublicKey.findProgramAddressSync(
       [
-        Buffer.from("master_policy"),
+        Buffer.from("master_agreement"),
         payer.publicKey.toBuffer(),
         masterId.toArrayLike(Buffer, "le", 8),
       ],
@@ -64,12 +64,12 @@ describe("settle_flight_claim", () => {
 
     // leaderDeposit은 리더(payer) 소유 ATA 역할의 계정(정산 목적지), 풀 지갑은 PDA 소유.
     const leaderDeposit = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
-    const reinsurerPool = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
-    const reinsurerDeposit = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
+    const reinsurerPool = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
+    const reinsurerDeposit = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
 
-    const leaderPool = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
-    const aPool = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
-    const bPool = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
+    const leaderPool = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
+    const aPool = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
+    const bPool = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
 
     const aDeposit = await createAccount(connection, payer, mint, participantA.publicKey);
     const bDeposit = await createAccount(connection, payer, mint, participantB.publicKey);
@@ -85,7 +85,7 @@ describe("settle_flight_claim", () => {
     const now = Math.floor(Date.now() / 1000);
 
     await program.methods
-      .createMasterPolicy({
+      .createMasterAgreement({
         masterId,
         coverageStartTs: new anchor.BN(now - 10),
         coverageEndTs: new anchor.BN(now + 3600),
@@ -108,7 +108,7 @@ describe("settle_flight_claim", () => {
         operator: payer.publicKey,
         reinsurer: reinsurer.publicKey,
         currencyMint: mint,
-        masterPolicy: masterPolicyPda,
+        masterAgreement: masterAgreementPda,
         leaderDepositWallet: leaderDeposit,
         reinsurerPoolWallet: reinsurerPool,
         reinsurerDepositWallet: reinsurerDeposit,
@@ -120,7 +120,7 @@ describe("settle_flight_claim", () => {
       .registerParticipantWallets()
       .accounts({
         insurer: payer.publicKey,
-        masterPolicy: masterPolicyPda,
+        masterAgreement: masterAgreementPda,
         poolWallet: leaderPool,
         depositWallet: leaderDeposit,
       })
@@ -130,7 +130,7 @@ describe("settle_flight_claim", () => {
       .registerParticipantWallets()
       .accounts({
         insurer: participantA.publicKey,
-        masterPolicy: masterPolicyPda,
+        masterAgreement: masterAgreementPda,
         poolWallet: aPool,
         depositWallet: aDeposit,
       })
@@ -141,7 +141,7 @@ describe("settle_flight_claim", () => {
       .registerParticipantWallets()
       .accounts({
         insurer: participantB.publicKey,
-        masterPolicy: masterPolicyPda,
+        masterAgreement: masterAgreementPda,
         poolWallet: bPool,
         depositWallet: bDeposit,
       })
@@ -152,7 +152,7 @@ describe("settle_flight_claim", () => {
       .confirmMaster(0)
       .accounts({
         actor: payer.publicKey,
-        masterPolicy: masterPolicyPda,
+        masterAgreement: masterAgreementPda,
       })
       .rpc();
 
@@ -160,7 +160,7 @@ describe("settle_flight_claim", () => {
       .confirmMaster(0)
       .accounts({
         actor: participantA.publicKey,
-        masterPolicy: masterPolicyPda,
+        masterAgreement: masterAgreementPda,
       })
       .signers([participantA])
       .rpc();
@@ -169,7 +169,7 @@ describe("settle_flight_claim", () => {
       .confirmMaster(0)
       .accounts({
         actor: participantB.publicKey,
-        masterPolicy: masterPolicyPda,
+        masterAgreement: masterAgreementPda,
       })
       .signers([participantB])
       .rpc();
@@ -178,7 +178,7 @@ describe("settle_flight_claim", () => {
       .confirmMaster(1)
       .accounts({
         actor: reinsurer.publicKey,
-        masterPolicy: masterPolicyPda,
+        masterAgreement: masterAgreementPda,
       })
       .signers([reinsurer])
       .rpc();
@@ -187,7 +187,7 @@ describe("settle_flight_claim", () => {
       .activateMaster()
       .accounts({
         operator: payer.publicKey,
-        masterPolicy: masterPolicyPda,
+        masterAgreement: masterAgreementPda,
       })
       .rpc();
 
@@ -195,7 +195,7 @@ describe("settle_flight_claim", () => {
     const [flightPolicyPda] = PublicKey.findProgramAddressSync(
       [
         Buffer.from("flight_policy"),
-        masterPolicyPda.toBuffer(),
+        masterAgreementPda.toBuffer(),
         childPolicyId.toArrayLike(Buffer, "le", 8),
       ],
       program.programId
@@ -211,7 +211,7 @@ describe("settle_flight_claim", () => {
       })
       .accountsPartial({
         creator: payer.publicKey,
-        masterPolicy: masterPolicyPda,
+        masterAgreement: masterAgreementPda,
         flightPolicy: flightPolicyPda,
         payerToken: payerToken,
         leaderPoolToken: leaderPool,
@@ -224,7 +224,7 @@ describe("settle_flight_claim", () => {
       .resolveFlightDelay(360, false)
       .accounts({
         resolver: payer.publicKey,
-        masterPolicy: masterPolicyPda,
+        masterAgreement: masterAgreementPda,
         flightPolicy: flightPolicyPda,
       })
       .rpc();
@@ -233,7 +233,7 @@ describe("settle_flight_claim", () => {
       .settleFlightClaim()
       .accountsPartial({
         executor: payer.publicKey,
-        masterPolicy: masterPolicyPda,
+        masterAgreement: masterAgreementPda,
         flightPolicy: flightPolicyPda,
         leaderDepositToken: leaderDeposit,
         leaderPoolToken: leaderPool,

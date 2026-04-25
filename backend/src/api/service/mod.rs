@@ -129,9 +129,8 @@ pub(super) async fn create_db_test_document(
     // 간단한 DB 연결 테스트 — list_master_agreements 호출로 확인
     let master_agreements = repository.list_master_agreements().await?;
     Ok(serde_json::json!({
-        // TODO: response field is consumed outside backend; rename with frontend contract update.
         "status": "ok",
-        "master_policy_count": master_agreements.len(),
+        "master_agreement_count": master_agreements.len(),
     }))
 }
 
@@ -326,7 +325,7 @@ fn message_matches_filter(message: &SseMessage, master_filter: Option<&str>) -> 
             .and_then(|value| value.as_str())
             .map(|master| master == master_filter)
             .unwrap_or(false),
-        "master_policy_updated" => json
+        "master_agreement_updated" => json
             .get("pubkey")
             .and_then(|value| value.as_str())
             .map(|pubkey| pubkey == master_filter)

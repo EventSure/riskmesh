@@ -3,7 +3,7 @@ pub const ORACLE_MAX_STALENESS_SLOTS: u64 = 150; // approx 60-90s depending on c
 
 pub const MAX_ROUTE_LEN: usize = 16;
 pub const MAX_FLIGHT_NO_LEN: usize = 16;
-pub const MAX_MASTER_PARTICIPANTS: usize = 4;
+pub const MAX_MASTER_PARTICIPANTS: usize = 5;
 pub const MAX_SUBSCRIBER_REF_LEN: usize = 64;
 
 // oracle_feed(32 bytes) 추가됐지만 4096 버퍼로 충분.

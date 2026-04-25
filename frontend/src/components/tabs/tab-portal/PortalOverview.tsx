@@ -9,7 +9,7 @@ import { KVRow } from './KVRow';
 import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
 import { useProgram } from '@/hooks/useProgram';
 import type { ParticipantInfo } from '@/hooks/useParticipantRole';
-import { MasterPolicyStatus } from '@/lib/idl/open_parametric';
+import { MasterAgreementStatus } from '@/lib/idl/open_parametric';
 
 const Grid = styled.div`
   display: grid;
@@ -25,19 +25,19 @@ const BigValue = styled(Mono)`
 `;
 
 const STATUS_LABELS: Record<number, string> = {
-  [MasterPolicyStatus.Draft]: 'Draft',
-  [MasterPolicyStatus.PendingConfirm]: 'PendingConfirm',
-  [MasterPolicyStatus.Active]: 'Active',
-  [MasterPolicyStatus.Closed]: 'Closed',
-  [MasterPolicyStatus.Cancelled]: 'Cancelled',
+  [MasterAgreementStatus.Draft]: 'Draft',
+  [MasterAgreementStatus.PendingConfirm]: 'PendingConfirm',
+  [MasterAgreementStatus.Active]: 'Active',
+  [MasterAgreementStatus.Closed]: 'Closed',
+  [MasterAgreementStatus.Cancelled]: 'Cancelled',
 };
 
 const STATUS_COLORS: Record<number, string> = {
-  [MasterPolicyStatus.Draft]: '#94A3B8',
-  [MasterPolicyStatus.PendingConfirm]: '#F59E0B',
-  [MasterPolicyStatus.Active]: '#22C55E',
-  [MasterPolicyStatus.Closed]: '#64748B',
-  [MasterPolicyStatus.Cancelled]: '#EF4444',
+  [MasterAgreementStatus.Draft]: '#94A3B8',
+  [MasterAgreementStatus.PendingConfirm]: '#F59E0B',
+  [MasterAgreementStatus.Active]: '#22C55E',
+  [MasterAgreementStatus.Closed]: '#64748B',
+  [MasterAgreementStatus.Cancelled]: '#EF4444',
 };
 
 interface PortalOverviewProps {
@@ -80,7 +80,7 @@ export function PortalOverview({ participantInfo, allRoles, masterPDA }: PortalO
     setFundLoading(true);
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const masterData = await (program as any).account.masterPolicy.fetch(masterPDA);
+      const masterData = await (program as any).account.masterAgreement.fetch(masterPDA);
       const currencyMint: PublicKey = masterData.currencyMint;
       const myATA = await getAssociatedTokenAddress(currencyMint, wallet.publicKey);
 

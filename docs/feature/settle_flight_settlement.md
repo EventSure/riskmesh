@@ -8,7 +8,7 @@
 - `settle_flight_claim.rs`: 클레임 발생 시 보험금 지급을 위한 정산 로직
 - `settle_flight_no_claim.rs`: 클레임 미발생 시 보험료(프리미엄) 분배 정산 로직
 
-두 로직 모두 `MasterPolicy`가 Active 상태인지, 실행자 권한이 적절한지, 토큰 계정/민트가 올바른지 검증한 뒤, `share_bps` 비율에 따라 금액을 분배합니다.
+두 로직 모두 `MasterAgreement`가 Active 상태인지, 실행자 권한이 적절한지, 토큰 계정/민트가 올바른지 검증한 뒤, `share_bps` 비율에 따라 금액을 분배합니다.
 
 ## 용어 정리
 - `bps`: Basis Points의 약자. 1 bps = 0.01% (100 bps = 1%, 10,000 bps = 100%). 코드에서는 `BPS_DENOM = 10,000`을 기준으로 비율을 계산합니다.
@@ -19,10 +19,10 @@
 ## 1) 클레임 정산 (`settle_flight_claim.rs`)
 
 ### 핵심 조건
-- `MasterPolicy.status == Active`
+- `MasterAgreement.status == Active`
 - `FlightPolicy.status == Claimable`
 - 실행자(`executor`)는 `leader` 또는 `operator`
-- 입력된 토큰 계정이 `MasterPolicy`에 등록된 계정과 일치
+- 입력된 토큰 계정이 `MasterAgreement`에 등록된 계정과 일치
 
 ### 금액 계산
 - 기준 금액: `flight.payout_amount`
@@ -57,11 +57,11 @@
 ## 2) 노클레임 정산 (`settle_flight_no_claim.rs`)
 
 ### 핵심 조건
-- `MasterPolicy.status == Active`
+- `MasterAgreement.status == Active`
 - `FlightPolicy.status == NoClaim`
 - `premium_distributed == false`
 - 실행자(`executor`)는 `leader` 또는 `operator`
-- 입력된 토큰 계정이 `MasterPolicy`에 등록된 계정과 일치
+- 입력된 토큰 계정이 `MasterAgreement`에 등록된 계정과 일치
 
 ### 금액 계산
 - 기준 금액: `flight.premium_paid`

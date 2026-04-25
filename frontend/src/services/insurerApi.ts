@@ -22,24 +22,24 @@ export interface EnrollmentResult {
 
 interface CreateFlightPolicyResponse {
   program_id: string;
-  master_policy_pubkey: string;
+  master_agreement_pubkey: string;
   child_policy_id: number;
   flight_policy_pubkey: string;
   tx_signature: string;
 }
 
-export interface MasterPolicyInfo {
+export interface MasterAgreementInfo {
   pubkey: string;
   status_label: string;
   coverage_end_ts: number;
 }
 
-export async function fetchActiveMasterPolicies(): Promise<MasterPolicyInfo[]> {
+export async function fetchActiveMasterAgreements(): Promise<MasterAgreementInfo[]> {
   try {
-    const res = await fetch(`${BACKEND_URL}/api/master-policies`);
+    const res = await fetch(`${BACKEND_URL}/api/master-agreements`);
     if (!res.ok) return [];
-    const body = await res.json() as { master_policies: MasterPolicyInfo[] };
-    return body.master_policies.filter(p => p.status_label === 'Active');
+    const body = await res.json() as { master_agreements: MasterAgreementInfo[] };
+    return body.master_agreements.filter(p => p.status_label === 'Active');
   } catch {
     return [];
   }
@@ -48,16 +48,16 @@ export async function fetchActiveMasterPolicies(): Promise<MasterPolicyInfo[]> {
 /* ── Helpers ── */
 
 /** Store 또는 백엔드에서 활성 MasterAgreement PDA를 가져온다. */
-async function resolveMasterPolicyPDA(): Promise<string | null> {
+async function resolveMasterAgreementPDA(): Promise<string | null> {
   const stored = useProtocolStore.getState().masterAgreementPDA;
   if (stored) return stored;
 
   // Store에 없으면 백엔드에서 Active 상태인 첫 번째 마스터 계약을 조회
   try {
-    const res = await fetch(`${BACKEND_URL}/api/master-policies`);
+    const res = await fetch(`${BACKEND_URL}/api/master-agreements`);
     if (!res.ok) return null;
-    const body = await res.json() as { master_policies: MasterPolicyInfo[] };
-    const active = body.master_policies.find(p => p.status_label === 'Active');
+    const body = await res.json() as { master_agreements: MasterAgreementInfo[] };
+    const active = body.master_agreements.find(p => p.status_label === 'Active');
     return active?.pubkey ?? null;
   } catch {
     return null;
@@ -73,7 +73,7 @@ export async function enrollPolicy(data: EnrollmentData): Promise<EnrollmentResu
   const store = useProtocolStore.getState();
   const premium = store.premiumPerPolicy;
 
-  const masterPDA = data.masterAgreementPDA ?? await resolveMasterPolicyPDA();
+  const masterPDA = data.masterAgreementPDA ?? await resolveMasterAgreementPDA();
   if (!masterPDA) {
     return {
       success: false,
@@ -81,7 +81,7 @@ export async function enrollPolicy(data: EnrollmentData): Promise<EnrollmentResu
       flightPolicyPubkey: '',
       premium,
       timestamp: nowTimestamp(),
-      error: 'no_master_policy',
+      error: 'no_master_agreement',
     };
   }
 
@@ -90,7 +90,7 @@ export async function enrollPolicy(data: EnrollmentData): Promise<EnrollmentResu
 
   try {
     const res = await fetch(
-      `${BACKEND_URL}/api/master-policies/${masterPDA}/flight-policies`,
+      `${BACKEND_URL}/api/master-agreements/${masterPDA}/flight-policies`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

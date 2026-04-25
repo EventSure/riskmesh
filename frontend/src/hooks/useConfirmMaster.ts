@@ -5,7 +5,7 @@ import { sendTx, type TxResult } from '@/lib/tx';
 import { ConfirmRole } from '@/lib/idl/open_parametric';
 
 export interface ConfirmMasterInput {
-  masterPolicy: PublicKey;
+  masterAgreement: PublicKey;
   role: ConfirmRole;
 }
 
@@ -28,7 +28,7 @@ export function useConfirmMaster() {
             .confirmMaster(input.role)
             .accounts({
               actor: wallet.publicKey,
-              masterPolicy: input.masterPolicy,
+              masterAgreement: input.masterAgreement,
             })
             .rpc(),
         );

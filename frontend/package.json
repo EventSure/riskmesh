@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "sync-idl": "cp ../contract/target/idl/open_parametric.json src/lib/idl/open_parametric.json && echo 'IDL JSON synced. Remember: open_parametric.ts is hand-maintained — update seeds/discriminators manually if renamed.'",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

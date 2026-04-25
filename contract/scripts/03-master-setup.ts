@@ -1,11 +1,11 @@
 /**
  * yarn demo:3-master-setup
  *
- * Master Policy 전체 셋업 (devnet):
+ * Master Agreement 전체 셋업 (devnet):
  *   1. Mint 재사용 또는 신규 생성
  *   2. PDA 소유 토큰 계정 생성 (leaderDeposit, reinsurerPool, reinsurerDeposit, 각 participant pool)
  *   3. 각 참여사 ATA 생성 및 리더 ATA에 토큰 민팅
- *   4. create_master_policy  ← oracle_feed: state.json의 feedPubkey (없으면 Track A)
+ *   4. create_master_agreement  ← oracle_feed: state.json의 feedPubkey (없으면 Track A)
  *   5. register_participant_wallets (leader, A, B)
  *   6. confirm_master(0) — leader, A, B
  *      confirm_master(1) — reinsurer
@@ -32,7 +32,7 @@ import {
 } from "@solana/spl-token";
 import { BN } from "@coral-xyz/anchor";
 import {
-  kp, loadState, makeProgram, masterPolicyPub, RPC_URL, saveState,
+  kp, loadState, makeProgram, masterAgreementPub, RPC_URL, saveState,
 } from "./common";
 
 const MASTER_ID = process.env.MASTER_ID ? parseInt(process.env.MASTER_ID) : 1;
@@ -94,13 +94,13 @@ async function main() {
   const pg = makeProgram(leader);
 
   // ── master PDA 계산 ──────────────────────────────────────────────────────────
-  const masterPda = masterPolicyPub(leader.publicKey, MASTER_ID);
+  const masterPda = masterAgreementPub(leader.publicKey, MASTER_ID);
   console.log(`\nMaster PDA: ${masterPda.toBase58()}`);
 
   const existing = await conn.getAccountInfo(masterPda);
   if (existing) {
-    console.log("이미 MasterPolicy가 존재합니다. 상태 확인 중...");
-    const master = await pg.account.masterPolicy.fetch(masterPda);
+    console.log("이미 MasterAgreement가 존재합니다. 상태 확인 중...");
+    const master = await pg.account.masterAgreement.fetch(masterPda);
     console.log(`status: ${master.status} (2=Active)`);
     if (master.status === 2) {
       console.log("이미 Active 상태입니다. 스킵.");
@@ -150,15 +150,15 @@ async function main() {
   console.log(`participantAPool    : ${aPoolKp.publicKey.toBase58()} (+1.8 USDC)`);
   console.log(`participantBPool    : ${bPoolKp.publicKey.toBase58()} (+1.2 USDC)`);
 
-  // ── create_master_policy ─────────────────────────────────────────────────────
+  // ── create_master_agreement ─────────────────────────────────────────────────────
   const oracleFeed = s.feedPubkey ? new PublicKey(s.feedPubkey) : PublicKey.default;
   if (s.feedPubkey) console.log(`\nTrack B oracle_feed: ${oracleFeed.toBase58()}`);
-  else              console.log("\noracle_feed 미설정 → Track A 전용 MasterPolicy");
+  else              console.log("\noracle_feed 미설정 → Track A 전용 MasterAgreement");
 
   const now = Math.floor(Date.now() / 1000);
-  console.log("\ncreate_master_policy 호출 중...");
+  console.log("\ncreate_master_agreement 호출 중...");
   const txCreate = await pg.methods
-    .createMasterPolicy({
+    .createMasterAgreement({
       masterId:            new BN(MASTER_ID),
       coverageStartTs:     new BN(now),
       coverageEndTs:       new BN(now + 60 * 60 * 24 * 365),
@@ -181,7 +181,7 @@ async function main() {
       operator:               leader.publicKey,
       reinsurer:              reins.publicKey,
       currencyMint:           mintPubkey,
-      masterPolicy:           masterPda,
+      masterAgreement:           masterPda,
       leaderDepositWallet:    leaderAta.address,
       reinsurerPoolWallet:    reinsurerPoolKp.publicKey,
       reinsurerDepositWallet: reinsurerDepKp.publicKey,
@@ -202,7 +202,7 @@ async function main() {
       .registerParticipantWallets()
       .accountsPartial({
         insurer:       actor.publicKey,
-        masterPolicy:  masterPda,
+        masterAgreement:  masterPda,
         poolWallet,
         depositWallet,
       })
@@ -220,7 +220,7 @@ async function main() {
   ] as const) {
     await pg.methods
       .confirmMaster(0)
-      .accountsPartial({ actor: actor.publicKey, masterPolicy: masterPda })
+      .accountsPartial({ actor: actor.publicKey, masterAgreement: masterPda })
       .signers([...signers])
       .rpc();
     console.log(`  ${actor.publicKey.toBase58().slice(0, 8)}... 완료`);
@@ -230,14 +230,14 @@ async function main() {
   console.log("\nactivate_master 호출 중...");
   const txAct = await pg.methods
     .activateMaster()
-    .accountsPartial({ operator: leader.publicKey, masterPolicy: masterPda })
+    .accountsPartial({ operator: leader.publicKey, masterAgreement: masterPda })
     .signers([leader])
     .rpc();
   console.log("  Tx:", txAct);
 
   // ── 결과 확인 ────────────────────────────────────────────────────────────────
-  const master = await pg.account.masterPolicy.fetch(masterPda);
-  console.log(`\n✓ MasterPolicy 활성화 완료 (status=${master.status}, 2=Active)`);
+  const master = await pg.account.masterAgreement.fetch(masterPda);
+  console.log(`\n✓ MasterAgreement 활성화 완료 (status=${master.status}, 2=Active)`);
 
   // ── .state.json 업데이트 ──────────────────────────────────────────────────────
   saveState({

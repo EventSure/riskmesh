@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { useMasterAgreements } from '@/hooks/useMasterAgreements';
 import { useProgram } from '@/hooks/useProgram';
-import { MasterPolicyStatus } from '@/lib/idl/open_parametric';
+import { MasterAgreementStatus } from '@/lib/idl/open_parametric';
 
 const SelectBase = styled.select`
   background: ${p => p.theme.colors.card};
@@ -25,9 +25,9 @@ const SelectBase = styled.select`
 `;
 
 function statusLabel(status: number): string {
-  if (status === MasterPolicyStatus.Active) return 'Active';
-  if (status === MasterPolicyStatus.PendingConfirm) return 'Pending';
-  if (status === MasterPolicyStatus.Closed) return 'Closed';
+  if (status === MasterAgreementStatus.Active) return 'Active';
+  if (status === MasterAgreementStatus.PendingConfirm) return 'Pending';
+  if (status === MasterAgreementStatus.Closed) return 'Closed';
   return 'Draft';
 }
 

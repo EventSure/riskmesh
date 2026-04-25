@@ -57,7 +57,7 @@ graph TD
     direction TB
     P["Open Parametric Program\n(Anchor / Rust)"]:::purple
     SB["Solana Switchboard\n(온체인 오라클 검증)"]:::purple
-    PDA["PDA Accounts\n(MasterPolicy · FlightPolicy · Claim)"]:::green
+    PDA["PDA Accounts\n(MasterAgreement · FlightPolicy · Claim)"]:::green
     SPL["SPL Token Program"]:::green
     ATA["Token Accounts ATA\n(Leader · Participant · Reinsurer)"]:::green
   end

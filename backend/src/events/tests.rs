@@ -116,7 +116,7 @@ async fn changed_master_agreement_publishes_legacy_event_name() {
         .await;
 
     let message = rx.try_recv().expect("changed agreement should publish an event");
-    assert_eq!(message.event, "master_policy_updated");
+    assert_eq!(message.event, "master_agreement_updated");
     assert!(message.data.contains("\"pubkey\":\"agreement-1\""));
     assert!(message.data.contains("\"status\":3"));
     assert_no_message(&mut rx);

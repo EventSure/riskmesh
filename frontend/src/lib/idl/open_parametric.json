@@ -25,7 +25,7 @@
           "signer": true
         },
         {
-          "name": "master_policy",
+          "name": "master_agreement",
           "writable": true
         }
       ],
@@ -56,7 +56,7 @@
           "signer": true
         },
         {
-          "name": "master_policy",
+          "name": "master_agreement",
           "docs": [
             "oracle_feed 주소와 tiered payout 기준을 제공하는 마스터 계약."
           ]
@@ -104,7 +104,7 @@
           "signer": true
         },
         {
-          "name": "master_policy",
+          "name": "master_agreement",
           "writable": true
         }
       ],
@@ -134,7 +134,7 @@
           "signer": true
         },
         {
-          "name": "master_policy",
+          "name": "master_agreement",
           "writable": true
         },
         {
@@ -162,7 +162,7 @@
               },
               {
                 "kind": "account",
-                "path": "master_policy"
+                "path": "master_agreement"
               },
               {
                 "kind": "arg",
@@ -200,16 +200,16 @@
       ]
     },
     {
-      "name": "create_master_policy",
+      "name": "create_master_agreement",
       "discriminator": [
-        60,
-        218,
-        158,
-        201,
-        93,
-        156,
-        126,
-        51
+        207,
+        185,
+        226,
+        104,
+        127,
+        226,
+        78,
+        171
       ],
       "accounts": [
         {
@@ -227,7 +227,7 @@
           "name": "currency_mint"
         },
         {
-          "name": "master_policy",
+          "name": "master_agreement",
           "writable": true,
           "pda": {
             "seeds": [
@@ -241,12 +241,15 @@
                   101,
                   114,
                   95,
-                  112,
-                  111,
-                  108,
-                  105,
-                  99,
-                  121
+                  97,
+                  103,
+                  114,
+                  101,
+                  101,
+                  109,
+                  101,
+                  110,
+                  116
                 ]
               },
               {
@@ -282,7 +285,7 @@
           "name": "params",
           "type": {
             "defined": {
-              "name": "CreateMasterPolicyParams"
+              "name": "CreateMasterAgreementParams"
             }
           }
         }
@@ -307,7 +310,7 @@
           "signer": true
         },
         {
-          "name": "master_policy",
+          "name": "master_agreement",
           "writable": true
         },
         {
@@ -337,7 +340,7 @@
           "signer": true
         },
         {
-          "name": "master_policy"
+          "name": "master_agreement"
         },
         {
           "name": "flight_policy",
@@ -373,7 +376,7 @@
           "signer": true
         },
         {
-          "name": "master_policy"
+          "name": "master_agreement"
         },
         {
           "name": "flight_policy",
@@ -416,7 +419,7 @@
           "signer": true
         },
         {
-          "name": "master_policy"
+          "name": "master_agreement"
         },
         {
           "name": "flight_policy",
@@ -457,16 +460,16 @@
       ]
     },
     {
-      "name": "MasterPolicy",
+      "name": "MasterAgreement",
       "discriminator": [
-        244,
+        4,
+        22,
+        143,
+        104,
+        174,
+        194,
         57,
-        211,
-        253,
-        13,
-        177,
-        50,
-        201
+        81
       ]
     }
   ],
@@ -592,7 +595,7 @@
       }
     },
     {
-      "name": "CreateMasterPolicyParams",
+      "name": "CreateMasterAgreementParams",
       "type": {
         "kind": "struct",
         "fields": [
@@ -730,51 +733,7 @@
       }
     },
     {
-      "name": "MasterParticipant",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "insurer",
-            "type": "pubkey"
-          },
-          {
-            "name": "share_bps",
-            "type": "u16"
-          },
-          {
-            "name": "confirmed",
-            "type": "bool"
-          },
-          {
-            "name": "pool_wallet",
-            "type": "pubkey"
-          },
-          {
-            "name": "deposit_wallet",
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "MasterParticipantInit",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "insurer",
-            "type": "pubkey"
-          },
-          {
-            "name": "share_bps",
-            "type": "u16"
-          }
-        ]
-      }
-    },
-    {
-      "name": "MasterPolicy",
+      "name": "MasterAgreement",
       "type": {
         "kind": "struct",
         "fields": [
@@ -893,6 +852,50 @@
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MasterParticipant",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "insurer",
+            "type": "pubkey"
+          },
+          {
+            "name": "share_bps",
+            "type": "u16"
+          },
+          {
+            "name": "confirmed",
+            "type": "bool"
+          },
+          {
+            "name": "pool_wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "deposit_wallet",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MasterParticipantInit",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "insurer",
+            "type": "pubkey"
+          },
+          {
+            "name": "share_bps",
+            "type": "u16"
           }
         ]
       }
