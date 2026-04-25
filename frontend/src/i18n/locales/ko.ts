@@ -43,9 +43,16 @@ const ko = {
   // === Tabs ===
   'tab.contract': '📋 계약 체결',
   'tab.feed': '⚡ 실시간 보험 피드',
+  'feed.step.issue': '증권 발행',
   'tab.oracle': '🔮 오라클 & 클레임',
+  'oracle.step.run': '오라클 실행',
+  'oracle.step.approve': '클레임 승인',
+  'settlement.step.run': '정산 실행',
   'tab.settlement': '💰 정산 현황',
-  'tab.inspector': '🔍 On-chain Inspector',
+  'tab.inspector': '도움말',
+
+  'help.title': '도구 도움말',
+  'help.subtitle': '프로토콜 동작을 확인할 때 필요한 상태 머신, 풀 현황, 정산 흐름, PDA 진단, 감사 로그를 한곳에서 참고하세요.',
 
   // === Tab1: Master Contract Setup ===
   'master.title': '마스터 계약 설정',
@@ -98,6 +105,23 @@ const ko = {
   'share.reinCommRate': '재보험사 수수료율',
   'share.cessionRate': '원수사→재보험사 출재율',
   'share.cessionValue': '각 지분의 50%',
+
+  // === Tab1: Participation Structure ===
+  'party.title': '참여 구조',
+  'party.simulationHint': '참여사별 이름과 원수사 내 지분을 한 줄에서 조정합니다.',
+  'party.onchainHint': '각 참여사의 이름, 원수사 내 지분, 지갑 주소를 같은 행에서 입력합니다.',
+  'party.leader': '리더사',
+  'party.name': '이름',
+  'party.share': '지분',
+  'party.walletAddress': '지갑 주소',
+  'party.reinsurer': '재보험사',
+  'party.effectiveShare': '실효 지분',
+  'party.cessionRate': '출재율',
+  'party.commission': '수수료',
+  'party.netCession': '순출재',
+  'party.participantAddressPlaceholder': '{{name}} 지갑 주소',
+  'party.reinsurerNamePlaceholder': '재보험사 이름',
+  'party.reinsurerAddressPlaceholder': '재보험사 지갑 주소',
 
   // === Tab1: Contract Process ===
   'process.title': '계약 체결 프로세스',

@@ -43,9 +43,16 @@ const en = {
   // === Tabs ===
   'tab.contract': '📋 Agreement Setup',
   'tab.feed': '⚡ Live Policy Feed',
+  'feed.step.issue': 'Issue Policy',
   'tab.oracle': '🔮 Oracle & Claims',
+  'oracle.step.run': 'Run Oracle',
+  'oracle.step.approve': 'Approve Claim',
+  'settlement.step.run': 'Run Settlement',
   'tab.settlement': '💰 Settlement',
-  'tab.inspector': '🔍 On-chain Inspector',
+  'tab.inspector': 'Help',
+
+  'help.title': 'Tools Help',
+  'help.subtitle': 'Reference the live state machine, pool status, settlement flow, PDA diagnostics, and audit history from one place while you validate protocol behavior.',
 
   // === Tab1: Master Agreement Setup ===
   'master.title': 'Master Agreement',
@@ -98,6 +105,23 @@ const en = {
   'share.reinCommRate': 'Reinsurer Commission Rate',
   'share.cessionRate': 'Primary→Reinsurer Cession Rate',
   'share.cessionValue': '50% of each share',
+
+  // === Tab1: Participation Structure ===
+  'party.title': 'Participation Structure',
+  'party.simulationHint': 'Adjust each participant name and primary share in one row.',
+  'party.onchainHint': 'Enter each participant name, primary share, and wallet address in the same row.',
+  'party.leader': 'Leader',
+  'party.name': 'Name',
+  'party.share': 'Share',
+  'party.walletAddress': 'Wallet Address',
+  'party.reinsurer': 'Reinsurer',
+  'party.effectiveShare': 'Effective Share',
+  'party.cessionRate': 'Cession Rate',
+  'party.commission': 'Commission',
+  'party.netCession': 'Net Cession',
+  'party.participantAddressPlaceholder': '{{name}} wallet address',
+  'party.reinsurerNamePlaceholder': 'Reinsurer name',
+  'party.reinsurerAddressPlaceholder': 'Reinsurer wallet address',
 
   // === Tab1: Contract Process ===
   'process.title': 'Agreement Execution Process',
