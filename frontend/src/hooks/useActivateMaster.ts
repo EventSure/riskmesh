@@ -10,30 +10,19 @@ export interface ActivateMasterInput {
   participantPoolTokens: PublicKey[];
 }
 
-type LegacyActivateMasterInput = {
-  masterAgreement: PublicKey;
-};
-
 export function useActivateMaster() {
   const { program, provider, wallet } = useProgram();
   const [loading, setLoading] = useState(false);
 
   const activateMaster = useCallback(
-    async (input: ActivateMasterInput | LegacyActivateMasterInput): Promise<TxResult> => {
+    async (input: ActivateMasterInput): Promise<TxResult> => {
       if (!program || !provider || !wallet) {
         return { signature: '', success: false, error: 'Wallet not connected' };
       }
 
       setLoading(true);
       try {
-        if (
-          !('leaderPoolToken' in input) ||
-          !('reinsurerPoolToken' in input) ||
-          !('participantPoolTokens' in input) ||
-          !input.leaderPoolToken ||
-          !input.reinsurerPoolToken ||
-          !input.participantPoolTokens
-        ) {
+        if (!input.leaderPoolToken || !input.reinsurerPoolToken || !Array.isArray(input.participantPoolTokens)) {
           return { signature: '', success: false, error: 'Missing pool token accounts' };
         }
 

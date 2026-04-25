@@ -122,9 +122,28 @@ describe("payout_tiers", () => {
       .accounts({ insurer: participant.publicKey, masterAgreement: masterAgreementPda, poolWallet: participantPool, depositWallet: participantDeposit })
       .signers([participant])
       .rpc();
-    await program.methods.confirmMaster(0).accounts({ actor: payer.publicKey, masterAgreement: masterAgreementPda }).rpc();
-    await program.methods.confirmMaster(0).accounts({ actor: participant.publicKey, masterAgreement: masterAgreementPda }).signers([participant]).rpc();
-    await program.methods.activateMaster().accounts({ operator: payer.publicKey, masterAgreement: masterAgreementPda }).rpc();
+    await program.methods.confirmMaster(0).accounts({
+      actor: payer.publicKey,
+      masterAgreement: masterAgreementPda,
+      actorSourceToken: leaderDeposit,
+      actorPoolToken: leaderPool,
+    }).rpc();
+    await program.methods.confirmMaster(0).accounts({
+      actor: participant.publicKey,
+      masterAgreement: masterAgreementPda,
+      actorSourceToken: participantDeposit,
+      actorPoolToken: participantPool,
+    }).signers([participant]).rpc();
+    await program.methods
+      .activateMaster()
+      .accounts({
+        operator: payer.publicKey,
+        masterAgreement: masterAgreementPda,
+        leaderPoolToken: leaderPool,
+        reinsurerPoolToken: reinsurerPool,
+      })
+      .remainingAccounts([{ pubkey: participantPool, isWritable: false, isSigner: false }])
+      .rpc();
   });
 
   /**
@@ -154,8 +173,7 @@ describe("payout_tiers", () => {
       })
       .accountsPartial({
         creator: payer.publicKey, masterAgreement: masterAgreementPda, flightPolicy: flightPda,
-        payerToken, leaderPoolToken: leaderPool,
-        tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+        payerToken, leaderPoolToken: leaderPool, systemProgram: SystemProgram.programId,
       })
       .rpc();
 
@@ -182,7 +200,6 @@ describe("payout_tiers", () => {
       .accountsPartial({
         executor: payer.publicKey, masterAgreement: masterAgreementPda, flightPolicy: flightPda,
         leaderDepositToken: leaderDeposit, leaderPoolToken: leaderPool, reinsurerPoolToken: reinsurerPool,
-        tokenProgram: TOKEN_PROGRAM_ID,
       })
       .remainingAccounts([{ pubkey: participantPool, isWritable: true, isSigner: false }])
       .rpc();

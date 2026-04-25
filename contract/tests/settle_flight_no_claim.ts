@@ -110,20 +110,39 @@ describe("settle_flight_no_claim", () => {
         .rpc();
       await program.methods
         .confirmMaster(0)
-        .accounts({ actor: insurer.publicKey, masterAgreement: masterAgreementPda })
+        .accounts({
+          actor: insurer.publicKey,
+          masterAgreement: masterAgreementPda,
+          actorSourceToken: deposit,
+          actorPoolToken: pool,
+        })
         .signers([...signers])
         .rpc();
     }
     if (opts.cededRatioBps > 0) {
       await program.methods
         .confirmMaster(1)
-        .accounts({ actor: reinsurer.publicKey, masterAgreement: masterAgreementPda })
+        .accounts({
+          actor: reinsurer.publicKey,
+          masterAgreement: masterAgreementPda,
+          actorSourceToken: reinsurerDeposit,
+          actorPoolToken: reinsurerPool,
+        })
         .signers([reinsurer])
         .rpc();
     }
     await program.methods
       .activateMaster()
-      .accounts({ operator: payer.publicKey, masterAgreement: masterAgreementPda })
+      .accounts({
+        operator: payer.publicKey,
+        masterAgreement: masterAgreementPda,
+        leaderPoolToken: leaderPool,
+        reinsurerPoolToken: reinsurerPool,
+      })
+      .remainingAccounts([
+        { pubkey: aPool, isWritable: false, isSigner: false },
+        { pubkey: bPool, isWritable: false, isSigner: false },
+      ])
       .rpc();
 
     return { masterAgreementPda, leaderDeposit, leaderPool, reinsurerDeposit, aDeposit, bDeposit };
@@ -264,8 +283,7 @@ describe("settle_flight_no_claim", () => {
       })
       .accountsPartial({
         creator: payer.publicKey, masterAgreement: masterAgreementPda, flightPolicy: flightPolicyPda,
-        payerToken, leaderPoolToken: leaderPool,
-        tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+        payerToken, leaderPoolToken: leaderPool, systemProgram: SystemProgram.programId,
       })
       .rpc();
 
@@ -280,7 +298,6 @@ describe("settle_flight_no_claim", () => {
       .accountsPartial({
         executor: payer.publicKey, masterAgreement: masterAgreementPda, flightPolicy: flightPolicyPda,
         leaderPoolToken: leaderPool, leaderDepositToken: leaderDeposit, reinsurerDepositToken: reinsurerDeposit,
-        tokenProgram: TOKEN_PROGRAM_ID,
       })
       .remainingAccounts([
         { pubkey: aDeposit,      isWritable: true, isSigner: false },
@@ -330,8 +347,7 @@ describe("settle_flight_no_claim", () => {
       })
       .accountsPartial({
         creator: payer.publicKey, masterAgreement: masterAgreementPda, flightPolicy: flightPolicyPda,
-        payerToken, leaderPoolToken: leaderPool,
-        tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+        payerToken, leaderPoolToken: leaderPool, systemProgram: SystemProgram.programId,
       })
       .rpc();
 
@@ -350,7 +366,6 @@ describe("settle_flight_no_claim", () => {
       .accountsPartial({
         executor: payer.publicKey, masterAgreement: masterAgreementPda, flightPolicy: flightPolicyPda,
         leaderPoolToken: leaderPool, leaderDepositToken: leaderDeposit, reinsurerDepositToken: reinsurerDeposit,
-        tokenProgram: TOKEN_PROGRAM_ID,
       })
       .remainingAccounts([
         { pubkey: aDeposit,      isWritable: true, isSigner: false },

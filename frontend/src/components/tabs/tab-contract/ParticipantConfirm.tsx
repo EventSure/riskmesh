@@ -1,11 +1,13 @@
 import styled from '@emotion/styled';
 import { PublicKey } from '@solana/web3.js';
+import { useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardBody, Button, Tag } from '@/components/common';
 import { useProtocolStore, PARTICIPANT_COLORS, REINSURER_COLOR } from '@/store/useProtocolStore';
 import { useShallow } from 'zustand/shallow';
 import { useToast } from '@/components/common';
 import { useTranslation } from 'react-i18next';
 import { useActivateMaster } from '@/hooks/useActivateMaster';
+import { useMasterAgreementAccount } from '@/hooks/useMasterAgreementAccount';
 
 const ParticipantRow = styled.div<{ confirmed?: boolean }>`
   background: var(--card2);
@@ -54,6 +56,11 @@ export function ParticipantConfirm({ onActivated }: ParticipantConfirmProps) {
   const { toast } = useToast();
   const { t } = useTranslation();
   const { activateMaster: activateMasterOnChain, loading: activateLoading } = useActivateMaster();
+  const masterAgreementKey = useMemo(
+    () => (masterAgreementPDA ? new PublicKey(masterAgreementPDA) : null),
+    [masterAgreementPDA],
+  );
+  const { account: masterAccount } = useMasterAgreementAccount(masterAgreementKey);
 
   const allParticipantsConfirmed = participants.every(p => p.confirmed);
   const reinOk = !reinsurer.enabled || reinsurer.confirmed;
@@ -82,12 +89,16 @@ export function ParticipantConfirm({ onActivated }: ParticipantConfirmProps) {
     }
 
     // On-chain
-    if (!masterAgreementPDA) { toast('No master agreement PDA', 'd'); return; }
+    if (!masterAgreementKey) { toast('No master agreement PDA', 'd'); return; }
+    if (!masterAccount) { toast('Master agreement account not loaded', 'd'); return; }
     const result = await activateMasterOnChain({
-      masterAgreement: new PublicKey(masterAgreementPDA),
+      masterAgreement: masterAgreementKey,
+      leaderPoolToken: masterAccount.leaderPoolWallet,
+      reinsurerPoolToken: masterAccount.reinsurerPoolWallet ?? masterAccount.leaderPoolWallet,
+      participantPoolTokens: masterAccount.participants.map((participant) => participant.poolWallet),
     });
     if (!result.success) { toast(`TX failed: ${result.error}`, 'd'); return; }
-    onChainActivate(result.signature, masterAgreementPDA);
+    onChainActivate(result.signature, masterAgreementKey.toBase58());
     toast(t('toast.masterActivated') + ` TX: ${result.signature.slice(0, 8)}...`, 's');
     onActivated?.();
   };

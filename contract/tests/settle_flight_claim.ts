@@ -153,6 +153,8 @@ describe("settle_flight_claim", () => {
       .accounts({
         actor: payer.publicKey,
         masterAgreement: masterAgreementPda,
+        actorSourceToken: leaderDeposit,
+        actorPoolToken: leaderPool,
       })
       .rpc();
 
@@ -161,6 +163,8 @@ describe("settle_flight_claim", () => {
       .accounts({
         actor: participantA.publicKey,
         masterAgreement: masterAgreementPda,
+        actorSourceToken: aDeposit,
+        actorPoolToken: aPool,
       })
       .signers([participantA])
       .rpc();
@@ -170,6 +174,8 @@ describe("settle_flight_claim", () => {
       .accounts({
         actor: participantB.publicKey,
         masterAgreement: masterAgreementPda,
+        actorSourceToken: bDeposit,
+        actorPoolToken: bPool,
       })
       .signers([participantB])
       .rpc();
@@ -179,6 +185,8 @@ describe("settle_flight_claim", () => {
       .accounts({
         actor: reinsurer.publicKey,
         masterAgreement: masterAgreementPda,
+        actorSourceToken: reinsurerDeposit,
+        actorPoolToken: reinsurerPool,
       })
       .signers([reinsurer])
       .rpc();
@@ -188,7 +196,13 @@ describe("settle_flight_claim", () => {
       .accounts({
         operator: payer.publicKey,
         masterAgreement: masterAgreementPda,
+        leaderPoolToken: leaderPool,
+        reinsurerPoolToken: reinsurerPool,
       })
+      .remainingAccounts([
+        { pubkey: aPool, isWritable: false, isSigner: false },
+        { pubkey: bPool, isWritable: false, isSigner: false },
+      ])
       .rpc();
 
     const childPolicyId = new anchor.BN(1);
@@ -215,7 +229,6 @@ describe("settle_flight_claim", () => {
         flightPolicy: flightPolicyPda,
         payerToken: payerToken,
         leaderPoolToken: leaderPool,
-        tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
       .rpc();
@@ -238,7 +251,6 @@ describe("settle_flight_claim", () => {
         leaderDepositToken: leaderDeposit,
         leaderPoolToken: leaderPool,
         reinsurerPoolToken: reinsurerPool,
-        tokenProgram: TOKEN_PROGRAM_ID,
       })
       .remainingAccounts([
         { pubkey: aPool, isWritable: true, isSigner: false },

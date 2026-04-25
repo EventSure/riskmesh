@@ -280,7 +280,13 @@ export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
 
       const confirmLeaderIx = await prog.methods
         .confirmMaster(ConfirmRole.Participant)
-        .accounts({ actor: leaderKey, masterAgreement: masterAgreementPDA })
+        .accounts({
+          actor: leaderKey,
+          masterAgreement: masterAgreementPDA,
+          actorSourceToken: leaderATA,
+          actorPoolToken: leaderPoolKp.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
         .instruction();
 
       // ATA 생성 (idempotent)
