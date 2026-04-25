@@ -80,7 +80,7 @@ export interface MasterParticipant {
   depositWallet: PublicKey;
 }
 
-/** Mirrors the on-chain MasterAgreement account layout (state.rs). */
+/** Mirrors the on-chain MasterAgreement account layout using Anchor's generated camelCase names. */
 export interface MasterAgreementAccount {
   masterId: BN;
   leader: PublicKey;
@@ -89,11 +89,10 @@ export interface MasterAgreementAccount {
   coverageStartTs: BN;
   coverageEndTs: BN;
   premiumPerPolicy: BN;
-  /** Anchor 0.31 camelCase: payout_delay_2h → payoutDelay2H */
-  payoutDelay2H: BN;
-  payoutDelay3H: BN;
-  payoutDelay4To5H: BN;
-  payoutDelay6HOrCancelled: BN;
+  payoutDelay2h: BN;
+  payoutDelay3h: BN;
+  payoutDelay4to5h: BN;
+  payoutDelay6hOrCancelled: BN;
   leaderShareBps: number;
   cededRatioBps: number;
   reinsCommissionBps: number;
@@ -109,6 +108,7 @@ export interface MasterAgreementAccount {
   status: number;
   createdAt: BN;
   bump: number;
+  collateralClaimCount: number;
 }
 
 export interface FlightPolicyAccount {
@@ -142,10 +142,11 @@ export interface CreateMasterAgreementParams {
   coverageStartTs: BN;
   coverageEndTs: BN;
   premiumPerPolicy: BN;
-  payoutDelay2H: BN;
-  payoutDelay3H: BN;
-  payoutDelay4To5H: BN;
-  payoutDelay6HOrCancelled: BN;
+  payoutDelay2h: BN;
+  payoutDelay3h: BN;
+  payoutDelay4to5h: BN;
+  payoutDelay6hOrCancelled: BN;
+  collateralClaimCount: number;
   leaderShareBps: number;
   cededRatioBps: number;
   reinsCommissionBps: number;
@@ -235,6 +236,12 @@ export type OpenParametric = {
         {
           "name": "masterAgreement",
           "writable": true
+        },
+        {
+          "name": "leaderPoolToken"
+        },
+        {
+          "name": "reinsurerPoolToken"
         }
       ],
       "args": []
@@ -314,6 +321,18 @@ export type OpenParametric = {
         {
           "name": "masterAgreement",
           "writable": true
+        },
+        {
+          "name": "actorSourceToken",
+          "writable": true
+        },
+        {
+          "name": "actorPoolToken",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": [
@@ -496,6 +515,50 @@ export type OpenParametric = {
               "name": "createMasterAgreementParams"
             }
           }
+        }
+      ]
+    },
+    {
+      "name": "fundPool",
+      "discriminator": [
+        36,
+        57,
+        233,
+        176,
+        181,
+        20,
+        87,
+        159
+      ],
+      "accounts": [
+        {
+          "name": "actor",
+          "signer": true
+        },
+        {
+          "name": "masterAgreement"
+        },
+        {
+          "name": "actorSourceToken",
+          "writable": true
+        },
+        {
+          "name": "actorPoolToken",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "role",
+          "type": "u8"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
         }
       ]
     },
@@ -824,20 +887,24 @@ export type OpenParametric = {
             "type": "u64"
           },
           {
-            "name": "payoutDelay2H",
+            "name": "payoutDelay2h",
             "type": "u64"
           },
           {
-            "name": "payoutDelay3H",
+            "name": "payoutDelay3h",
             "type": "u64"
           },
           {
-            "name": "payoutDelay4To5H",
+            "name": "payoutDelay4to5h",
             "type": "u64"
           },
           {
-            "name": "payoutDelay6HOrCancelled",
+            "name": "payoutDelay6hOrCancelled",
             "type": "u64"
+          },
+          {
+            "name": "collateralClaimCount",
+            "type": "u16"
           },
           {
             "name": "leaderShareBps",
@@ -936,6 +1003,10 @@ export type OpenParametric = {
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "collateralClaimCount",
+            "type": "u16"
           }
         ]
       }
@@ -1018,19 +1089,19 @@ export type OpenParametric = {
             "type": "u64"
           },
           {
-            "name": "payoutDelay2H",
+            "name": "payoutDelay2h",
             "type": "u64"
           },
           {
-            "name": "payoutDelay3H",
+            "name": "payoutDelay3h",
             "type": "u64"
           },
           {
-            "name": "payoutDelay4To5H",
+            "name": "payoutDelay4to5h",
             "type": "u64"
           },
           {
-            "name": "payoutDelay6HOrCancelled",
+            "name": "payoutDelay6hOrCancelled",
             "type": "u64"
           },
           {
