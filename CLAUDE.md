@@ -14,6 +14,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Build
 anchor build
 
+# After build, sync the IDL to the frontend
+cp target/idl/open_parametric.json ../frontend/src/lib/idl/open_parametric.json
+
 # Run all tests against local validator
 anchor test
 
@@ -73,11 +76,17 @@ npm run format
 
 ### Demo Scripts (from `contract/`, against devnet)
 
+Scripts override cluster to devnet via `ANCHOR_PROVIDER_URL`; `Anchor.toml` defaults to localnet.
+
 ```bash
-# Master/Flight flow (devnet)
-yarn demo:master-setup   # creates MasterAgreement + confirms participants
-yarn demo:flight-create  # issues a FlightPolicy under the master
-yarn demo:settle         # runs resolve + settle after oracle check
+yarn demo:1-setup         # mint + airdrop setup
+yarn demo:2-feed-create   # create Switchboard feed
+yarn demo:3-master-setup  # create MasterAgreement + confirm participants
+yarn demo:4-flight-create # issue a FlightPolicy under the master
+yarn demo:5a-resolve      # resolve flight delay (Track A)
+yarn demo:5b-claim        # settle claim (Track B)
+yarn demo:6-settle        # settle no-claim
+yarn demo:manual-list     # list current on-chain accounts
 ```
 
 ## Architecture
@@ -174,6 +183,11 @@ MAX_SUBSCRIBER_REF_LEN: usize = 64
 
 Ratios use basis points: 10000 bps = 100%. All participant ratios must sum to exactly 10000 bps.
 
+Frontend key constants (`lib/constants.ts`):
+- `PROGRAM_ID` — deployed program address (devnet: `ETEEEss...`)
+- `CURRENCY_MINT` — SPL token mint used for all premiums and payouts (devnet: `5YsAiRY...`)
+- `BACKEND_URL` — defaults to `http://localhost:3000`; override with `VITE_BACKEND_URL` env var
+
 ### Frontend Architecture
 
 The frontend is a React 19 + Vite + TypeScript SPA, styled with Emotion (`jsxImportSource: '@emotion/react'`). The `@` alias resolves to `frontend/src/`.
@@ -188,7 +202,7 @@ The frontend is a React 19 + Vite + TypeScript SPA, styled with Emotion (`jsxImp
 - `simulation` — all actions are local state mutations; no wallet required
 - `onchain` — actions send real Anchor transactions; `ChainSyncer` component (in `App.tsx`) polls `MasterAgreementAccount` and `FlightPolicy` accounts and calls `syncMasterFromChain` / `syncFlightPoliciesFromChain` to update the store
 
-**On-chain integration:** `useProgram()` constructs an `AnchorProvider` + `Program` from the wallet adapter connection. Each instruction has a dedicated hook in `hooks/`. The IDL at `lib/idl/open_parametric.json` must be regenerated after `anchor build` (outputs to `target/idl/`). Client-side PDA derivation is in `lib/pda.ts` — seeds must stay in sync with the on-chain program.
+**On-chain integration:** `useProgram()` constructs an `AnchorProvider` + `Program` from the wallet adapter connection. Each instruction has a dedicated hook in `hooks/`. The IDL at `lib/idl/open_parametric.json` must be copied from `contract/target/idl/` after every `anchor build` — it is not auto-synced. Client-side PDA derivation is in `lib/pda.ts` — seeds must stay in sync with the on-chain program.
 
 **Backend API integration:** `services/insurerApi.ts` calls the Axum REST API (URL from `lib/constants.ts` `BACKEND_URL`). The backend also pushes real-time events via SSE.
 

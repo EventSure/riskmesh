@@ -28,54 +28,78 @@ pub struct CreateFlightPolicyFromMaster<'info> {
     pub system_program: Program<'info, System>,
 }
 
+pub(crate) fn validate_flight_policy_params(
+    master_status: u8,
+    creator: Pubkey,
+    leader: Pubkey,
+    operator: Pubkey,
+    subscriber_ref_len: usize,
+    flight_no_len: usize,
+    route_len: usize,
+    leader_pool_key: Pubkey,
+    stored_leader_pool: Pubkey,
+    pool_owner: Pubkey,
+    master_key: Pubkey,
+    payer_owner: Pubkey,
+    payer_mint: Pubkey,
+    pool_mint: Pubkey,
+    currency_mint: Pubkey,
+) -> std::result::Result<(), OpenParamError> {
+    if master_status != MasterAgreementStatus::Active as u8 {
+        return Err(OpenParamError::MasterNotActive);
+    }
+    if creator != leader && creator != operator {
+        return Err(OpenParamError::Unauthorized);
+    }
+    if subscriber_ref_len > MAX_SUBSCRIBER_REF_LEN {
+        return Err(OpenParamError::InputTooLong);
+    }
+    if flight_no_len > MAX_FLIGHT_NO_LEN {
+        return Err(OpenParamError::InputTooLong);
+    }
+    if route_len > MAX_ROUTE_LEN {
+        return Err(OpenParamError::InputTooLong);
+    }
+    if leader_pool_key != stored_leader_pool {
+        return Err(OpenParamError::InvalidInput);
+    }
+    if pool_owner != master_key {
+        return Err(OpenParamError::InvalidSettlementTarget);
+    }
+    if payer_owner != creator {
+        return Err(OpenParamError::Unauthorized);
+    }
+    if payer_mint != currency_mint {
+        return Err(OpenParamError::InvalidInput);
+    }
+    if pool_mint != currency_mint {
+        return Err(OpenParamError::InvalidInput);
+    }
+    Ok(())
+}
+
 pub fn handler(
     ctx: Context<CreateFlightPolicyFromMaster>,
     params: CreateFlightPolicyParams,
 ) -> Result<()> {
     let master = &ctx.accounts.master_agreement;
-    // 마스터 활성 상태/호출 권한/입력 길이를 먼저 검증한다.
-    require!(
-        master.status == MasterAgreementStatus::Active as u8,
-        OpenParamError::MasterNotActive
-    );
-    require!(
-        ctx.accounts.creator.key() == master.leader
-            || ctx.accounts.creator.key() == master.operator,
-        OpenParamError::Unauthorized
-    );
-    require!(
-        params.subscriber_ref.len() <= MAX_SUBSCRIBER_REF_LEN,
-        OpenParamError::InputTooLong
-    );
-    require!(
-        params.flight_no.len() <= MAX_FLIGHT_NO_LEN,
-        OpenParamError::InputTooLong
-    );
-    require!(
-        params.route.len() <= MAX_ROUTE_LEN,
-        OpenParamError::InputTooLong
-    );
-
-    require!(
-        ctx.accounts.leader_pool_token.key() == master.leader_pool_wallet,
-        OpenParamError::InvalidInput
-    );
-    require!(
-        ctx.accounts.leader_pool_token.owner == master.key(),
-        OpenParamError::InvalidSettlementTarget
-    );
-    require!(
-        ctx.accounts.payer_token.owner == ctx.accounts.creator.key(),
-        OpenParamError::Unauthorized
-    );
-    require!(
-        ctx.accounts.payer_token.mint == master.currency_mint,
-        OpenParamError::InvalidInput
-    );
-    require!(
-        ctx.accounts.leader_pool_token.mint == master.currency_mint,
-        OpenParamError::InvalidInput
-    );
+    validate_flight_policy_params(
+        master.status,
+        ctx.accounts.creator.key(),
+        master.leader,
+        master.operator,
+        params.subscriber_ref.len(),
+        params.flight_no.len(),
+        params.route.len(),
+        ctx.accounts.leader_pool_token.key(),
+        master.leader_pool_wallet,
+        ctx.accounts.leader_pool_token.owner,
+        master.key(),
+        ctx.accounts.payer_token.owner,
+        ctx.accounts.payer_token.mint,
+        ctx.accounts.leader_pool_token.mint,
+        master.currency_mint,
+    )?;
 
     // 가입 프리미엄은 생성자 지갑에서 리더 풀(PDA 소유)로 선납된다.
     let transfer_ctx = CpiContext::new(

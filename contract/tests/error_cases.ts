@@ -572,4 +572,291 @@ describe("error_cases", () => {
       }
     });
   });
+
+  // ── createMasterAgreement 추가 검증 ───────────────────────────────────────────
+
+  describe("createMasterAgreement extra validation", () => {
+    /** 기본 마스터 파라미터 팩토리 */
+    async function masterAccountsFor(masterId: anchor.BN) {
+      const pda = masterPda(masterId);
+      const leaderDeposit    = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
+      const reinsurerPool    = await createAccount(connection, payer, mint, pda, Keypair.generate());
+      const reinsurerDeposit = await createAccount(connection, payer, mint, pda, Keypair.generate());
+      return { pda, leaderDeposit, reinsurerPool, reinsurerDeposit };
+    }
+
+    it("rejects when coverage_start_ts >= coverage_end_ts (InvalidTimeWindow)", async () => {
+      const id = new anchor.BN(301);
+      const { pda, leaderDeposit, reinsurerPool, reinsurerDeposit } = await masterAccountsFor(id);
+      const now = Math.floor(Date.now() / 1000);
+      try {
+        await program.methods
+          .createMasterAgreement({
+            masterId: id,
+            coverageStartTs: new anchor.BN(now + 100),
+            coverageEndTs:   new anchor.BN(now),       // start > end
+            premiumPerPolicy: new anchor.BN(1_000_000),
+            payoutDelay2H: new anchor.BN(0), payoutDelay3H: new anchor.BN(0),
+            payoutDelay4To5H: new anchor.BN(0), payoutDelay6HOrCancelled: new anchor.BN(0),
+            leaderShareBps: 5_000, cededRatioBps: 0, reinsCommissionBps: 0,
+            participants: [{ insurer: Keypair.generate().publicKey, shareBps: 5_000 }],
+            oracleFeed: PublicKey.default,
+          })
+          .accountsPartial({
+            leader: payer.publicKey, operator: payer.publicKey,
+            reinsurer: Keypair.generate().publicKey, currencyMint: mint, masterAgreement: pda,
+            leaderDepositWallet: leaderDeposit, reinsurerPoolWallet: reinsurerPool,
+            reinsurerDepositWallet: reinsurerDeposit, systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+        assert.fail("실패해야 하는데 성공함");
+      } catch (err) {
+        assertAnchorError(err, "InvalidTimeWindow");
+      }
+    });
+
+    it("rejects when premium_per_policy is 0 (InvalidAmount)", async () => {
+      const id = new anchor.BN(302);
+      const { pda, leaderDeposit, reinsurerPool, reinsurerDeposit } = await masterAccountsFor(id);
+      const now = Math.floor(Date.now() / 1000);
+      try {
+        await program.methods
+          .createMasterAgreement({
+            masterId: id,
+            coverageStartTs: new anchor.BN(now),
+            coverageEndTs:   new anchor.BN(now + 3600),
+            premiumPerPolicy: new anchor.BN(0),          // 0은 무효
+            payoutDelay2H: new anchor.BN(0), payoutDelay3H: new anchor.BN(0),
+            payoutDelay4To5H: new anchor.BN(0), payoutDelay6HOrCancelled: new anchor.BN(0),
+            leaderShareBps: 5_000, cededRatioBps: 0, reinsCommissionBps: 0,
+            participants: [{ insurer: Keypair.generate().publicKey, shareBps: 5_000 }],
+            oracleFeed: PublicKey.default,
+          })
+          .accountsPartial({
+            leader: payer.publicKey, operator: payer.publicKey,
+            reinsurer: Keypair.generate().publicKey, currencyMint: mint, masterAgreement: pda,
+            leaderDepositWallet: leaderDeposit, reinsurerPoolWallet: reinsurerPool,
+            reinsurerDepositWallet: reinsurerDeposit, systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+        assert.fail("실패해야 하는데 성공함");
+      } catch (err) {
+        assertAnchorError(err, "InvalidAmount");
+      }
+    });
+  });
+
+  // ── createFlightPolicyFromMaster 입력 길이 검증 ───────────────────────────────
+
+  describe("createFlightPolicyFromMaster input length validation", () => {
+    it("rejects subscriber_ref exceeding 64 bytes (InputTooLong)", async () => {
+      const masterId = new anchor.BN(310);
+      const { pda, leaderPool } = await createActiveMaster(masterId);
+      const payerToken = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
+      await mintTo(connection, payer, mint, payerToken, payer, 10_000_000);
+      const flightId = new anchor.BN(1);
+      try {
+        await program.methods
+          .createFlightPolicyFromMaster({
+            childPolicyId: flightId,
+            subscriberRef: "a".repeat(65),  // 65 > 64
+            flightNo: "KE001",
+            route: "ICN-NRT",
+            departureTs: new anchor.BN(Math.floor(Date.now() / 1000) + 3600),
+          })
+          .accountsPartial({
+            creator: payer.publicKey, masterAgreement: pda,
+            flightPolicy: flightPda(pda, flightId),
+            payerToken, leaderPoolToken: leaderPool,
+            tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+        assert.fail("실패해야 하는데 성공함");
+      } catch (err) {
+        assertAnchorError(err, "InputTooLong");
+      }
+    });
+
+    it("rejects flight_no exceeding 16 bytes (InputTooLong)", async () => {
+      const masterId = new anchor.BN(311);
+      const { pda, leaderPool } = await createActiveMaster(masterId);
+      const payerToken = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
+      await mintTo(connection, payer, mint, payerToken, payer, 10_000_000);
+      const flightId = new anchor.BN(1);
+      try {
+        await program.methods
+          .createFlightPolicyFromMaster({
+            childPolicyId: flightId,
+            subscriberRef: "REF001",
+            flightNo: "KE".repeat(9),  // 18 > 16
+            route: "ICN-NRT",
+            departureTs: new anchor.BN(Math.floor(Date.now() / 1000) + 3600),
+          })
+          .accountsPartial({
+            creator: payer.publicKey, masterAgreement: pda,
+            flightPolicy: flightPda(pda, flightId),
+            payerToken, leaderPoolToken: leaderPool,
+            tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+        assert.fail("실패해야 하는데 성공함");
+      } catch (err) {
+        assertAnchorError(err, "InputTooLong");
+      }
+    });
+
+    it("rejects route exceeding 16 bytes (InputTooLong)", async () => {
+      const masterId = new anchor.BN(312);
+      const { pda, leaderPool } = await createActiveMaster(masterId);
+      const payerToken = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
+      await mintTo(connection, payer, mint, payerToken, payer, 10_000_000);
+      const flightId = new anchor.BN(1);
+      try {
+        await program.methods
+          .createFlightPolicyFromMaster({
+            childPolicyId: flightId,
+            subscriberRef: "REF001",
+            flightNo: "KE001",
+            route: "ICN-NRT-ICN-NRT-X",  // 18 > 16
+            departureTs: new anchor.BN(Math.floor(Date.now() / 1000) + 3600),
+          })
+          .accountsPartial({
+            creator: payer.publicKey, masterAgreement: pda,
+            flightPolicy: flightPda(pda, flightId),
+            payerToken, leaderPoolToken: leaderPool,
+            tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+        assert.fail("실패해야 하는데 성공함");
+      } catch (err) {
+        assertAnchorError(err, "InputTooLong");
+      }
+    });
+
+    it("rejects flight creation when master is not Active (MasterNotActive)", async () => {
+      const masterId = new anchor.BN(313);
+      const pda = masterPda(masterId);
+      const leaderDeposit    = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
+      const reinsurerPool    = await createAccount(connection, payer, mint, pda, Keypair.generate());
+      const reinsurerDeposit = await createAccount(connection, payer, mint, pda, Keypair.generate());
+      const leaderPool       = await createAccount(connection, payer, mint, pda, Keypair.generate());
+      const now = Math.floor(Date.now() / 1000);
+
+      // PendingConfirm 상태의 마스터 생성 (activate 전)
+      await program.methods
+        .createMasterAgreement({
+          masterId,
+          coverageStartTs: new anchor.BN(now - 10),
+          coverageEndTs:   new anchor.BN(now + 3600),
+          premiumPerPolicy: new anchor.BN(1_000_000),
+          payoutDelay2H: new anchor.BN(0), payoutDelay3H: new anchor.BN(0),
+          payoutDelay4To5H: new anchor.BN(0), payoutDelay6HOrCancelled: new anchor.BN(5_000_000),
+          leaderShareBps: 5_000, cededRatioBps: 0, reinsCommissionBps: 0,
+          participants: [{ insurer: Keypair.generate().publicKey, shareBps: 5_000 }],
+          oracleFeed: PublicKey.default,
+        })
+        .accountsPartial({
+          leader: payer.publicKey, operator: payer.publicKey,
+          reinsurer: Keypair.generate().publicKey, currencyMint: mint, masterAgreement: pda,
+          leaderDepositWallet: leaderDeposit, reinsurerPoolWallet: reinsurerPool,
+          reinsurerDepositWallet: reinsurerDeposit, systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+
+      const payerToken = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
+      const flightId = new anchor.BN(1);
+      try {
+        await program.methods
+          .createFlightPolicyFromMaster({
+            childPolicyId: flightId, subscriberRef: "REF001",
+            flightNo: "KE001", route: "ICN-NRT",
+            departureTs: new anchor.BN(now + 3600),
+          })
+          .accountsPartial({
+            creator: payer.publicKey, masterAgreement: pda,
+            flightPolicy: flightPda(pda, flightId),
+            payerToken, leaderPoolToken: leaderPool,
+            tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+        assert.fail("실패해야 하는데 성공함");
+      } catch (err) {
+        assertAnchorError(err, "MasterNotActive");
+      }
+    });
+  });
+
+  // ── registerParticipantWallets 상태 검증 ─────────────────────────────────────
+
+  describe("registerParticipantWallets state validation", () => {
+    it("rejects wallet registration after master is already Active (InvalidState)", async () => {
+      const masterId = new anchor.BN(320);
+      const { pda } = await createActiveMaster(masterId);
+
+      // Active 상태에서 재등록 시도 → InvalidState
+      const newPool    = await createAccount(connection, payer, mint, pda, Keypair.generate());
+      const newDeposit = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
+      try {
+        await program.methods
+          .registerParticipantWallets()
+          .accounts({
+            insurer: payer.publicKey, masterAgreement: pda,
+            poolWallet: newPool, depositWallet: newDeposit,
+          })
+          .rpc();
+        assert.fail("실패해야 하는데 성공함");
+      } catch (err) {
+        assertAnchorError(err, "InvalidState");
+      }
+    });
+
+    it("rejects wallet registration for an account not in participants list (NotFound)", async () => {
+      const masterId = new anchor.BN(321);
+      const pda = masterPda(masterId);
+      const leaderDeposit    = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
+      const reinsurerPool    = await createAccount(connection, payer, mint, pda, Keypair.generate());
+      const reinsurerDeposit = await createAccount(connection, payer, mint, pda, Keypair.generate());
+      const now = Math.floor(Date.now() / 1000);
+
+      // 마스터 생성 (PendingConfirm 상태)
+      await program.methods
+        .createMasterAgreement({
+          masterId,
+          coverageStartTs: new anchor.BN(now - 10),
+          coverageEndTs:   new anchor.BN(now + 3600),
+          premiumPerPolicy: new anchor.BN(1_000_000),
+          payoutDelay2H: new anchor.BN(0), payoutDelay3H: new anchor.BN(0),
+          payoutDelay4To5H: new anchor.BN(0), payoutDelay6HOrCancelled: new anchor.BN(5_000_000),
+          leaderShareBps: 5_000, cededRatioBps: 0, reinsCommissionBps: 0,
+          participants: [{ insurer: Keypair.generate().publicKey, shareBps: 5_000 }],
+          oracleFeed: PublicKey.default,
+        })
+        .accountsPartial({
+          leader: payer.publicKey, operator: payer.publicKey,
+          reinsurer: Keypair.generate().publicKey, currencyMint: mint, masterAgreement: pda,
+          leaderDepositWallet: leaderDeposit, reinsurerPoolWallet: reinsurerPool,
+          reinsurerDepositWallet: reinsurerDeposit, systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+
+      // 목록에 없는 계정으로 지갑 등록 시도
+      const stranger = Keypair.generate();
+      await airdrop(stranger.publicKey);
+      const strangerPool    = await createAccount(connection, payer, mint, pda, Keypair.generate());
+      const strangerDeposit = await createAccount(connection, payer, mint, stranger.publicKey, Keypair.generate());
+      try {
+        await program.methods
+          .registerParticipantWallets()
+          .accounts({
+            insurer: stranger.publicKey, masterAgreement: pda,
+            poolWallet: strangerPool, depositWallet: strangerDeposit,
+          })
+          .signers([stranger])
+          .rpc();
+        assert.fail("실패해야 하는데 성공함");
+      } catch (err) {
+        assertAnchorError(err, "NotFound");
+      }
+    });
+  });
 });

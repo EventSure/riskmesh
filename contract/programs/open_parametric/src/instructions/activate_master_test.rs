@@ -38,3 +38,24 @@ fn returns_false_when_any_participant_is_unconfirmed_or_missing_wallet() {
     let missing_wallet = vec![participant(true, true), participant(true, false)];
     assert!(!all_participants_confirmed(&missing_wallet));
 }
+
+#[test]
+fn returns_true_for_empty_participant_list() {
+    // 참여사 목록이 비어 있으면 iter().all()이 vacuous true를 반환한다.
+    assert!(all_participants_confirmed(&[]));
+}
+
+#[test]
+fn returns_true_for_max_five_participants_all_confirmed() {
+    // 5명 전원 confirmed + 지갑 등록 → true.
+    let participants: Vec<_> = (0..5).map(|_| participant(true, true)).collect();
+    assert!(all_participants_confirmed(&participants));
+}
+
+#[test]
+fn returns_false_when_last_participant_missing_deposit_wallet() {
+    // 마지막 참여자만 deposit_wallet 미등록이어도 false.
+    let mut participants: Vec<_> = (0..4).map(|_| participant(true, true)).collect();
+    participants.push(participant(true, false));
+    assert!(!all_participants_confirmed(&participants));
+}

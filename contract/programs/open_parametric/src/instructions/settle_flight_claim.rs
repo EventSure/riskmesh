@@ -20,45 +20,75 @@ pub struct SettleFlightClaim<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+pub(crate) fn validate_settle_claim(
+    master_status: u8,
+    executor: Pubkey,
+    leader: Pubkey,
+    operator: Pubkey,
+    flight_master: Pubkey,
+    master_key: Pubkey,
+    flight_status: u8,
+    payout: u64,
+    remaining_len: usize,
+    participants_len: usize,
+    leader_deposit_key: Pubkey,
+    stored_deposit: Pubkey,
+    leader_pool_key: Pubkey,
+    stored_pool: Pubkey,
+    pool_owner: Pubkey,
+) -> std::result::Result<(), OpenParamError> {
+    if master_status != MasterAgreementStatus::Active as u8 {
+        return Err(OpenParamError::MasterNotActive);
+    }
+    if executor != leader && executor != operator {
+        return Err(OpenParamError::Unauthorized);
+    }
+    if flight_master != master_key {
+        return Err(OpenParamError::InvalidInput);
+    }
+    if flight_status != FlightPolicyStatus::Claimable as u8 {
+        return Err(OpenParamError::InvalidState);
+    }
+    if leader_deposit_key != stored_deposit {
+        return Err(OpenParamError::InvalidInput);
+    }
+    if leader_pool_key != stored_pool {
+        return Err(OpenParamError::InvalidInput);
+    }
+    if pool_owner != master_key {
+        return Err(OpenParamError::InvalidSettlementTarget);
+    }
+    if remaining_len != participants_len {
+        return Err(OpenParamError::InvalidAccountList);
+    }
+    if payout == 0 {
+        return Err(OpenParamError::InvalidPayout);
+    }
+    Ok(())
+}
+
 pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightClaim<'a>>) -> Result<()> {
     let master = &ctx.accounts.master_agreement;
     let flight = &mut ctx.accounts.flight_policy;
 
     // Claimable 상태의 child 정책만 청구 정산할 수 있다.
-    require!(
-        master.status == MasterAgreementStatus::Active as u8,
-        OpenParamError::MasterNotActive
-    );
-    require!(
-        ctx.accounts.executor.key() == master.leader
-            || ctx.accounts.executor.key() == master.operator,
-        OpenParamError::Unauthorized
-    );
-    require!(flight.master == master.key(), OpenParamError::InvalidInput);
-    require!(
-        flight.status == FlightPolicyStatus::Claimable as u8,
-        OpenParamError::InvalidState
-    );
-    require!(
-        ctx.accounts.leader_deposit_token.key() == master.leader_deposit_wallet,
-        OpenParamError::InvalidInput
-    );
-    require!(
-        ctx.accounts.leader_deposit_token.mint == master.currency_mint,
-        OpenParamError::InvalidInput
-    );
-    require!(
-        ctx.accounts.leader_pool_token.key() == master.leader_pool_wallet,
-        OpenParamError::InvalidInput
-    );
-    require!(
-        ctx.accounts.leader_pool_token.mint == master.currency_mint,
-        OpenParamError::InvalidInput
-    );
-    require!(
-        ctx.accounts.leader_pool_token.owner == master.key(),
-        OpenParamError::InvalidSettlementTarget
-    );
+    validate_settle_claim(
+        master.status,
+        ctx.accounts.executor.key(),
+        master.leader,
+        master.operator,
+        flight.master,
+        master.key(),
+        flight.status,
+        flight.payout_amount,
+        ctx.remaining_accounts.len(),
+        master.participants.len(),
+        ctx.accounts.leader_deposit_token.key(),
+        master.leader_deposit_wallet,
+        ctx.accounts.leader_pool_token.key(),
+        master.leader_pool_wallet,
+        ctx.accounts.leader_pool_token.owner,
+    )?;
 
     if let Some(reinsurer_pool_wallet) = master.reinsurer_pool_wallet {
         require!(
@@ -75,13 +105,7 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightClaim<'a>>) -> Resul
         );
     }
 
-    require!(
-        ctx.remaining_accounts.len() == master.participants.len(),
-        OpenParamError::InvalidAccountList
-    );
-
     let payout = flight.payout_amount;
-    require!(payout > 0, OpenParamError::InvalidPayout);
 
     let insurer_ratios: Vec<u16> = std::iter::once(master.leader_share_bps)
         .chain(master.participants.iter().map(|p| p.share_bps))

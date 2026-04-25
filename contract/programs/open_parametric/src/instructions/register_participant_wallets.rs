@@ -14,34 +14,52 @@ pub struct RegisterParticipantWallets<'info> {
     pub deposit_wallet: Account<'info, TokenAccount>,
 }
 
+pub(crate) fn validate_wallet_registration(
+    master_status: u8,
+    pool_mint: Pubkey,
+    deposit_mint: Pubkey,
+    currency_mint: Pubkey,
+    pool_owner: Pubkey,
+    master_key: Pubkey,
+) -> std::result::Result<(), OpenParamError> {
+    if master_status == MasterAgreementStatus::Closed as u8
+        || master_status == MasterAgreementStatus::Cancelled as u8
+        || master_status == MasterAgreementStatus::Active as u8
+    {
+        return Err(OpenParamError::InvalidState);
+    }
+    if pool_mint != currency_mint {
+        return Err(OpenParamError::InvalidInput);
+    }
+    if deposit_mint != currency_mint {
+        return Err(OpenParamError::InvalidInput);
+    }
+    if pool_owner != master_key {
+        return Err(OpenParamError::InvalidSettlementTarget);
+    }
+    Ok(())
+}
+
+pub(crate) fn find_participant_idx(
+    participants: &[MasterParticipant],
+    insurer: Pubkey,
+) -> std::result::Result<usize, OpenParamError> {
+    participants
+        .iter()
+        .position(|p| p.insurer == insurer)
+        .ok_or(OpenParamError::NotFound)
+}
+
 pub fn handler(ctx: Context<RegisterParticipantWallets>) -> Result<()> {
     let master = &mut ctx.accounts.master_agreement;
-    // 활성 이후에는 정산 지갑 정보를 바꿀 수 없도록 막는다.
-    require!(
-        master.status != MasterAgreementStatus::Closed as u8,
-        OpenParamError::InvalidState
-    );
-    require!(
-        master.status != MasterAgreementStatus::Cancelled as u8,
-        OpenParamError::InvalidState
-    );
-    require!(
-        master.status != MasterAgreementStatus::Active as u8,
-        OpenParamError::InvalidState
-    );
-    require!(
-        ctx.accounts.pool_wallet.mint == master.currency_mint,
-        OpenParamError::InvalidInput
-    );
-    require!(
-        ctx.accounts.deposit_wallet.mint == master.currency_mint,
-        OpenParamError::InvalidInput
-    );
-    // pool 지갑은 항상 master PDA가 소유하는 에스크로 계정이어야 한다.
-    require!(
-        ctx.accounts.pool_wallet.owner == master.key(),
-        OpenParamError::InvalidSettlementTarget
-    );
+    validate_wallet_registration(
+        master.status,
+        ctx.accounts.pool_wallet.mint,
+        ctx.accounts.deposit_wallet.mint,
+        master.currency_mint,
+        ctx.accounts.pool_wallet.owner,
+        master.key(),
+    )?;
 
     if ctx.accounts.insurer.key() == master.leader {
         require!(
@@ -51,11 +69,7 @@ pub fn handler(ctx: Context<RegisterParticipantWallets>) -> Result<()> {
         master.leader_pool_wallet = ctx.accounts.pool_wallet.key();
     } else {
         // signer와 매칭되는 참여자를 찾아 pool/deposit 정산 지갑을 기록한다.
-        let idx = master
-            .participants
-            .iter()
-            .position(|p| p.insurer == ctx.accounts.insurer.key())
-            .ok_or(OpenParamError::NotFound)?;
+        let idx = find_participant_idx(&master.participants, ctx.accounts.insurer.key())?;
 
         master.participants[idx].pool_wallet = ctx.accounts.pool_wallet.key();
         master.participants[idx].deposit_wallet = ctx.accounts.deposit_wallet.key();
