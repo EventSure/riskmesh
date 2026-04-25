@@ -47,16 +47,28 @@ const MonoValue = styled(SummaryValue)`
   word-break: break-all;
 `;
 
-function getNextAction(selectedStep: MasterAgreementReviewStep, masterActive: boolean) {
-  if (masterActive) {
+function getNextAction({
+  selectedStep,
+  processStep,
+  reinsurerEnabled,
+  reinsurerConfirmed,
+  masterActive,
+}: {
+  selectedStep: MasterAgreementReviewStep;
+  processStep: number;
+  reinsurerEnabled: boolean;
+  reinsurerConfirmed: boolean;
+  masterActive: boolean;
+}) {
+  if (masterActive || processStep >= 5) {
     return 'master.review.next.active';
   }
 
-  if (selectedStep === 'basic') {
+  if (processStep < 1 || (selectedStep === 'basic' && processStep === 0)) {
     return 'master.review.next.setTerms';
   }
 
-  if (selectedStep === 'participants') {
+  if (processStep < 4 || (reinsurerEnabled && !reinsurerConfirmed)) {
     return 'master.review.next.confirmParticipants';
   }
 
@@ -74,6 +86,7 @@ export function MasterAgreementReviewPanel({ selectedStep }: { selectedStep: Mas
     leaderShare,
     participants,
     reinsurer,
+    processStep,
     masterActive,
     masterAgreementPDA,
   } = useProtocolStore(useShallow(state => ({
@@ -85,6 +98,7 @@ export function MasterAgreementReviewPanel({ selectedStep }: { selectedStep: Mas
     leaderShare: state.leaderShare,
     participants: state.participants,
     reinsurer: state.reinsurer,
+    processStep: state.processStep,
     masterActive: state.masterActive,
     masterAgreementPDA: state.masterAgreementPDA,
   })));
@@ -101,7 +115,13 @@ export function MasterAgreementReviewPanel({ selectedStep }: { selectedStep: Mas
     missingWallets === 0
       ? t('master.review.walletsReady')
       : t('master.review.walletsMissing', { count: missingWallets });
-  const nextActionKey = getNextAction(selectedStep, masterActive);
+  const nextActionKey = getNextAction({
+    selectedStep,
+    processStep,
+    reinsurerEnabled: reinsurer.enabled,
+    reinsurerConfirmed: reinsurer.confirmed,
+    masterActive,
+  });
 
   return (
     <Card data-testid="master-agreement-review-panel">

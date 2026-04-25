@@ -180,7 +180,7 @@ const WorkArea = styled.div`
 `;
 
 function getRecommendedStep(processStep: number, masterActive: boolean): MasterAgreementReviewStep {
-  if (masterActive || processStep >= 3) {
+  if (masterActive || processStep >= 4) {
     return 'activate';
   }
 
@@ -201,10 +201,10 @@ function getStepStatus(step: MasterAgreementReviewStep, processStep: number, mas
       return 'locked';
     }
 
-    return processStep >= 3 ? 'done' : 'active';
+    return processStep >= 4 || masterActive ? 'done' : 'active';
   }
 
-  if (processStep < 3) {
+  if (processStep < 4 && !masterActive) {
     return 'locked';
   }
 

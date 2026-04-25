@@ -2,6 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { ThemeProvider } from '@emotion/react';
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import i18n from '@/i18n';
 import { useProtocolStore, type Participant } from '@/store/useProtocolStore';
 import { darkTheme } from '@/styles/theme';
 import { TabContract } from '../TabContract';
@@ -86,11 +87,29 @@ describe('TabContract workbench boundary', () => {
 
     expect(screen.getByTestId('master-agreement-workbench')).toBeInTheDocument();
     expect(screen.getByTestId('master-agreement-review-panel')).toBeInTheDocument();
-    expect(screen.getByText('Coverage Period')).toBeInTheDocument();
-    expect(screen.getByText('Premium Per Policy')).toBeInTheDocument();
-    expect(screen.getByText('Share Total')).toBeInTheDocument();
-    expect(screen.getByText('Next Action')).toBeInTheDocument();
-    expect(screen.getByText('Confirm participant approvals')).toBeInTheDocument();
+    expect(screen.getByText(i18n.t('master.review.coverage'))).toBeInTheDocument();
+    expect(screen.getByText(i18n.t('master.review.premium'))).toBeInTheDocument();
+    expect(screen.getByText(i18n.t('master.review.shareTotal'))).toBeInTheDocument();
+    expect(screen.getByText(i18n.t('master.review.nextAction'))).toBeInTheDocument();
+    expect(screen.getByText(i18n.t('master.review.next.confirmParticipants'))).toBeInTheDocument();
+  });
+
+  test('keeps participant approval as the next action until the reinsurer is confirmed', () => {
+    useProtocolStore.setState({
+      processStep: 3,
+      participants: makeParticipants().map(participant => ({ ...participant, confirmed: true })),
+      reinsurer: {
+        enabled: true,
+        name: 'Korean Re',
+        address: '',
+        confirmed: false,
+      },
+    });
+
+    renderSubject();
+
+    expect(screen.getByText(i18n.t('master.review.next.confirmParticipants'))).toBeInTheDocument();
+    expect(screen.queryByText(i18n.t('master.review.next.activate'))).not.toBeInTheDocument();
   });
 
   test('does not render auxiliary state, pool, or event log cards in contract tab', () => {
