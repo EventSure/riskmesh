@@ -1,7 +1,8 @@
 import '@testing-library/jest-dom/vitest';
 import { ThemeProvider } from '@emotion/react';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { useProtocolStore, type Participant } from '@/store/useProtocolStore';
 import { darkTheme } from '@/styles/theme';
 import { TabContract } from '../TabContract';
 
@@ -24,6 +25,32 @@ vi.mock('../EventLog', () => ({
   EventLog: () => <section>Protocol Event Log</section>,
 }));
 
+vi.mock('@/hooks/useProgram', () => ({
+  useProgram: () => ({
+    program: null,
+    provider: null,
+    wallet: null,
+    connected: false,
+  }),
+}));
+
+const makeParticipants = (): Participant[] => [
+  {
+    id: 'p1',
+    name: 'Hyundai Marine',
+    share: 30,
+    address: 'Part111111111111111111111111111111111111111',
+    confirmed: true,
+  },
+  {
+    id: 'p2',
+    name: 'DB Insurance',
+    share: 20,
+    address: 'Part222222222222222222222222222222222222222',
+    confirmed: false,
+  },
+];
+
 const renderSubject = () =>
   render(
     <ThemeProvider theme={darkTheme}>
@@ -31,12 +58,39 @@ const renderSubject = () =>
     </ThemeProvider>,
   );
 
+beforeEach(() => {
+  useProtocolStore.getState().resetAll();
+  useProtocolStore.setState({
+    mode: 'onchain',
+    processStep: 1,
+    masterActive: false,
+    coverageStart: '2026-01-01',
+    coverageEnd: '2026-12-31',
+    premiumPerPolicy: 3,
+    payoutTiers: { delay2h: 5, delay3h: 8, delay4to5h: 12, delay6hOrCancelled: 15 },
+    leaderShare: 50,
+    participants: makeParticipants(),
+    reinsurer: {
+      enabled: true,
+      name: 'Korean Re',
+      address: '',
+      confirmed: false,
+    },
+    masterAgreementPDA: null,
+  });
+});
+
 describe('TabContract workbench boundary', () => {
   test('shows master agreement workbench as the primary contract screen', () => {
     renderSubject();
 
     expect(screen.getByTestId('master-agreement-workbench')).toBeInTheDocument();
     expect(screen.getByTestId('master-agreement-review-panel')).toBeInTheDocument();
+    expect(screen.getByText('Coverage Period')).toBeInTheDocument();
+    expect(screen.getByText('Premium Per Policy')).toBeInTheDocument();
+    expect(screen.getByText('Share Total')).toBeInTheDocument();
+    expect(screen.getByText('Next Action')).toBeInTheDocument();
+    expect(screen.getByText('Confirm participant approvals')).toBeInTheDocument();
   });
 
   test('does not render auxiliary state, pool, or event log cards in contract tab', () => {

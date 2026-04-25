@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import styled from '@emotion/styled';
 import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
-import { Card, CardBody, CardHeader, CardTitle, Tag } from '@/components/common';
+import { Tag } from '@/components/common';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { MasterContractSetup } from './MasterContractSetup';
+import { MasterAgreementReviewPanel, type MasterAgreementReviewStep } from './MasterAgreementReviewPanel';
 import { ParticipantConfirm } from './ParticipantConfirm';
 
-type WorkbenchStep = 'basic' | 'participants' | 'activate';
 type StepStatus = 'done' | 'active' | 'locked';
 
 const WorkbenchRoot = styled.section`
@@ -179,7 +179,7 @@ const WorkArea = styled.div`
   min-height: 0;
 `;
 
-function getRecommendedStep(processStep: number, masterActive: boolean): WorkbenchStep {
+function getRecommendedStep(processStep: number, masterActive: boolean): MasterAgreementReviewStep {
   if (masterActive || processStep >= 3) {
     return 'activate';
   }
@@ -191,7 +191,7 @@ function getRecommendedStep(processStep: number, masterActive: boolean): Workben
   return 'basic';
 }
 
-function getStepStatus(step: WorkbenchStep, processStep: number, masterActive: boolean): StepStatus {
+function getStepStatus(step: MasterAgreementReviewStep, processStep: number, masterActive: boolean): StepStatus {
   if (step === 'basic') {
     return processStep >= 1 ? 'done' : 'active';
   }
@@ -211,27 +211,12 @@ function getStepStatus(step: WorkbenchStep, processStep: number, masterActive: b
   return masterActive ? 'done' : 'active';
 }
 
-function StepContent({ step }: { step: WorkbenchStep }) {
+function StepContent({ step }: { step: MasterAgreementReviewStep }) {
   if (step === 'basic') {
     return <MasterContractSetup />;
   }
 
   return <ParticipantConfirm />;
-}
-
-function PlaceholderReviewPanel() {
-  return (
-    <Card data-testid="master-agreement-review-panel">
-      <CardHeader>
-        <CardTitle>Review Panel</CardTitle>
-      </CardHeader>
-      <CardBody>
-        <div style={{ color: 'var(--sub)', fontSize: 12, lineHeight: 1.6 }}>
-          Review Panel
-        </div>
-      </CardBody>
-    </Card>
-  );
 }
 
 export function MasterAgreementWorkbench() {
@@ -240,13 +225,13 @@ export function MasterAgreementWorkbench() {
     processStep: state.processStep,
     masterActive: state.masterActive,
   })));
-  const [activeStep, setActiveStep] = useState<WorkbenchStep>(() => getRecommendedStep(processStep, masterActive));
+  const [activeStep, setActiveStep] = useState<MasterAgreementReviewStep>(() => getRecommendedStep(processStep, masterActive));
 
   useEffect(() => {
     setActiveStep(getRecommendedStep(processStep, masterActive));
   }, [processStep, masterActive]);
 
-  const steps: Array<{ id: WorkbenchStep; label: string }> = [
+  const steps: Array<{ id: MasterAgreementReviewStep; label: string }> = [
     { id: 'basic', label: t('master.step.basic') },
     { id: 'participants', label: t('master.step.participants') },
     { id: 'activate', label: t('master.step.activate') },
@@ -266,7 +251,7 @@ export function MasterAgreementWorkbench() {
         </StatusWrap>
       </Header>
 
-      <StepBar>
+      <StepBar aria-label={t('master.workbench.steps')}>
         {steps.map((step, index) => {
           const status = getStepStatus(step.id, processStep, masterActive);
           const selected = activeStep === step.id;
@@ -296,7 +281,7 @@ export function MasterAgreementWorkbench() {
           </WorkArea>
         </MainColumn>
         <ReviewColumn>
-          <PlaceholderReviewPanel />
+          <MasterAgreementReviewPanel selectedStep={activeStep} />
         </ReviewColumn>
       </Body>
     </WorkbenchRoot>
