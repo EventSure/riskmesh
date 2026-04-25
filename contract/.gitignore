@@ -4,3 +4,6 @@ node_modules/
 .anchor/
 test-ledger/
 scripts/.state.json
+.pnp.cjs
+.pnp.loader.mjs
+.yarn/

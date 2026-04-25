@@ -10,50 +10,73 @@ pub struct ConfirmMaster<'info> {
     pub master_agreement: Account<'info, MasterAgreement>,
 }
 
-pub fn handler(ctx: Context<ConfirmMaster>, role: u8) -> Result<()> {
-    let master = &mut ctx.accounts.master_agreement;
-    // PendingConfirm 단계에서만 참여자/재보험사 확인을 받는다.
-    require!(
-        master.status == MasterAgreementStatus::PendingConfirm as u8,
-        OpenParamError::InvalidState
-    );
+pub(crate) enum ConfirmEffect {
+    LeaderConfirmed,
+    ParticipantConfirmed { idx: usize },
+    ReinsurerConfirmed,
+}
 
-    if role == ConfirmRole::Participant as u8 {
-        if ctx.accounts.actor.key() == master.leader {
-            require!(
-                master.leader_pool_wallet != Pubkey::default(),
-                OpenParamError::InvalidInput
-            );
-        } else {
-            // 참여사는 본인 슬롯을 찾아 지갑 등록 여부 확인 후 confirmed 처리한다.
-            let idx = master
-                .participants
-                .iter()
-                .position(|p| p.insurer == ctx.accounts.actor.key())
-                .ok_or(OpenParamError::Unauthorized)?;
-
-            let p = &mut master.participants[idx];
-            require!(
-                p.pool_wallet != Pubkey::default(),
-                OpenParamError::InvalidInput
-            );
-            require!(
-                p.deposit_wallet != Pubkey::default(),
-                OpenParamError::InvalidInput
-            );
-            p.confirmed = true;
-        }
-    } else if role == ConfirmRole::Reinsurer as u8 {
-        // 재보험사는 지정된 reinsurer 계정만 승인 가능하다.
-        let reinsurer = master.reinsurer.ok_or(OpenParamError::InvalidRole)?;
-        require!(
-            ctx.accounts.actor.key() == reinsurer,
-            OpenParamError::Unauthorized
-        );
-        master.reinsurer_confirmed = true;
-    } else {
-        return Err(OpenParamError::InvalidRole.into());
+pub(crate) fn apply_confirm(
+    master_status: u8,
+    role: u8,
+    actor: Pubkey,
+    leader: Pubkey,
+    participants: &[MasterParticipant],
+    reinsurer: Option<Pubkey>,
+    leader_pool_wallet: Pubkey,
+) -> std::result::Result<ConfirmEffect, OpenParamError> {
+    if master_status != MasterAgreementStatus::PendingConfirm as u8 {
+        return Err(OpenParamError::InvalidState);
     }
 
+    if role == ConfirmRole::Participant as u8 {
+        if actor == leader {
+            if leader_pool_wallet == Pubkey::default() {
+                return Err(OpenParamError::InvalidInput);
+            }
+            Ok(ConfirmEffect::LeaderConfirmed)
+        } else {
+            let idx = participants
+                .iter()
+                .position(|p| p.insurer == actor)
+                .ok_or(OpenParamError::Unauthorized)?;
+
+            let p = &participants[idx];
+            if p.pool_wallet == Pubkey::default() {
+                return Err(OpenParamError::InvalidInput);
+            }
+            if p.deposit_wallet == Pubkey::default() {
+                return Err(OpenParamError::InvalidInput);
+            }
+            Ok(ConfirmEffect::ParticipantConfirmed { idx })
+        }
+    } else if role == ConfirmRole::Reinsurer as u8 {
+        let expected = reinsurer.ok_or(OpenParamError::InvalidRole)?;
+        if actor != expected {
+            return Err(OpenParamError::Unauthorized);
+        }
+        Ok(ConfirmEffect::ReinsurerConfirmed)
+    } else {
+        Err(OpenParamError::InvalidRole)
+    }
+}
+
+pub fn handler(ctx: Context<ConfirmMaster>, role: u8) -> Result<()> {
+    let master = &mut ctx.accounts.master_agreement;
+    let (status, leader, reinsurer, leader_pool_wallet) = (
+        master.status,
+        master.leader,
+        master.reinsurer,
+        master.leader_pool_wallet,
+    );
+    match apply_confirm(status, role, ctx.accounts.actor.key(), leader, &master.participants, reinsurer, leader_pool_wallet)? {
+        ConfirmEffect::ParticipantConfirmed { idx } => {
+            master.participants[idx].confirmed = true;
+        }
+        ConfirmEffect::ReinsurerConfirmed => {
+            master.reinsurer_confirmed = true;
+        }
+        ConfirmEffect::LeaderConfirmed => {}
+    }
     Ok(())
 }

@@ -13,7 +13,15 @@ pub mod settle_flight_no_claim;
 #[cfg(test)]
 mod activate_master_test;
 #[cfg(test)]
+mod confirm_master_test;
+#[cfg(test)]
+mod create_flight_policy_test;
+#[cfg(test)]
 mod create_master_agreement_test;
+#[cfg(test)]
+mod register_participant_wallets_test;
+#[cfg(test)]
+mod resolve_flight_delay_test;
 #[cfg(test)]
 mod settle_flight_claim_test;
 #[cfg(test)]

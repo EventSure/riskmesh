@@ -114,3 +114,34 @@ fn master_participants_accept_exactly_max_count() {
     participants[0].share_bps += participant_total - total;
     assert!(validate_master_participants(4_000, &participants, leader).is_ok());
 }
+
+#[test]
+fn master_participants_reject_zero_share_bps() {
+    // share_bps=0인 참여사는 지분이 없으므로 InvalidInput.
+    let leader = Pubkey::new_unique();
+    let participants = vec![
+        MasterParticipantInit {
+            insurer: Pubkey::new_unique(),
+            share_bps: 0,
+        },
+        MasterParticipantInit {
+            insurer: Pubkey::new_unique(),
+            share_bps: 10_000,
+        },
+    ];
+    assert!(matches!(
+        validate_master_participants(0, &participants, leader),
+        Err(OpenParamError::InvalidInput)
+    ));
+}
+
+#[test]
+fn master_participants_accept_leader_zero_share_if_total_is_10000() {
+    // 리더 지분이 0이어도 참여사 합계 10000이면 유효하다.
+    let leader = Pubkey::new_unique();
+    let participants = vec![MasterParticipantInit {
+        insurer: Pubkey::new_unique(),
+        share_bps: 10_000,
+    }];
+    assert!(validate_master_participants(0, &participants, leader).is_ok());
+}
