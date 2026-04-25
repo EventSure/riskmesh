@@ -4,3 +4,4 @@ frontend/package-lock.json
 .mcp.json
 backend/.env.production
 .omx/
+.worktrees/

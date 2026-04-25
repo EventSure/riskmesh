@@ -1,7 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Global, ThemeProvider } from '@emotion/react';
 import { globalStyles } from '@/styles/globalStyles';
-import { theme } from '@/styles/theme';
+import { darkTheme, lightTheme } from '@/styles/theme';
+import { useThemeMode } from '@/hooks/useThemeMode';
+import { ThemeModeContext } from '@/context/ThemeModeContext';
 import { SolanaProvider } from '@/providers/SolanaProvider';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { ToastProvider } from '@/components/common';
@@ -100,10 +102,13 @@ function InitLogger() {
 }
 
 export function App() {
+  const { mode, toggle } = useThemeMode();
+  const currentTheme = mode === 'dark' ? darkTheme : lightTheme;
   return (
+    <ThemeModeContext.Provider value={{ mode, toggle }}>
     <QueryProvider>
       <SolanaProvider>
-        <ThemeProvider theme={theme}>
+        <ThemeProvider theme={currentTheme}>
           <Global styles={globalStyles} />
           <ToastProvider>
             <InitLogger />
@@ -123,5 +128,6 @@ export function App() {
         </ThemeProvider>
       </SolanaProvider>
     </QueryProvider>
+    </ThemeModeContext.Provider>
   );
 }
