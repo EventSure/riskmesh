@@ -6,17 +6,6 @@ import { useProtocolStore, type Participant } from '@/store/useProtocolStore';
 import { darkTheme } from '@/styles/theme';
 import { MasterAgreementWorkbench } from '../MasterAgreementWorkbench';
 
-vi.mock('../MasterContractSetup', () => ({
-  MasterContractSetup: ({ onTermsSet }: { onTermsSet?: () => void }) => (
-    <section>
-      <div>Mock basic step</div>
-      <button type="button" onClick={() => onTermsSet?.()}>
-        Mock set terms
-      </button>
-    </section>
-  ),
-}));
-
 vi.mock('../ParticipantConfirm', () => ({
   ParticipantConfirm: ({ onActivated }: { onActivated?: () => void }) => (
     <section>
@@ -90,15 +79,19 @@ beforeEach(() => {
 });
 
 describe('MasterAgreementWorkbench', () => {
-  test('advances to the participants step after the terms callback fires', () => {
+  test('renders the payout tier section and advances after setting terms', () => {
     renderSubject();
 
-    expect(screen.getByText('Mock basic step')).toBeInTheDocument();
     expect(screen.getByTestId('selected-step')).toHaveTextContent('basic');
+    expect(screen.getByTestId('payout-tier-grid')).toBeInTheDocument();
+    expect(screen.getByText('Payout by Delay Tier')).toBeInTheDocument();
+    expect(screen.getByText('2h~2h59m')).toBeInTheDocument();
+    expect(screen.getByText('3h~3h59m')).toBeInTheDocument();
+    expect(screen.getByText('4h~5h59m')).toBeInTheDocument();
+    expect(screen.getByText('6h+ / Cancellation')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Mock set terms' }));
+    fireEvent.click(screen.getByRole('button', { name: /Set Terms & Rate/i }));
 
-    expect(screen.queryByText('Mock basic step')).not.toBeInTheDocument();
     expect(screen.getByText('Mock participant step')).toBeInTheDocument();
     expect(screen.getByTestId('selected-step')).toHaveTextContent('participants');
   });
