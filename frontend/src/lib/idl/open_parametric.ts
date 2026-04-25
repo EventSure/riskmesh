@@ -80,7 +80,7 @@ export interface MasterParticipant {
   depositWallet: PublicKey;
 }
 
-/** Mirrors the on-chain MasterAgreement account layout using Anchor's generated camelCase names. */
+/** Mirrors the runtime Anchor JS camelCase account shape. */
 export interface MasterAgreementAccount {
   masterId: BN;
   leader: PublicKey;
@@ -89,10 +89,10 @@ export interface MasterAgreementAccount {
   coverageStartTs: BN;
   coverageEndTs: BN;
   premiumPerPolicy: BN;
-  payoutDelay2h: BN;
-  payoutDelay3h: BN;
-  payoutDelay4to5h: BN;
-  payoutDelay6hOrCancelled: BN;
+  payoutDelay2H: BN;
+  payoutDelay3H: BN;
+  payoutDelay4To5H: BN;
+  payoutDelay6HOrCancelled: BN;
   leaderShareBps: number;
   cededRatioBps: number;
   reinsCommissionBps: number;
@@ -142,10 +142,10 @@ export interface CreateMasterAgreementParams {
   coverageStartTs: BN;
   coverageEndTs: BN;
   premiumPerPolicy: BN;
-  payoutDelay2h: BN;
-  payoutDelay3h: BN;
-  payoutDelay4to5h: BN;
-  payoutDelay6hOrCancelled: BN;
+  payoutDelay2H: BN;
+  payoutDelay3H: BN;
+  payoutDelay4To5H: BN;
+  payoutDelay6HOrCancelled: BN;
   collateralClaimCount: number;
   leaderShareBps: number;
   cededRatioBps: number;
@@ -887,19 +887,19 @@ export type OpenParametric = {
             "type": "u64"
           },
           {
-            "name": "payoutDelay2h",
+            "name": "payoutDelay2H",
             "type": "u64"
           },
           {
-            "name": "payoutDelay3h",
+            "name": "payoutDelay3H",
             "type": "u64"
           },
           {
-            "name": "payoutDelay4to5h",
+            "name": "payoutDelay4To5H",
             "type": "u64"
           },
           {
-            "name": "payoutDelay6hOrCancelled",
+            "name": "payoutDelay6HOrCancelled",
             "type": "u64"
           },
           {
@@ -1089,19 +1089,19 @@ export type OpenParametric = {
             "type": "u64"
           },
           {
-            "name": "payoutDelay2h",
+            "name": "payoutDelay2H",
             "type": "u64"
           },
           {
-            "name": "payoutDelay3h",
+            "name": "payoutDelay3H",
             "type": "u64"
           },
           {
-            "name": "payoutDelay4to5h",
+            "name": "payoutDelay4To5H",
             "type": "u64"
           },
           {
-            "name": "payoutDelay6hOrCancelled",
+            "name": "payoutDelay6HOrCancelled",
             "type": "u64"
           },
           {

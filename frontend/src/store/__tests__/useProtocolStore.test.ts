@@ -25,6 +25,19 @@ beforeEach(() => {
 });
 
 describe('setTerms', () => {
+  it('defaults collateral claim count to 10 and clamps setter values to 1..100', () => {
+    expect(getState().collateralClaimCount).toBe(10);
+
+    getState().setCollateralClaimCount(25);
+    expect(getState().collateralClaimCount).toBe(25);
+
+    getState().setCollateralClaimCount(0);
+    expect(getState().collateralClaimCount).toBe(1);
+
+    getState().setCollateralClaimCount(101);
+    expect(getState().collateralClaimCount).toBe(100);
+  });
+
   it('succeeds when role is leader and shares sum to 100', () => {
     setState({ role: 'leader', leaderShare: 50, participants: makeParticipants([30, 20]) });
     const result = getState().setTerms();
@@ -56,6 +69,75 @@ describe('setTerms', () => {
     setState({ leaderShare: 50, participants: makeParticipants([30, 20]) });
     getState().setTerms();
     expect(getState().policyStateIdx).toBe(0);
+  });
+});
+
+describe('master selection resets', () => {
+  it('clears stale master terms back to defaults when deselecting a master agreement', () => {
+    setState({
+      coverageStart: '2026-02-01',
+      coverageEnd: '2026-03-01',
+      premiumPerPolicy: 9,
+      collateralClaimCount: 27,
+      payoutTiers: {
+        delay2h: 11,
+        delay3h: 22,
+        delay4to5h: 33,
+        delay6hOrCancelled: 44,
+      },
+      cededRatioBps: 6100,
+      reinsCommissionBps: 1700,
+      masterAgreementPDA: 'old-master',
+    });
+
+    getState().selectMasterAgreement(null);
+
+    expect(getState().coverageStart).toBe('2026-01-01');
+    expect(getState().coverageEnd).toBe('2026-12-31');
+    expect(getState().premiumPerPolicy).toBe(3);
+    expect(getState().collateralClaimCount).toBe(10);
+    expect(getState().payoutTiers).toEqual({
+      delay2h: 5,
+      delay3h: 8,
+      delay4to5h: 12,
+      delay6hOrCancelled: 15,
+    });
+    expect(getState().cededRatioBps).toBe(5000);
+    expect(getState().reinsCommissionBps).toBe(1000);
+  });
+
+  it('clears stale master terms back to defaults when switching to another master agreement', () => {
+    setState({
+      coverageStart: '2026-04-01',
+      coverageEnd: '2026-05-01',
+      premiumPerPolicy: 13,
+      collateralClaimCount: 31,
+      payoutTiers: {
+        delay2h: 17,
+        delay3h: 27,
+        delay4to5h: 37,
+        delay6hOrCancelled: 47,
+      },
+      cededRatioBps: 7200,
+      reinsCommissionBps: 900,
+      masterAgreementPDA: 'old-master',
+    });
+
+    getState().selectMasterAgreement('next-master');
+
+    expect(getState().masterAgreementPDA).toBe('next-master');
+    expect(getState().coverageStart).toBe('2026-01-01');
+    expect(getState().coverageEnd).toBe('2026-12-31');
+    expect(getState().premiumPerPolicy).toBe(3);
+    expect(getState().collateralClaimCount).toBe(10);
+    expect(getState().payoutTiers).toEqual({
+      delay2h: 5,
+      delay3h: 8,
+      delay4to5h: 12,
+      delay6hOrCancelled: 15,
+    });
+    expect(getState().cededRatioBps).toBe(5000);
+    expect(getState().reinsCommissionBps).toBe(1000);
   });
 });
 

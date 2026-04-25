@@ -1,23 +1,25 @@
 import { useCallback, useState } from 'react';
 import { PublicKey } from '@solana/web3.js';
+import BN from 'bn.js';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { useProgram } from './useProgram';
 import { sendTx, type TxResult } from '@/lib/tx';
 import { ConfirmRole } from '@/lib/idl/open_parametric';
 
-export interface ConfirmMasterInput {
+export interface FundPoolInput {
   masterAgreement: PublicKey;
   role: ConfirmRole;
+  amountRaw: BN;
   actorSourceToken: PublicKey;
   actorPoolToken: PublicKey;
 }
 
-export function useConfirmMaster() {
+export function useFundPool() {
   const { program, provider, wallet } = useProgram();
   const [loading, setLoading] = useState(false);
 
-  const confirmMaster = useCallback(
-    async (input: ConfirmMasterInput): Promise<TxResult> => {
+  const fundPool = useCallback(
+    async (input: FundPoolInput): Promise<TxResult> => {
       if (!program || !provider || !wallet) {
         return { signature: '', success: false, error: 'Wallet not connected' };
       }
@@ -32,7 +34,7 @@ export function useConfirmMaster() {
         const prog = program as any;
         const result = await sendTx(provider, () =>
           prog.methods
-            .confirmMaster(input.role)
+            .fundPool(input.role, input.amountRaw)
             .accounts({
               actor: wallet.publicKey,
               masterAgreement: input.masterAgreement,
@@ -42,6 +44,7 @@ export function useConfirmMaster() {
             })
             .rpc(),
         );
+
         return result;
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
@@ -53,5 +56,5 @@ export function useConfirmMaster() {
     [program, provider, wallet],
   );
 
-  return { confirmMaster, loading };
+  return { fundPool, loading };
 }
