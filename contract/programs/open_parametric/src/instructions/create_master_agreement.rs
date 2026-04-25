@@ -46,10 +46,11 @@ pub fn handler(
         OpenParamError::InvalidTimeWindow
     );
     require!(params.premium_per_policy > 0, OpenParamError::InvalidAmount);
-    validate_master_participants(
+    validate_create_master_inputs(
         params.leader_share_bps,
         &params.participants,
         ctx.accounts.leader.key(),
+        params.collateral_claim_count,
     )?;
 
     require!(
@@ -82,6 +83,7 @@ pub fn handler(
     master.payout_delay_3h = params.payout_delay_3h;
     master.payout_delay_4to5h = params.payout_delay_4to5h;
     master.payout_delay_6h_or_cancelled = params.payout_delay_6h_or_cancelled;
+    master.collateral_claim_count = params.collateral_claim_count;
     master.leader_share_bps = params.leader_share_bps;
     master.ceded_ratio_bps = params.ceded_ratio_bps;
     master.reins_commission_bps = params.reins_commission_bps;
@@ -112,6 +114,18 @@ pub fn handler(
         .collect();
 
     Ok(())
+}
+
+pub(crate) fn validate_create_master_inputs(
+    leader_share_bps: u16,
+    participants: &[MasterParticipantInit],
+    leader: Pubkey,
+    collateral_claim_count: u16,
+) -> std::result::Result<(), OpenParamError> {
+    if collateral_claim_count == 0 || collateral_claim_count > 100 {
+        return Err(OpenParamError::InvalidInput);
+    }
+    validate_master_participants(leader_share_bps, participants, leader)
 }
 
 pub(crate) fn validate_master_participants(
