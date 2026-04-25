@@ -157,8 +157,7 @@ fn rejects_mantissa_overflow() {
 
 #[test]
 fn returns_no_claim_below_threshold() {
-    let (delay, payout, status) =
-        apply_oracle_reading(119, 0, 100, 100, default_tiers()).unwrap();
+    let (delay, payout, status) = apply_oracle_reading(119, 0, 100, 100, default_tiers()).unwrap();
     assert_eq!(delay, 119);
     assert_eq!(payout, 0);
     assert_eq!(status, FlightPolicyStatus::NoClaim as u8);
@@ -166,8 +165,7 @@ fn returns_no_claim_below_threshold() {
 
 #[test]
 fn returns_claimable_at_threshold() {
-    let (delay, payout, status) =
-        apply_oracle_reading(120, 0, 100, 100, default_tiers()).unwrap();
+    let (delay, payout, status) = apply_oracle_reading(120, 0, 100, 100, default_tiers()).unwrap();
     assert_eq!(delay, 120);
     assert_eq!(payout, 40);
     assert_eq!(status, FlightPolicyStatus::Claimable as u8);

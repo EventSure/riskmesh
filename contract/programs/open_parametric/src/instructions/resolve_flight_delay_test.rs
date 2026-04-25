@@ -55,8 +55,26 @@ fn accepts_leader_and_operator_as_resolver() {
     let operator = Pubkey::new_unique();
     let master_key = Pubkey::new_unique();
 
-    assert!(validate_resolve_inputs(active(), leader, leader, operator, master_key, master_key, awaiting()).is_ok());
-    assert!(validate_resolve_inputs(active(), operator, leader, operator, master_key, master_key, awaiting()).is_ok());
+    assert!(validate_resolve_inputs(
+        active(),
+        leader,
+        leader,
+        operator,
+        master_key,
+        master_key,
+        awaiting()
+    )
+    .is_ok());
+    assert!(validate_resolve_inputs(
+        active(),
+        operator,
+        leader,
+        operator,
+        master_key,
+        master_key,
+        awaiting()
+    )
+    .is_ok());
 }
 
 #[test]
@@ -65,7 +83,15 @@ fn rejects_flight_belonging_to_different_master() {
     let master_key = Pubkey::new_unique();
     let other_master = Pubkey::new_unique();
     assert!(matches!(
-        validate_resolve_inputs(active(), leader, leader, leader, other_master, master_key, awaiting()),
+        validate_resolve_inputs(
+            active(),
+            leader,
+            leader,
+            leader,
+            other_master,
+            master_key,
+            awaiting()
+        ),
         Err(OpenParamError::InvalidInput)
     ));
 }
@@ -82,7 +108,15 @@ fn rejects_already_resolved_flight_status() {
     ] {
         assert!(
             matches!(
-                validate_resolve_inputs(active(), leader, leader, leader, master_key, master_key, bad_status),
+                validate_resolve_inputs(
+                    active(),
+                    leader,
+                    leader,
+                    leader,
+                    master_key,
+                    master_key,
+                    bad_status
+                ),
                 Err(OpenParamError::InvalidState)
             ),
             "status {} should be InvalidState",

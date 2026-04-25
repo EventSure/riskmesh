@@ -62,8 +62,23 @@ fn claim_split_with_max_participants_preserves_total() {
 
 // --- validate_settle_claim 테스트 ---
 
+#[allow(clippy::type_complexity)]
 fn valid_settle_claim_args() -> (
-    u8, Pubkey, Pubkey, Pubkey, Pubkey, Pubkey, u8, u64, usize, usize, Pubkey, Pubkey, Pubkey, Pubkey, Pubkey,
+    u8,
+    Pubkey,
+    Pubkey,
+    Pubkey,
+    Pubkey,
+    Pubkey,
+    u8,
+    u64,
+    usize,
+    usize,
+    Pubkey,
+    Pubkey,
+    Pubkey,
+    Pubkey,
+    Pubkey,
 ) {
     let leader = Pubkey::new_unique();
     let master_key = Pubkey::new_unique();
@@ -71,14 +86,20 @@ fn valid_settle_claim_args() -> (
     let pool_key = Pubkey::new_unique();
     (
         MasterAgreementStatus::Active as u8,
-        leader, leader, leader,   // executor, leader, operator
-        master_key, master_key,   // flight_master, master_key
+        leader,
+        leader,
+        leader, // executor, leader, operator
+        master_key,
+        master_key, // flight_master, master_key
         FlightPolicyStatus::Claimable as u8,
-        1_000_000,                // payout
-        2, 2,                     // remaining_len, participants_len
-        deposit_key, deposit_key, // leader_deposit_key, stored_deposit
-        pool_key, pool_key,       // leader_pool_key, stored_pool
-        master_key,               // pool_owner
+        1_000_000, // payout
+        2,
+        2, // remaining_len, participants_len
+        deposit_key,
+        deposit_key, // leader_deposit_key, stored_deposit
+        pool_key,
+        pool_key,   // leader_pool_key, stored_pool
+        master_key, // pool_owner
     )
 }
 
@@ -87,7 +108,23 @@ fn validate_settle_claim_rejects_inactive_master() {
     let (_, executor, leader, operator, fm, mk, fs, p, rl, pl, ldk, sd, lpk, sp, po) =
         valid_settle_claim_args();
     assert!(matches!(
-        validate_settle_claim(MasterAgreementStatus::PendingConfirm as u8, executor, leader, operator, fm, mk, fs, p, rl, pl, ldk, sd, lpk, sp, po),
+        validate_settle_claim(
+            MasterAgreementStatus::PendingConfirm as u8,
+            executor,
+            leader,
+            operator,
+            fm,
+            mk,
+            fs,
+            p,
+            rl,
+            pl,
+            ldk,
+            sd,
+            lpk,
+            sp,
+            po
+        ),
         Err(OpenParamError::MasterNotActive)
     ));
 }
@@ -98,7 +135,9 @@ fn validate_settle_claim_rejects_unauthorized_executor() {
         valid_settle_claim_args();
     let stranger = Pubkey::new_unique();
     assert!(matches!(
-        validate_settle_claim(ms, stranger, leader, operator, fm, mk, fs, p, rl, pl, ldk, sd, lpk, sp, po),
+        validate_settle_claim(
+            ms, stranger, leader, operator, fm, mk, fs, p, rl, pl, ldk, sd, lpk, sp, po
+        ),
         Err(OpenParamError::Unauthorized)
     ));
 }
@@ -107,9 +146,15 @@ fn validate_settle_claim_rejects_unauthorized_executor() {
 fn validate_settle_claim_rejects_wrong_flight_status() {
     let (ms, executor, leader, operator, fm, mk, _, p, rl, pl, ldk, sd, lpk, sp, po) =
         valid_settle_claim_args();
-    for bad in [FlightPolicyStatus::NoClaim as u8, FlightPolicyStatus::Paid as u8, FlightPolicyStatus::Expired as u8] {
+    for bad in [
+        FlightPolicyStatus::NoClaim as u8,
+        FlightPolicyStatus::Paid as u8,
+        FlightPolicyStatus::Expired as u8,
+    ] {
         assert!(matches!(
-            validate_settle_claim(ms, executor, leader, operator, fm, mk, bad, p, rl, pl, ldk, sd, lpk, sp, po),
+            validate_settle_claim(
+                ms, executor, leader, operator, fm, mk, bad, p, rl, pl, ldk, sd, lpk, sp, po
+            ),
             Err(OpenParamError::InvalidState)
         ));
     }
@@ -120,7 +165,9 @@ fn validate_settle_claim_rejects_zero_payout() {
     let (ms, executor, leader, operator, fm, mk, fs, _, rl, pl, ldk, sd, lpk, sp, po) =
         valid_settle_claim_args();
     assert!(matches!(
-        validate_settle_claim(ms, executor, leader, operator, fm, mk, fs, 0, rl, pl, ldk, sd, lpk, sp, po),
+        validate_settle_claim(
+            ms, executor, leader, operator, fm, mk, fs, 0, rl, pl, ldk, sd, lpk, sp, po
+        ),
         Err(OpenParamError::InvalidPayout)
     ));
 }
@@ -130,7 +177,9 @@ fn validate_settle_claim_rejects_wrong_remaining_accounts_count() {
     let (ms, executor, leader, operator, fm, mk, fs, p, _, _, ldk, sd, lpk, sp, po) =
         valid_settle_claim_args();
     assert!(matches!(
-        validate_settle_claim(ms, executor, leader, operator, fm, mk, fs, p, 1, 2, ldk, sd, lpk, sp, po),
+        validate_settle_claim(
+            ms, executor, leader, operator, fm, mk, fs, p, 1, 2, ldk, sd, lpk, sp, po
+        ),
         Err(OpenParamError::InvalidAccountList)
     ));
 }
@@ -142,7 +191,9 @@ fn validate_settle_claim_rejects_wrong_leader_deposit_key() {
     let wrong = Pubkey::new_unique();
     let stored = Pubkey::new_unique();
     assert!(matches!(
-        validate_settle_claim(ms, executor, leader, operator, fm, mk, fs, p, rl, pl, wrong, stored, lpk, sp, po),
+        validate_settle_claim(
+            ms, executor, leader, operator, fm, mk, fs, p, rl, pl, wrong, stored, lpk, sp, po
+        ),
         Err(OpenParamError::InvalidInput)
     ));
 }
@@ -150,5 +201,9 @@ fn validate_settle_claim_rejects_wrong_leader_deposit_key() {
 #[test]
 fn validate_settle_claim_accepts_all_valid() {
     let args = valid_settle_claim_args();
-    assert!(validate_settle_claim(args.0, args.1, args.2, args.3, args.4, args.5, args.6, args.7, args.8, args.9, args.10, args.11, args.12, args.13, args.14).is_ok());
+    assert!(validate_settle_claim(
+        args.0, args.1, args.2, args.3, args.4, args.5, args.6, args.7, args.8, args.9, args.10,
+        args.11, args.12, args.13, args.14
+    )
+    .is_ok());
 }

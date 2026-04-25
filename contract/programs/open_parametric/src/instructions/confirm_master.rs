@@ -11,9 +11,9 @@ pub struct ConfirmMaster<'info> {
 }
 
 pub(crate) enum ConfirmEffect {
-    LeaderConfirmed,
-    ParticipantConfirmed { idx: usize },
-    ReinsurerConfirmed,
+    Leader,
+    Participant { idx: usize },
+    Reinsurer,
 }
 
 pub(crate) fn apply_confirm(
@@ -34,7 +34,7 @@ pub(crate) fn apply_confirm(
             if leader_pool_wallet == Pubkey::default() {
                 return Err(OpenParamError::InvalidInput);
             }
-            Ok(ConfirmEffect::LeaderConfirmed)
+            Ok(ConfirmEffect::Leader)
         } else {
             let idx = participants
                 .iter()
@@ -48,14 +48,14 @@ pub(crate) fn apply_confirm(
             if p.deposit_wallet == Pubkey::default() {
                 return Err(OpenParamError::InvalidInput);
             }
-            Ok(ConfirmEffect::ParticipantConfirmed { idx })
+            Ok(ConfirmEffect::Participant { idx })
         }
     } else if role == ConfirmRole::Reinsurer as u8 {
         let expected = reinsurer.ok_or(OpenParamError::InvalidRole)?;
         if actor != expected {
             return Err(OpenParamError::Unauthorized);
         }
-        Ok(ConfirmEffect::ReinsurerConfirmed)
+        Ok(ConfirmEffect::Reinsurer)
     } else {
         Err(OpenParamError::InvalidRole)
     }
@@ -69,14 +69,22 @@ pub fn handler(ctx: Context<ConfirmMaster>, role: u8) -> Result<()> {
         master.reinsurer,
         master.leader_pool_wallet,
     );
-    match apply_confirm(status, role, ctx.accounts.actor.key(), leader, &master.participants, reinsurer, leader_pool_wallet)? {
-        ConfirmEffect::ParticipantConfirmed { idx } => {
+    match apply_confirm(
+        status,
+        role,
+        ctx.accounts.actor.key(),
+        leader,
+        &master.participants,
+        reinsurer,
+        leader_pool_wallet,
+    )? {
+        ConfirmEffect::Participant { idx } => {
             master.participants[idx].confirmed = true;
         }
-        ConfirmEffect::ReinsurerConfirmed => {
+        ConfirmEffect::Reinsurer => {
             master.reinsurer_confirmed = true;
         }
-        ConfirmEffect::LeaderConfirmed => {}
+        ConfirmEffect::Leader => {}
     }
     Ok(())
 }

@@ -40,7 +40,15 @@ fn rejects_when_master_not_pending_confirm() {
     let leader = Pubkey::new_unique();
     let participants = vec![];
     assert!(matches!(
-        apply_confirm(MasterAgreementStatus::Active as u8, participant_role(), leader, leader, &participants, None, Pubkey::new_unique()),
+        apply_confirm(
+            MasterAgreementStatus::Active as u8,
+            participant_role(),
+            leader,
+            leader,
+            &participants,
+            None,
+            Pubkey::new_unique()
+        ),
         Err(OpenParamError::InvalidState)
     ));
 }
@@ -50,7 +58,15 @@ fn rejects_leader_confirm_when_pool_wallet_not_registered() {
     let leader = Pubkey::new_unique();
     let participants = vec![];
     assert!(matches!(
-        apply_confirm(pending(), participant_role(), leader, leader, &participants, None, Pubkey::default()),
+        apply_confirm(
+            pending(),
+            participant_role(),
+            leader,
+            leader,
+            &participants,
+            None,
+            Pubkey::default()
+        ),
         Err(OpenParamError::InvalidInput)
     ));
 }
@@ -60,8 +76,16 @@ fn accepts_leader_confirm_when_pool_wallet_registered() {
     let leader = Pubkey::new_unique();
     let participants = vec![];
     assert!(matches!(
-        apply_confirm(pending(), participant_role(), leader, leader, &participants, None, Pubkey::new_unique()),
-        Ok(ConfirmEffect::LeaderConfirmed)
+        apply_confirm(
+            pending(),
+            participant_role(),
+            leader,
+            leader,
+            &participants,
+            None,
+            Pubkey::new_unique()
+        ),
+        Ok(ConfirmEffect::Leader)
     ));
 }
 
@@ -71,8 +95,17 @@ fn accepts_participant_confirm_and_returns_correct_idx() {
     let p = make_participant(false, true);
     let actor = p.insurer;
     let participants = vec![p];
-    let effect = apply_confirm(pending(), participant_role(), actor, leader, &participants, None, Pubkey::new_unique()).unwrap();
-    assert!(matches!(effect, ConfirmEffect::ParticipantConfirmed { idx: 0 }));
+    let effect = apply_confirm(
+        pending(),
+        participant_role(),
+        actor,
+        leader,
+        &participants,
+        None,
+        Pubkey::new_unique(),
+    )
+    .unwrap();
+    assert!(matches!(effect, ConfirmEffect::Participant { idx: 0 }));
 }
 
 #[test]
@@ -82,7 +115,15 @@ fn rejects_participant_confirm_when_pool_wallet_missing() {
     let actor = p.insurer;
     let participants = vec![p];
     assert!(matches!(
-        apply_confirm(pending(), participant_role(), actor, leader, &participants, None, Pubkey::new_unique()),
+        apply_confirm(
+            pending(),
+            participant_role(),
+            actor,
+            leader,
+            &participants,
+            None,
+            Pubkey::new_unique()
+        ),
         Err(OpenParamError::InvalidInput)
     ));
 }
@@ -95,7 +136,15 @@ fn rejects_participant_confirm_when_deposit_wallet_missing() {
     p.pool_wallet = Pubkey::new_unique(); // pool은 있지만 deposit 없음
     let participants = vec![p];
     assert!(matches!(
-        apply_confirm(pending(), participant_role(), actor, leader, &participants, None, Pubkey::new_unique()),
+        apply_confirm(
+            pending(),
+            participant_role(),
+            actor,
+            leader,
+            &participants,
+            None,
+            Pubkey::new_unique()
+        ),
         Err(OpenParamError::InvalidInput)
     ));
 }
@@ -106,7 +155,15 @@ fn rejects_actor_not_in_participants_list() {
     let stranger = Pubkey::new_unique();
     let participants = vec![make_participant(false, true)];
     assert!(matches!(
-        apply_confirm(pending(), participant_role(), stranger, leader, &participants, None, Pubkey::new_unique()),
+        apply_confirm(
+            pending(),
+            participant_role(),
+            stranger,
+            leader,
+            &participants,
+            None,
+            Pubkey::new_unique()
+        ),
         Err(OpenParamError::Unauthorized)
     ));
 }
@@ -117,7 +174,15 @@ fn rejects_reinsurer_role_when_no_reinsurer_set() {
     let actor = Pubkey::new_unique();
     let participants = vec![];
     assert!(matches!(
-        apply_confirm(pending(), reinsurer_role(), actor, leader, &participants, None, Pubkey::new_unique()),
+        apply_confirm(
+            pending(),
+            reinsurer_role(),
+            actor,
+            leader,
+            &participants,
+            None,
+            Pubkey::new_unique()
+        ),
         Err(OpenParamError::InvalidRole)
     ));
 }
@@ -129,7 +194,15 @@ fn rejects_wrong_actor_for_reinsurer_role() {
     let impostor = Pubkey::new_unique();
     let participants = vec![];
     assert!(matches!(
-        apply_confirm(pending(), reinsurer_role(), impostor, leader, &participants, Some(reinsurer), Pubkey::new_unique()),
+        apply_confirm(
+            pending(),
+            reinsurer_role(),
+            impostor,
+            leader,
+            &participants,
+            Some(reinsurer),
+            Pubkey::new_unique()
+        ),
         Err(OpenParamError::Unauthorized)
     ));
 }
@@ -140,8 +213,16 @@ fn accepts_reinsurer_confirm_returns_reinsurer_confirmed() {
     let reinsurer = Pubkey::new_unique();
     let participants = vec![];
     assert!(matches!(
-        apply_confirm(pending(), reinsurer_role(), reinsurer, leader, &participants, Some(reinsurer), Pubkey::new_unique()),
-        Ok(ConfirmEffect::ReinsurerConfirmed)
+        apply_confirm(
+            pending(),
+            reinsurer_role(),
+            reinsurer,
+            leader,
+            &participants,
+            Some(reinsurer),
+            Pubkey::new_unique()
+        ),
+        Ok(ConfirmEffect::Reinsurer)
     ));
 }
 
@@ -150,7 +231,15 @@ fn rejects_invalid_role_value() {
     let leader = Pubkey::new_unique();
     let participants = vec![];
     assert!(matches!(
-        apply_confirm(pending(), 2u8, leader, leader, &participants, None, Pubkey::new_unique()),
+        apply_confirm(
+            pending(),
+            2u8,
+            leader,
+            leader,
+            &participants,
+            None,
+            Pubkey::new_unique()
+        ),
         Err(OpenParamError::InvalidRole)
     ));
 }

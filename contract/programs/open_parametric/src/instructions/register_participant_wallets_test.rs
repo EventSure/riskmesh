@@ -70,7 +70,14 @@ fn rejects_pool_wallet_mint_mismatch() {
     let wrong_mint = make_mint();
     let master_key = Pubkey::new_unique();
     assert!(matches!(
-        validate_wallet_registration(pending(), wrong_mint, currency, currency, master_key, master_key),
+        validate_wallet_registration(
+            pending(),
+            wrong_mint,
+            currency,
+            currency,
+            master_key,
+            master_key
+        ),
         Err(OpenParamError::InvalidInput)
     ));
 }
@@ -81,7 +88,14 @@ fn rejects_deposit_wallet_mint_mismatch() {
     let wrong_mint = make_mint();
     let master_key = Pubkey::new_unique();
     assert!(matches!(
-        validate_wallet_registration(pending(), currency, wrong_mint, currency, master_key, master_key),
+        validate_wallet_registration(
+            pending(),
+            currency,
+            wrong_mint,
+            currency,
+            master_key,
+            master_key
+        ),
         Err(OpenParamError::InvalidInput)
     ));
 }
@@ -92,7 +106,14 @@ fn rejects_pool_wallet_not_owned_by_master() {
     let master_key = Pubkey::new_unique();
     let wrong_owner = Pubkey::new_unique();
     assert!(matches!(
-        validate_wallet_registration(pending(), currency, currency, currency, wrong_owner, master_key),
+        validate_wallet_registration(
+            pending(),
+            currency,
+            currency,
+            currency,
+            wrong_owner,
+            master_key
+        ),
         Err(OpenParamError::InvalidSettlementTarget)
     ));
 }
@@ -101,10 +122,15 @@ fn rejects_pool_wallet_not_owned_by_master() {
 fn accepts_valid_wallet_registration() {
     let currency = make_mint();
     let master_key = Pubkey::new_unique();
-    assert!(
-        validate_wallet_registration(pending(), currency, currency, currency, master_key, master_key)
-            .is_ok()
-    );
+    assert!(validate_wallet_registration(
+        pending(),
+        currency,
+        currency,
+        currency,
+        master_key,
+        master_key
+    )
+    .is_ok());
 }
 
 #[test]

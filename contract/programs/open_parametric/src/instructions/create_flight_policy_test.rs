@@ -41,7 +41,12 @@ fn ok_params(
 fn rejects_when_master_not_active() {
     let leader = Pubkey::new_unique();
     assert!(matches!(
-        ok_params(MasterAgreementStatus::PendingConfirm as u8, leader, leader, leader),
+        ok_params(
+            MasterAgreementStatus::PendingConfirm as u8,
+            leader,
+            leader,
+            leader
+        ),
         Err(OpenParamError::MasterNotActive)
     ));
 }
@@ -190,7 +195,10 @@ fn rejects_pool_wallet_not_owned_by_master() {
         currency,
         currency,
     );
-    assert!(matches!(result, Err(OpenParamError::InvalidSettlementTarget)));
+    assert!(matches!(
+        result,
+        Err(OpenParamError::InvalidSettlementTarget)
+    ));
 }
 
 #[test]
