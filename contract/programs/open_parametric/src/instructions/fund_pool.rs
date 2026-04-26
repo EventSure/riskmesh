@@ -57,30 +57,34 @@ pub(crate) fn resolve_actor_pool(
     }
 }
 
+pub(crate) struct FundPoolAccountValidation {
+    pub actor: Pubkey,
+    pub master_key: Pubkey,
+    pub currency_mint: Pubkey,
+    pub actor_source_owner: Pubkey,
+    pub actor_source_mint: Pubkey,
+    pub actor_pool_key: Pubkey,
+    pub expected_pool: Pubkey,
+    pub actor_pool_mint: Pubkey,
+    pub actor_pool_owner: Pubkey,
+}
+
 pub(crate) fn validate_fund_pool_accounts(
-    actor: Pubkey,
-    master_key: Pubkey,
-    currency_mint: Pubkey,
-    actor_source_owner: Pubkey,
-    actor_source_mint: Pubkey,
-    actor_pool_key: Pubkey,
-    expected_pool: Pubkey,
-    actor_pool_mint: Pubkey,
-    actor_pool_owner: Pubkey,
+    accounts: FundPoolAccountValidation,
 ) -> std::result::Result<(), OpenParamError> {
-    if actor_pool_key != expected_pool {
+    if accounts.actor_pool_key != accounts.expected_pool {
         return Err(OpenParamError::InvalidSettlementTarget);
     }
-    if actor_pool_mint != currency_mint {
+    if accounts.actor_pool_mint != accounts.currency_mint {
         return Err(OpenParamError::InvalidInput);
     }
-    if actor_pool_owner != master_key {
+    if accounts.actor_pool_owner != accounts.master_key {
         return Err(OpenParamError::InvalidSettlementTarget);
     }
-    if actor_source_mint != currency_mint {
+    if accounts.actor_source_mint != accounts.currency_mint {
         return Err(OpenParamError::InvalidInput);
     }
-    if actor_source_owner != actor {
+    if accounts.actor_source_owner != accounts.actor {
         return Err(OpenParamError::Unauthorized);
     }
     Ok(())
@@ -101,17 +105,17 @@ pub fn handler(ctx: Context<FundPool>, role: u8, amount: u64) -> Result<()> {
         master.reinsurer_pool_wallet,
     )?;
 
-    validate_fund_pool_accounts(
-        ctx.accounts.actor.key(),
-        master.key(),
-        master.currency_mint,
-        ctx.accounts.actor_source_token.owner,
-        ctx.accounts.actor_source_token.mint,
-        ctx.accounts.actor_pool_token.key(),
+    validate_fund_pool_accounts(FundPoolAccountValidation {
+        actor: ctx.accounts.actor.key(),
+        master_key: master.key(),
+        currency_mint: master.currency_mint,
+        actor_source_owner: ctx.accounts.actor_source_token.owner,
+        actor_source_mint: ctx.accounts.actor_source_token.mint,
+        actor_pool_key: ctx.accounts.actor_pool_token.key(),
         expected_pool,
-        ctx.accounts.actor_pool_token.mint,
-        ctx.accounts.actor_pool_token.owner,
-    )?;
+        actor_pool_mint: ctx.accounts.actor_pool_token.mint,
+        actor_pool_owner: ctx.accounts.actor_pool_token.owner,
+    })?;
 
     token::transfer(
         CpiContext::new(

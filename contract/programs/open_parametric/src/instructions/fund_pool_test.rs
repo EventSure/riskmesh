@@ -5,6 +5,7 @@ use crate::state::{ConfirmRole, MasterAgreementStatus, MasterParticipant};
 
 use super::fund_pool::{
     resolve_actor_pool, validate_fund_pool_accounts, validate_fund_pool_status,
+    FundPoolAccountValidation,
 };
 
 fn participant() -> MasterParticipant {
@@ -164,9 +165,17 @@ fn validate_fund_pool_accounts_accepts_matching_actor_pool_and_source() {
     let mint = Pubkey::new_unique();
     let pool = Pubkey::new_unique();
 
-    assert!(validate_fund_pool_accounts(
-        actor, master, mint, actor, mint, pool, pool, mint, master
-    )
+    assert!(validate_fund_pool_accounts(FundPoolAccountValidation {
+        actor,
+        master_key: master,
+        currency_mint: mint,
+        actor_source_owner: actor,
+        actor_source_mint: mint,
+        actor_pool_key: pool,
+        expected_pool: pool,
+        actor_pool_mint: mint,
+        actor_pool_owner: master,
+    })
     .is_ok());
 }
 
@@ -177,17 +186,17 @@ fn validate_fund_pool_accounts_rejects_wrong_pool_owner() {
     let mint = Pubkey::new_unique();
     let pool = Pubkey::new_unique();
 
-    let result = validate_fund_pool_accounts(
+    let result = validate_fund_pool_accounts(FundPoolAccountValidation {
         actor,
-        master,
-        mint,
-        actor,
-        mint,
-        pool,
-        pool,
-        mint,
-        Pubkey::new_unique(),
-    );
+        master_key: master,
+        currency_mint: mint,
+        actor_source_owner: actor,
+        actor_source_mint: mint,
+        actor_pool_key: pool,
+        expected_pool: pool,
+        actor_pool_mint: mint,
+        actor_pool_owner: Pubkey::new_unique(),
+    });
 
     assert!(matches!(
         result,

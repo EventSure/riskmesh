@@ -109,6 +109,7 @@ pub(crate) fn all_participants_confirmed(participants: &[MasterParticipant]) -> 
     })
 }
 
+#[cfg(test)]
 pub(crate) fn has_underfunded_pool(required: &[u64], balances: &[u64]) -> bool {
     required.len() != balances.len() || required.iter().zip(balances.iter()).any(|(r, b)| b < r)
 }

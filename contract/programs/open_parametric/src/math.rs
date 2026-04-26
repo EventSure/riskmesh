@@ -266,7 +266,10 @@ mod tests {
         let req = collateral_requirements(tiers, 1, 0, 5_000, &[5_000]).unwrap();
 
         assert_eq!(req.insurer_total_required, 1);
-        assert_eq!(req.leader_required + req.participant_required.iter().sum::<u64>(), 1);
+        assert_eq!(
+            req.leader_required + req.participant_required.iter().sum::<u64>(),
+            1
+        );
         assert_eq!(req.leader_required, 1);
         assert_eq!(req.participant_required, vec![0]);
     }

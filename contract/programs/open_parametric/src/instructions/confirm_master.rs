@@ -92,9 +92,10 @@ fn expected_pool_and_required(
 
     match effect {
         ConfirmEffect::Leader => Ok((master.leader_pool_wallet, req.leader_required)),
-        ConfirmEffect::Participant { idx } => {
-            Ok((master.participants[*idx].pool_wallet, req.participant_required[*idx]))
-        }
+        ConfirmEffect::Participant { idx } => Ok((
+            master.participants[*idx].pool_wallet,
+            req.participant_required[*idx],
+        )),
         ConfirmEffect::Reinsurer => {
             let pool = master
                 .reinsurer_pool_wallet
