@@ -145,7 +145,7 @@ export function MasterAgreementReviewPanel({ selectedStep }: { selectedStep: Mas
         <SummaryStack>
           <SummaryRow>
             <SummaryLabel>{t('master.review.name')}</SummaryLabel>
-            <SummaryValue>{account?.name?.trim() || selectedMasterAgreementName?.trim() || t('master.noNameFallback')}</SummaryValue>
+            <SummaryValue>{selectedMasterAgreementName?.trim() || account?.name?.trim() || t('master.noNameFallback')}</SummaryValue>
           </SummaryRow>
 
           <SummaryRow>

@@ -58,8 +58,11 @@ export function MasterAgreementNameEditor() {
     setSelectedMasterAgreementName(normalizedDraftName);
 
     const refreshResults = await Promise.allSettled([refetchAccount(), refetchPolicies()]);
-    const refreshSucceeded = refreshResults.some((refreshResult) => refreshResult.status === 'fulfilled');
-    toast(refreshSucceeded ? t('master.nameSaved') : t('master.nameSavedLocalWarning'), refreshSucceeded ? 's' : 'w');
+    const refreshFailed = refreshResults.some((refreshResult) => refreshResult.status === 'rejected');
+    toast(t('master.nameSaved'), 's');
+    if (refreshFailed) {
+      toast(t('master.nameSavedLocalWarning'), 'w');
+    }
   };
 
   return (

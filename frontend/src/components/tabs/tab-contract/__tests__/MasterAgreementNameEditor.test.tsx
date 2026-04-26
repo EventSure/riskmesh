@@ -76,7 +76,7 @@ describe('MasterAgreementNameEditor', () => {
     });
   });
 
-  it('updates the visible selected name immediately and warns when both refreshes fail', async () => {
+  it('updates the visible selected name immediately and warns when refresh reconciliation fails', async () => {
     mockRefetchAccount.mockRejectedValue(new Error('account refresh failed'));
     mockRefetchPolicies.mockRejectedValue(new Error('policies refresh failed'));
 
@@ -94,9 +94,8 @@ describe('MasterAgreementNameEditor', () => {
     expect((useProtocolStore.getState() as unknown as { selectedMasterAgreementName?: string | null }).selectedMasterAgreementName).toBe('New Agreement Name');
 
     await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith('master.nameSaved', 's');
       expect(mockToast).toHaveBeenCalledWith('master.nameSavedLocalWarning', 'w');
     });
-
-    expect(mockToast).not.toHaveBeenCalledWith('master.nameSaved', 's');
   });
 });
