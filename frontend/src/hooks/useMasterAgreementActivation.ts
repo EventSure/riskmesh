@@ -6,6 +6,7 @@ import { useToast } from '@/components/common';
 import type { SharedMasterAgreementAccountState } from './useMasterAgreementAccount';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { useActivateMaster } from './useActivateMaster';
+import { useProgram } from './useProgram';
 
 interface UseMasterAgreementActivationOptions extends Partial<SharedMasterAgreementAccountState> {
   onActivated?: () => void;
@@ -37,6 +38,7 @@ export function useMasterAgreementActivation(options: UseMasterAgreementActivati
   const { toast } = useToast();
   const { t } = useTranslation();
   const { activateMaster: activateMasterOnChain, loading: activateLoading } = useActivateMaster();
+  const { wallet } = useProgram();
   const masterAgreementKey = useMemo(
     () => (masterAgreementPDA ? new PublicKey(masterAgreementPDA) : null),
     [masterAgreementPDA],
@@ -46,7 +48,10 @@ export function useMasterAgreementActivation(options: UseMasterAgreementActivati
   const reinOk = !reinsurer.enabled || reinsurer.confirmed;
   const allConfirmed = allParticipantsConfirmed && reinOk;
   const hasActivationAccountData = mode === 'simulation' || (!!masterAgreementKey && !!masterData);
-  const canActivate = allConfirmed && !masterActive && (role === 'leader' || role === 'operator') && hasActivationAccountData;
+  const hasActivationAuthority = mode === 'simulation'
+    ? role === 'leader' || role === 'operator'
+    : !!masterData && !!wallet?.publicKey && masterData.operator.equals(wallet.publicKey);
+  const canActivate = allConfirmed && !masterActive && hasActivationAuthority && hasActivationAccountData;
 
   const handleActivate = async () => {
     if (mode === 'simulation') {
@@ -68,6 +73,10 @@ export function useMasterAgreementActivation(options: UseMasterAgreementActivati
 
     if (!masterData) {
       toast('Master agreement account not loaded', 'd');
+      return;
+    }
+
+    if (!wallet?.publicKey || !masterData.operator.equals(wallet.publicKey)) {
       return;
     }
 
