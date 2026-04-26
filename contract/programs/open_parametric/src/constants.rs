@@ -14,6 +14,8 @@ pub const MAX_SUBSCRIBER_REF_LEN: usize = 64;
 pub const APPROVED_MASTER_CURRENCY_MINT_ENV: &str =
     "OPEN_PARAMETRIC_APPROVED_MASTER_CURRENCY_MINT";
 pub const DEFAULT_APPROVED_MASTER_CURRENCY_MINT: Pubkey =
+    pubkey!("9ZefJZPJAK1d6v2iq1fXd2NFHjNULcXM9wMKD1f69p98");
+pub const PRODUCTION_APPROVED_MASTER_CURRENCY_MINT: Pubkey =
     pubkey!("A6ty3ZmdzFW9JS92QCc5n7XPUM2cfwKzdnPmyXP2hY8w");
 
 // oracle_feed(32 bytes) 추가됐지만 4096 버퍼로 충분.
