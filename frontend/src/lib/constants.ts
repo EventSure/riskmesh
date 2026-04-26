@@ -1,4 +1,3 @@
-import { PublicKey } from '@solana/web3.js';
 import { resolveProgramConfig, type ProgramEnv } from './programEnv';
 
 export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:3000';
@@ -10,8 +9,7 @@ const programConfig = resolveProgramConfig(import.meta.env as ProgramEnv);
 export const PROGRAM_STAGE = programConfig.stage;
 export const PROGRAM_ID_SELECTED_KEY = programConfig.selectedKey;
 export const PROGRAM_ID = programConfig.programId;
-
-export const CURRENCY_MINT = new PublicKey('A6ty3ZmdzFW9JS92QCc5n7XPUM2cfwKzdnPmyXP2hY8w');
+export const CURRENCY_MINT = programConfig.approvedMasterCurrencyMint;
 
 export const POLICY_STATES = [
   'Draft',

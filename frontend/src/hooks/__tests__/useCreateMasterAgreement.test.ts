@@ -2,10 +2,10 @@ import { act, renderHook } from '@testing-library/react';
 import { PublicKey } from '@solana/web3.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CURRENCY_MINT } from '@/lib/constants';
+import type { CreateMasterAgreementInput } from '../useCreateMasterAgreement';
 import { useCreateMasterAgreement } from '../useCreateMasterAgreement';
 
 const APPROVED_MINT = 'A6ty3ZmdzFW9JS92QCc5n7XPUM2cfwKzdnPmyXP2hY8w';
-const STALE_MINT = '5YsAiRYU3tTFc5B8aaGwVL1oC9DVxBEddnXCaHcQQg2k';
 
 const {
   mockCreateMasterAgreement,
@@ -71,33 +71,33 @@ describe('useCreateMasterAgreement', () => {
 
   it('uses the approved currency mint for new master agreements', async () => {
     const { result } = renderHook(() => useCreateMasterAgreement());
+    const input: CreateMasterAgreementInput = {
+      masterId: 42,
+      coverageStartTs: 1_700_000_000,
+      coverageEndTs: 1_700_086_400,
+      premiumPerPolicy: 1_000_000,
+      payoutDelay2h: 5_000_000,
+      payoutDelay3h: 8_000_000,
+      payoutDelay4to5h: 12_000_000,
+      payoutDelay6hOrCancelled: 15_000_000,
+      collateralClaimCount: 3,
+      leaderShareBps: 5_000,
+      cededRatioBps: 5_000,
+      reinsCommissionBps: 1_000,
+      operator,
+      reinsurer,
+      leaderDepositWallet,
+      reinsurerPoolWallet,
+      reinsurerDepositWallet,
+      participants: [{ insurer: participantInsurer, shareBps: 2_000 }],
+    };
 
     let response:
       | { signature: string; success: boolean; error?: string }
       | undefined;
 
     await act(async () => {
-      response = await result.current.createMasterAgreement({
-        masterId: 42,
-        coverageStartTs: 1_700_000_000,
-        coverageEndTs: 1_700_086_400,
-        premiumPerPolicy: 1_000_000,
-        payoutDelay2h: 5_000_000,
-        payoutDelay3h: 8_000_000,
-        payoutDelay4to5h: 12_000_000,
-        payoutDelay6hOrCancelled: 15_000_000,
-        collateralClaimCount: 3,
-        leaderShareBps: 5_000,
-        cededRatioBps: 5_000,
-        reinsCommissionBps: 1_000,
-        operator,
-        reinsurer,
-        currencyMint: new PublicKey(STALE_MINT),
-        leaderDepositWallet,
-        reinsurerPoolWallet,
-        reinsurerDepositWallet,
-        participants: [{ insurer: participantInsurer, shareBps: 2_000 }],
-      });
+      response = await result.current.createMasterAgreement(input);
     });
 
     expect(response).toEqual({ signature: 'sig-1', success: true });

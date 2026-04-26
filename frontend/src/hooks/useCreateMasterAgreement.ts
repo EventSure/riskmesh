@@ -32,7 +32,6 @@ export interface CreateMasterAgreementInput extends LegacyPayoutDelayFields, Cur
   reinsCommissionBps: number;
   operator: PublicKey;
   reinsurer: PublicKey;
-  currencyMint?: PublicKey;
   leaderDepositWallet: PublicKey;
   reinsurerPoolWallet: PublicKey;
   reinsurerDepositWallet: PublicKey;

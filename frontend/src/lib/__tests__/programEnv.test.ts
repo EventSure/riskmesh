@@ -4,6 +4,8 @@ import { resolveProgramConfig, withResolvedProgramAddress } from '../programEnv'
 
 const STABLE_ID = 'ETEEEssGKAAQEGwz3ggDcy9vzPAPtBjtb2KocdyLBMjh';
 const STAGING_ID = '3dBd52Do2ZBbaMboLyuVZSJTupAFKGoorEydQ6MkfiPL';
+const PRODUCTION_APPROVED_MINT = 'A6ty3ZmdzFW9JS92QCc5n7XPUM2cfwKzdnPmyXP2hY8w';
+const DEFAULT_APPROVED_MINT = '9ZefJZPJAK1d6v2iq1fXd2NFHjNULcXM9wMKD1f69p98';
 
 describe('resolveProgramConfig', () => {
   it('defaults to stable and selects VITE_PROGRAM_ID', () => {
@@ -15,6 +17,7 @@ describe('resolveProgramConfig', () => {
     expect(config.stage).toBe('stable');
     expect(config.programId.toBase58()).toBe(STABLE_ID);
     expect(config.selectedKey).toBe('VITE_PROGRAM_ID');
+    expect(config.approvedMasterCurrencyMint.toBase58()).toBe(PRODUCTION_APPROVED_MINT);
   });
 
   it('falls back to the baked-in stable program id when VITE_PROGRAM_ID is omitted', () => {
@@ -23,6 +26,7 @@ describe('resolveProgramConfig', () => {
     expect(config.stage).toBe('stable');
     expect(config.programId.toBase58()).toBe(STABLE_ID);
     expect(config.selectedKey).toBe('VITE_PROGRAM_ID');
+    expect(config.approvedMasterCurrencyMint.toBase58()).toBe(PRODUCTION_APPROVED_MINT);
   });
 
   it('selects VITE_STAGING_PROGRAM_ID when stage is staging', () => {
@@ -35,6 +39,7 @@ describe('resolveProgramConfig', () => {
     expect(config.stage).toBe('staging');
     expect(config.programId.toBase58()).toBe(STAGING_ID);
     expect(config.selectedKey).toBe('VITE_STAGING_PROGRAM_ID');
+    expect(config.approvedMasterCurrencyMint.toBase58()).toBe(DEFAULT_APPROVED_MINT);
   });
 
   it('throws a clear error when staging stage lacks a staging id', () => {
