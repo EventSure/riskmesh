@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { useConnection, useAnchorWallet } from '@solana/wallet-adapter-react';
 import { AnchorProvider, Program } from '@coral-xyz/anchor';
 import idl from '@/lib/idl/open_parametric.json';
+import { PROGRAM_ID } from '@/lib/constants';
+import { withResolvedProgramAddress } from '@/lib/programEnv';
 
 export function useProgram() {
   const { connection } = useConnection();
@@ -18,7 +20,7 @@ export function useProgram() {
   const program = useMemo<any>(() => {
     if (!provider) return null;
     try {
-      return new Program(idl as never, provider);
+      return new Program(withResolvedProgramAddress(idl, PROGRAM_ID) as never, provider);
     } catch {
       return null;
     }

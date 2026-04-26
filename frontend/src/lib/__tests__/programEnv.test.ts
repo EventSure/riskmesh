@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { resolveProgramConfig } from '../programEnv';
+import { PublicKey } from '@solana/web3.js';
+import { resolveProgramConfig, withResolvedProgramAddress } from '../programEnv';
 
 const STABLE_ID = 'ETEEEssGKAAQEGwz3ggDcy9vzPAPtBjtb2KocdyLBMjh';
 const STAGING_ID = '3dBd52Do2ZBbaMboLyuVZSJTupAFKGoorEydQ6MkfiPL';
@@ -63,5 +64,18 @@ describe('resolveProgramConfig', () => {
         VITE_STAGING_PROGRAM_ID: STAGING_ID,
       })
     ).toThrow('VITE_PROGRAM_ID must be a valid Solana public key');
+  });
+
+  it('overrides the IDL address with the resolved program id', () => {
+    const rewritten = withResolvedProgramAddress(
+      {
+        address: STABLE_ID,
+        metadata: { name: 'openParametric' },
+      },
+      new PublicKey(STAGING_ID),
+    );
+
+    expect(rewritten.address).toBe(STAGING_ID);
+    expect(rewritten.metadata).toEqual({ name: 'openParametric' });
   });
 });

@@ -15,6 +15,11 @@ export interface ProgramConfig {
   readonly selectedKey: ProgramEnvSource;
 }
 
+export interface AnchorProgramIdlLike {
+  readonly address?: string;
+  readonly metadata?: Record<string, unknown>;
+}
+
 const DEFAULT_STABLE_PROGRAM_ID = 'ETEEEssGKAAQEGwz3ggDcy9vzPAPtBjtb2KocdyLBMjh';
 
 export function resolveProgramConfig(env: ProgramEnv): ProgramConfig {
@@ -44,4 +49,14 @@ export function resolveProgramConfig(env: ProgramEnv): ProgramConfig {
   } catch {
     throw new Error(`${selectedKey} must be a valid Solana public key`);
   }
+}
+
+export function withResolvedProgramAddress<T extends AnchorProgramIdlLike>(
+  idl: T,
+  programId: PublicKey,
+): T & { address: string } {
+  return {
+    ...idl,
+    address: programId.toBase58(),
+  };
 }
