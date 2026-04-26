@@ -168,5 +168,5 @@ npm run dev
 | `AccountOwnedByWrongProgram (3007)` | raw wallet 주소를 SPL token account 자리에 전달 | ATA 주소 사용 확인 |
 | `AccountNotInitialized (3012)` | ATA가 생성되지 않음 | `spl-token create-account` 실행 |
 | `InvalidInput (6010)` | mint 불일치 또는 wallet 미등록 | `CURRENCY_MINT` 확인 |
-| PDA 불일치 | `PROGRAM_ID`와 `idl.address`가 다름 | 두 값을 동일하게 설정 |
+| PDA 불일치 | active frontend program id와 `idl.address`가 다름 | `VITE_PROGRAM_STAGE`, `VITE_PROGRAM_ID`, `VITE_STAGING_PROGRAM_ID`를 확인해 현재 선택된 program id가 IDL과 일치하도록 설정 |
 | IDL mismatch | 배포된 프로그램과 IDL 버전 불일치 | `anchor build` 후 IDL 재복사 |
