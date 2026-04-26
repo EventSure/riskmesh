@@ -2,6 +2,9 @@
   "license": "UNLICENSED",
   "scripts": {
     "test": "ts-mocha -p ./tsconfig.json -t 1000000 tests/*.ts",
+    "test:anchor": "OPEN_PARAMETRIC_APPROVED_MASTER_CURRENCY_MINT=$(solana-keygen pubkey ./tests/helpers/approvedMintKeypair.json) anchor test",
+    "test:anchor:approved-mint": "OPEN_PARAMETRIC_APPROVED_MASTER_CURRENCY_MINT=$(solana-keygen pubkey ./tests/helpers/approvedMintKeypair.json) anchor test --run tests/master_agreement_approved_mint.ts",
+    "test:anchor:payout-tiers": "OPEN_PARAMETRIC_APPROVED_MASTER_CURRENCY_MINT=$(solana-keygen pubkey ./tests/helpers/approvedMintKeypair.json) anchor test --run tests/payout_tiers.ts",
     "deploy:stable": "anchor build && solana program deploy -u devnet --program-id ETEEEssGKAAQEGwz3ggDcy9vzPAPtBjtb2KocdyLBMjh target/deploy/open_parametric.so",
     "verify:stable": "solana program show -u devnet ETEEEssGKAAQEGwz3ggDcy9vzPAPtBjtb2KocdyLBMjh",
     "demo:1-setup": "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/01-setup.ts",
