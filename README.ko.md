@@ -221,7 +221,7 @@ npm run test:coverage
 | 파일 | 설명 |
 |------|------|
 | [`demo_code_refactor.md`](frontend/docs/demo_code_refactor.md) | 프로덕션 전환 시 데모 코드 제거 가이드 |
-| [`deployment-guide.md`](frontend/docs/deployment-guide.md) | 프런트엔드 + 컨트랙트 배포 체크리스트 (IDL 복사, env 기반 program 선택, CURRENCY_MINT) |
+| [`deployment-guide.md`](frontend/docs/deployment-guide.md) | env 기반 program selection과 stable/staging 실행 스크립트를 포함한 프런트엔드 + 컨트랙트 배포 체크리스트 |
 
 ## 아키텍처
 

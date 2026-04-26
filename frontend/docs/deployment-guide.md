@@ -153,12 +153,39 @@ spl-token mint <MINT_ADDRESS> 1000
 
 # 6. 프론트엔드 실행
 cd ../frontend
-npm run dev
+npm run dev:stage
 ```
 
-`npm run dev`만 현재 제공됩니다. `dev:stage` 같은 별도 실행 스크립트는 아직
-추가되지 않았으므로, staging 검증도 동일한 개발 서버 명령으로 실행하고 env 값만
-명시적으로 전환해야 합니다.
+Frontend run scripts:
+
+```bash
+cd frontend
+npm run dev:stable
+npm run dev:stage
+```
+
+`dev:stage` only selects `VITE_PROGRAM_STAGE=staging`; `VITE_STAGING_PROGRAM_ID`
+still must be set in `frontend/.env` or the shell environment.
+
+Backend local run:
+
+```bash
+cd backend
+./run-stable.sh
+./run-staging.sh
+```
+
+Contract staging demo scripts:
+
+```bash
+cd contract
+npm run demo:3-master-setup:stage
+npm run demo:stage -- demo:manual-list
+```
+
+These helpers do not deploy a Solana program. Staging program deployment still
+requires a separate deploy workflow that aligns the program keypair, `declare_id!`,
+`Anchor.toml`, and generated IDL.
 
 ## 트러블슈팅
 

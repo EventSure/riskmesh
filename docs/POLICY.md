@@ -75,3 +75,16 @@ When a program-id env variable is added or renamed, update the matching `.env`
 and `.env.example` files together. Local `target/deploy/*-keypair.json` files
 and `anchor keys list` are not authoritative because ignored build artifacts can
 differ across worktrees.
+
+### Runtime Script Policy
+
+Stable and staging runtime helpers may select the active program id for local
+frontend, backend, and contract demo-script execution. They must not be treated
+as program deployment automation.
+
+- Frontend `dev:stage` selects `VITE_PROGRAM_STAGE=staging`.
+- Backend `run-staging.sh` exports `PROGRAM_ID=$STAGING_PROGRAM_ID` for the backend process.
+- Contract `run-staging.sh` exports `PROGRAM_ID=$STAGING_PROGRAM_ID` for the selected npm script.
+- Solana program deployment remains a separate workflow because the deployed
+  program id must match `declare_id!`, `Anchor.toml`, the IDL address, and the
+  program keypair.
