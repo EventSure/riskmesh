@@ -218,6 +218,50 @@ describe("error_cases", () => {
       }
     });
 
+    it("rejects createMasterAgreement when currency mint is not the approved mint", async () => {
+      const wrongMint = await createMint(connection, payer, payer.publicKey, null, 6);
+      const pda = masterPda(new anchor.BN(910));
+      const leaderDeposit = await createAccount(connection, payer, wrongMint, pda, Keypair.generate());
+      const reinsurerPool = await createAccount(connection, payer, wrongMint, pda, Keypair.generate());
+      const reinsurerDeposit = await createAccount(connection, payer, wrongMint, pda, Keypair.generate());
+      const now = Math.floor(Date.now() / 1000);
+
+      try {
+        await program.methods
+          .createMasterAgreement({
+            masterId: new anchor.BN(910),
+            coverageStartTs: new anchor.BN(now),
+            coverageEndTs: new anchor.BN(now + 3600),
+            premiumPerPolicy: new anchor.BN(1_000_000),
+            payoutDelay2H: new anchor.BN(0),
+            payoutDelay3H: new anchor.BN(0),
+            payoutDelay4To5H: new anchor.BN(0),
+            payoutDelay6HOrCancelled: new anchor.BN(0),
+            collateralClaimCount: 1,
+            leaderShareBps: 5_000,
+            cededRatioBps: 0,
+            reinsCommissionBps: 0,
+            participants: [{ insurer: Keypair.generate().publicKey, shareBps: 5_000 }],
+            oracleFeed: PublicKey.default,
+          })
+          .accountsPartial({
+            leader: payer.publicKey,
+            operator: payer.publicKey,
+            reinsurer: Keypair.generate().publicKey,
+            currencyMint: wrongMint,
+            masterAgreement: pda,
+            leaderDepositWallet: leaderDeposit,
+            reinsurerPoolWallet: reinsurerPool,
+            reinsurerDepositWallet: reinsurerDeposit,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+        assert.fail("실패해야 하는데 성공함");
+      } catch (err) {
+        assertAnchorError(err, "InvalidInput");
+      }
+    });
+
     it("rejects when participant count exceeds MAX_MASTER_PARTICIPANTS (6명)", async () => {
       const pda = masterPda(new anchor.BN(203));
       const leaderDeposit    = await createAccount(connection, payer, mint, pda, Keypair.generate());
