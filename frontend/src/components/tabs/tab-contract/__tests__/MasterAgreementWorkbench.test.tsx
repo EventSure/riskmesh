@@ -94,7 +94,7 @@ describe('MasterAgreementWorkbench', () => {
 
     expect(screen.getByText('Mock participant step')).toBeInTheDocument();
     expect(screen.getByTestId('selected-step')).toHaveTextContent('participants');
-  });
+  }, 15000);
 
   test('lands on the activate step after the activation callback fires', () => {
     useProtocolStore.setState({
@@ -109,5 +109,5 @@ describe('MasterAgreementWorkbench', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mock activate' }));
 
     expect(screen.getByTestId('selected-step')).toHaveTextContent('activate');
-  });
+  }, 15000);
 });

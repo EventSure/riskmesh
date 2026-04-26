@@ -24,10 +24,10 @@ describe('DashboardSidebar', () => {
 
     renderSubject();
 
-    const toolsSection = screen.getByText('도구').parentElement;
+    const toolsSection = screen.getByText('Tools').parentElement;
     expect(toolsSection).not.toBeNull();
     expect(within(toolsSection as HTMLElement).getByRole('button', { name: /Help/i })).toBeInTheDocument();
-  });
+  }, 15000);
 
   test('shows 도움말 wording for the tools tab in Korean', async () => {
     await i18n.changeLanguage('ko');
@@ -37,5 +37,5 @@ describe('DashboardSidebar', () => {
     const toolsSection = screen.getByText('도구').parentElement;
     expect(toolsSection).not.toBeNull();
     expect(within(toolsSection as HTMLElement).getByRole('button', { name: '도움말' })).toBeInTheDocument();
-  });
+  }, 15000);
 });

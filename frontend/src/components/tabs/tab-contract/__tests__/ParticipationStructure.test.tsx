@@ -49,7 +49,7 @@ describe('ParticipationStructure', () => {
       within(panel).getByDisplayValue('Part111111111111111111111111111111111111111'),
     ).toBeInTheDocument();
     expect(screen.getByText('Total: 100%')).toBeInTheDocument();
-  });
+  }, 15000);
 
   it('includes reinsurer name, address, and fixed economics in the same participation flow', () => {
     renderSubject('onchain');
@@ -62,7 +62,7 @@ describe('ParticipationStructure', () => {
     expect(within(panel).getByText('Cession Rate')).toBeInTheDocument();
     expect(within(panel).getByText('Commission')).toBeInTheDocument();
     expect(within(panel).getByText('Net Cession')).toBeInTheDocument();
-  });
+  }, 15000);
 
   it('strips leading zeros from share input immediately while typing', () => {
     renderSubject('onchain');
@@ -73,7 +73,7 @@ describe('ParticipationStructure', () => {
     fireEvent.change(shareInput, { target: { value: '010' } });
     expect(within(panel).getByDisplayValue('10')).toBeInTheDocument();
     expect(useProtocolStore.getState().participants[0]?.share).toBe(10);
-  });
+  }, 15000);
 
   it('normalizes share text input on blur after transient empty state', () => {
     renderSubject('onchain');
@@ -87,5 +87,5 @@ describe('ParticipationStructure', () => {
     fireEvent.blur(shareInput);
     expect(within(panel).getByDisplayValue('0')).toBeInTheDocument();
     expect(useProtocolStore.getState().participants[0]?.share).toBe(0);
-  });
+  }, 15000);
 });

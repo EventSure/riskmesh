@@ -11,7 +11,7 @@ export const Button = styled.button<ButtonProps>`
   border-radius: 8px;
   border: none;
   font-family: 'Space Grotesk', sans-serif;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
@@ -62,7 +62,7 @@ export const Button = styled.button<ButtonProps>`
 
   ${({ size }) => size === 'sm' && `
     padding: 5px 10px;
-    font-size: 11px;
+    font-size: 12px;
     border-radius: 6px;
   `}
 

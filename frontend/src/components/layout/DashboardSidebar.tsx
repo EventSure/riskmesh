@@ -112,10 +112,10 @@ export function DashboardSidebar({ activeTab, onTabChange }: Props) {
     <Sidebar>
       <RoleArea>
         <RoleName>Admin</RoleName>
-        <RoleSub>{mode === 'simulation' ? '시뮬레이션 모드' : '온체인 모드'}</RoleSub>
+        <RoleSub>{mode === 'simulation' ? t('sidebar.mode.simulation') : t('sidebar.mode.onchain')}</RoleSub>
       </RoleArea>
 
-      <SectionLabel>메뉴</SectionLabel>
+      <SectionLabel>{t('sidebar.section.menu')}</SectionLabel>
       {MENU_TABS.map(({ id, labelKey }) => (
         <NavItem
           key={id}
@@ -132,7 +132,7 @@ export function DashboardSidebar({ activeTab, onTabChange }: Props) {
 
       <Divider />
 
-      <SectionLabel>도구</SectionLabel>
+      <SectionLabel>{t('sidebar.section.tools')}</SectionLabel>
       {TOOL_TABS.map(({ id, labelKey }) => (
         <NavItem
           key={id}
