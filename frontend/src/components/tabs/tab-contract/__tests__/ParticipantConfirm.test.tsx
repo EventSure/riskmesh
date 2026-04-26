@@ -70,7 +70,7 @@ describe('ParticipantConfirm', () => {
 
     renderParticipantConfirm(onActivated);
 
-    const transitionButton = screen.getByRole('button', { name: 'master.step.activate' });
+    const transitionButton = screen.getByRole('button', { name: 'confirm.activateTransitionBtn' });
     expect(transitionButton).toBeEnabled();
     expect(transitionButton).toHaveAttribute('data-guide', 'activate-transition-btn');
 
@@ -93,7 +93,7 @@ describe('ParticipantConfirm', () => {
 
     renderParticipantConfirm(onActivated);
 
-    const transitionButton = screen.getByRole('button', { name: 'master.step.activate' });
+    const transitionButton = screen.getByRole('button', { name: 'confirm.activateTransitionBtn' });
     expect(transitionButton).toBeDisabled();
 
     fireEvent.click(transitionButton);

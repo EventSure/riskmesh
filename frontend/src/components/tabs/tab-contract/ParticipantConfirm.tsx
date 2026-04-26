@@ -126,7 +126,7 @@ export function ParticipantConfirm({ onActivated }: ParticipantConfirmProps) {
             style={{ marginTop: 4 }}
             data-guide="activate-transition-btn"
           >
-            {t('master.step.activate')}
+            {t('confirm.activateTransitionBtn')}
           </Button>
         )}
       </CardBody>

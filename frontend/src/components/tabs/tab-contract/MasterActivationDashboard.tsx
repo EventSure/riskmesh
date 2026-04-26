@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import { Button, Card, CardBody, CardHeader, CardTitle, Tag } from '@/components/common';
 import { PoolHealthVisual } from '@/components/tabs/shared/PoolHealthVisual';
+import { useMasterAgreementAccount } from '@/hooks/useMasterAgreementAccount';
 import { useMasterAgreementActivation } from '@/hooks/useMasterAgreementActivation';
 import { useMasterAgreementSnapshot } from '@/hooks/useMasterAgreementSnapshot';
 import { formatNum, useProtocolStore } from '@/store/useProtocolStore';
@@ -133,14 +134,22 @@ export function MasterActivationDashboard() {
     () => (masterAgreementPDA ? new PublicKey(masterAgreementPDA) : null),
     [masterAgreementPDA],
   );
-  const { snapshot, status, activePartyId, masterData, loading, error, policyStatus, policyError } = useMasterAgreementSnapshot(masterAgreementKey);
-  const { activateLoading, canActivate, handleActivate } = useMasterAgreementActivation();
-  const readinessLoading = loading || (!!masterData && !snapshot && !error);
+  const { account: masterData, loading: masterLoading, error: masterError } = useMasterAgreementAccount(masterAgreementKey);
+  const { snapshot, status, activePartyId, masterData: snapshotMasterData, loading, error, policyStatus, policyError } = useMasterAgreementSnapshot(
+    masterAgreementKey,
+    { masterData, masterLoading, masterError },
+  );
+  const { activateLoading, canActivate, handleActivate } = useMasterAgreementActivation({
+    masterData,
+    masterLoading,
+    masterError,
+  });
+  const readinessLoading = loading || (!!snapshotMasterData && !snapshot && !error);
 
   const agreementName =
     snapshot?.agreementName ||
     selectedMasterAgreementName?.trim() ||
-    masterData?.name?.trim() ||
+    snapshotMasterData?.name?.trim() ||
     t('master.noNameFallback');
   const readinessTag = readinessLoading
     ? t('master.loading')

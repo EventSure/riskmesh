@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { ThemeProvider } from '@emotion/react';
+import { PublicKey } from '@solana/web3.js';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { useProtocolStore } from '@/store/useProtocolStore';
@@ -8,6 +9,7 @@ import { MasterActivationDashboard } from '../MasterActivationDashboard';
 
 const mockUseMasterAgreementSnapshot = vi.fn();
 const mockUseMasterAgreementAccount = vi.fn();
+const mockUseMasterAgreementActivation = vi.fn();
 
 vi.mock('react-i18next', async () => {
   const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next');
@@ -39,11 +41,8 @@ vi.mock('@/hooks/useMasterAgreementAccount', () => ({
   useMasterAgreementAccount: (...args: unknown[]) => mockUseMasterAgreementAccount(...args),
 }));
 
-vi.mock('@/hooks/useActivateMaster', () => ({
-  useActivateMaster: () => ({
-    activateMaster: vi.fn(),
-    loading: false,
-  }),
+vi.mock('@/hooks/useMasterAgreementActivation', () => ({
+  useMasterAgreementActivation: (...args: unknown[]) => mockUseMasterAgreementActivation(...args),
 }));
 
 function renderSubject() {
@@ -121,6 +120,13 @@ beforeEach(() => {
     loading: false,
     error: null,
   });
+  mockUseMasterAgreementActivation.mockImplementation(() => ({
+    activateLoading: false,
+    canActivate: true,
+    handleActivate: vi.fn(() => {
+      useProtocolStore.getState().activateMaster();
+    }),
+  }));
   mockUseMasterAgreementSnapshot.mockReturnValue({
     snapshot: makeSnapshot(),
     status: makeStatus(),
@@ -134,6 +140,36 @@ beforeEach(() => {
 });
 
 describe('MasterActivationDashboard', () => {
+  test('threads shared master account state into the activation snapshot and CTA hooks', () => {
+    const sharedMasterAccount = { name: 'Master 2026' };
+    useProtocolStore.setState({
+      mode: 'onchain',
+      masterAgreementPDA: '11111111111111111111111111111111',
+    });
+    mockUseMasterAgreementAccount.mockReturnValue({
+      account: sharedMasterAccount,
+      loading: true,
+      error: 'master lag',
+    });
+
+    renderSubject();
+
+    const [snapshotMasterKey, snapshotState] = mockUseMasterAgreementSnapshot.mock.calls[0];
+    expect(snapshotMasterKey).toBeInstanceOf(PublicKey);
+    expect((snapshotMasterKey as PublicKey).toBase58()).toBe('11111111111111111111111111111111');
+    expect(snapshotState).toEqual({
+      masterData: sharedMasterAccount,
+      masterLoading: true,
+      masterError: 'master lag',
+    });
+
+    expect(mockUseMasterAgreementActivation).toHaveBeenCalledWith({
+      masterData: sharedMasterAccount,
+      masterLoading: true,
+      masterError: 'master lag',
+    });
+  });
+
   test('keeps the activation step actionable when activation is pending', () => {
     renderSubject();
 
@@ -156,6 +192,11 @@ describe('MasterActivationDashboard', () => {
       account: null,
       loading: true,
       error: null,
+    });
+    mockUseMasterAgreementActivation.mockReturnValue({
+      activateLoading: false,
+      canActivate: false,
+      handleActivate: vi.fn(),
     });
 
     renderSubject();

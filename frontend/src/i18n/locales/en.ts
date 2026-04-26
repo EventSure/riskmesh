@@ -169,6 +169,7 @@ const en = {
   'confirm.shareInfo': 'Share: {{share}}% (Primary Ins.)',
   'confirm.reinInfo': 'Primary Ins. Premium 50% reinsurance acceptance',
   'confirm.btn': '✓ Confirm',
+  'confirm.activateTransitionBtn': 'Continue to Activation Dashboard',
   'confirm.activateBtn': '⚡ Master Agreement Activation',
   'confirm.portalGuide': 'Each participant must confirm via the Portal page with their own wallet',
 

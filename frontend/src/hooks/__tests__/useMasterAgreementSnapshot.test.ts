@@ -212,6 +212,26 @@ describe('buildMasterAgreementSnapshot', () => {
     expect(readyResult.result.current.policyError).toBeNull();
   });
 
+  test('reuses injected master account state instead of opening another master-account fetch chain', () => {
+    const injectedMaster = makeMasterAgreement();
+
+    const result = renderHook(() => useMasterAgreementSnapshot(PublicKey.default, {
+      masterData: injectedMaster,
+      masterLoading: true,
+      masterError: 'master lag',
+    }));
+
+    expect(mockUseMasterAgreementAccount).toHaveBeenCalledWith(null);
+    expect(mockUsePoolCollateralStatus).toHaveBeenCalledWith(PublicKey.default, undefined, {
+      masterData: injectedMaster,
+      masterLoading: true,
+      masterError: 'master lag',
+    });
+    expect(result.result.current.masterData).toBe(injectedMaster);
+    expect(result.result.current.loading).toBe(true);
+    expect(result.result.current.error).toBe('master lag');
+  });
+
   test('builds a simulation snapshot from local store state without requiring an on-chain account', () => {
     useProtocolStore.setState({
       mode: 'simulation',

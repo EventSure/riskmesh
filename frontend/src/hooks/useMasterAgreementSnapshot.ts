@@ -5,7 +5,7 @@ import type { CollateralStatus } from '@/lib/collateral';
 import type { MasterAgreementAccount } from '@/lib/idl/open_parametric';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { useFlightPolicies, type FlightPolicyWithKey } from './useFlightPolicies';
-import { useMasterAgreementAccount } from './useMasterAgreementAccount';
+import { useMasterAgreementAccount, type SharedMasterAgreementAccountState } from './useMasterAgreementAccount';
 import { usePoolCollateralStatus } from './usePoolCollateralStatus';
 
 const MICRO_USDC_FACTOR = 1_000_000;
@@ -106,7 +106,10 @@ export function buildSimulationMasterAgreementSnapshot({
   };
 }
 
-export function useMasterAgreementSnapshot(masterPda: PublicKey | null) {
+export function useMasterAgreementSnapshot(
+  masterPda: PublicKey | null,
+  sharedMasterState?: SharedMasterAgreementAccountState,
+) {
   const { mode, selectedMasterAgreementName, totalPremium, totalClaim } = useProtocolStore(
     useShallow((state) => ({
       mode: state.mode,
@@ -115,8 +118,15 @@ export function useMasterAgreementSnapshot(masterPda: PublicKey | null) {
       totalClaim: state.totalClaim,
     })),
   );
-  const { account: masterData, loading: masterLoading, error: masterError } = useMasterAgreementAccount(masterPda);
-  const { status, activePartyId, loading: collateralLoading, error: collateralError } = usePoolCollateralStatus(masterPda);
+  const resolvedMasterState = useMasterAgreementAccount(sharedMasterState ? null : masterPda);
+  const masterData = sharedMasterState?.masterData ?? resolvedMasterState.account;
+  const masterLoading = sharedMasterState?.masterLoading ?? resolvedMasterState.loading;
+  const masterError = sharedMasterState?.masterError ?? resolvedMasterState.error;
+  const { status, activePartyId, loading: collateralLoading, error: collateralError } = usePoolCollateralStatus(
+    masterPda,
+    undefined,
+    { masterData, masterLoading, masterError },
+  );
   const { policies, loading: policiesLoading, error: policiesError } = useFlightPolicies(masterPda);
   const policyStatus: MasterAgreementPolicyStatus =
     mode === 'simulation' ? 'ready' : policiesLoading ? 'loading' : policiesError ? 'error' : 'ready';

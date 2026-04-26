@@ -4,7 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import type { MasterAgreementAccount } from '@/lib/idl/open_parametric';
 import { buildCollateralStatus, type CollateralStatus } from '@/lib/collateral';
 import { useProtocolStore } from '@/store/useProtocolStore';
-import { useMasterAgreementAccount } from './useMasterAgreementAccount';
+import { useMasterAgreementAccount, type SharedMasterAgreementAccountState } from './useMasterAgreementAccount';
 import { useProgram } from './useProgram';
 
 interface PoolCollateralBalances {
@@ -105,9 +105,13 @@ function getSimulationActivePartyId(
 export function usePoolCollateralStatus(
   masterPDA: PublicKey | null,
   activeWallet?: PublicKey | null,
+  sharedMasterState?: SharedMasterAgreementAccountState,
 ): UsePoolCollateralStatusResult {
   const { connection, wallet } = useProgram();
-  const { account: masterData, loading: masterLoading, error: masterError } = useMasterAgreementAccount(masterPDA);
+  const resolvedMasterState = useMasterAgreementAccount(sharedMasterState ? null : masterPDA);
+  const masterData = sharedMasterState?.masterData ?? resolvedMasterState.account;
+  const masterLoading = sharedMasterState?.masterLoading ?? resolvedMasterState.loading;
+  const masterError = sharedMasterState?.masterError ?? resolvedMasterState.error;
   const {
     mode,
     role,

@@ -169,6 +169,7 @@ const ko = {
   'confirm.shareInfo': '지분: {{share}}% (원수사 내)',
   'confirm.reinInfo': '원수사 보험료·보험금의 50% 재보험 인수',
   'confirm.btn': '✓ 컨펌',
+  'confirm.activateTransitionBtn': '활성화 대시보드로 이동',
   'confirm.activateBtn': '⚡ 마스터 계약 활성화',
   'confirm.portalGuide': '각 참여사는 Portal 페이지에서 자체 지갑으로 컨펌해주세요',
 

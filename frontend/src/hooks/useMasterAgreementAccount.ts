@@ -46,6 +46,12 @@ interface BackendMasterAgreement {
   status_label: string;
 }
 
+export interface SharedMasterAgreementAccountState {
+  masterData: MasterAgreementAccount | null;
+  masterLoading: boolean;
+  masterError: string | null;
+}
+
 function toMasterAgreementAccount(data: BackendMasterAgreement): MasterAgreementAccount {
   const SYSTEM_PROGRAM = '11111111111111111111111111111111';
   const safePubkey = (s: string | undefined | null) =>
