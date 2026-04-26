@@ -115,4 +115,59 @@ mod tests {
         let parts2 = split_by_bps(1, &[5_000, 3_000, 2_000]).unwrap();
         assert_eq!(parts2.iter().sum::<u64>(), 1);
     }
+
+    #[test]
+    fn effective_reinsurer_bps_rejects_out_of_bounds() {
+        assert!(matches!(
+            effective_reinsurer_bps(10_001, 0),
+            Err(OpenParamError::InvalidRatio)
+        ));
+        assert!(matches!(
+            effective_reinsurer_bps(0, 10_001),
+            Err(OpenParamError::InvalidRatio)
+        ));
+    }
+
+    #[test]
+    fn effective_reinsurer_bps_edge_cases() {
+        // ceded=0 → eff=0 (재보험 없음)
+        assert_eq!(effective_reinsurer_bps(0, 0).unwrap(), 0);
+        // commission=0 → eff=ceded (수수료 없음)
+        assert_eq!(effective_reinsurer_bps(5_000, 0).unwrap(), 5_000);
+        // ceded=10000, commission=10000 → eff=0 (수수료 100%)
+        assert_eq!(effective_reinsurer_bps(10_000, 10_000).unwrap(), 0);
+    }
+
+    #[test]
+    fn split_by_bps_rejects_invalid_sum() {
+        assert!(matches!(
+            split_by_bps(100, &[5_000, 5_001]),
+            Err(OpenParamError::InvalidRatio)
+        ));
+        assert!(matches!(
+            split_by_bps(100, &[5_000, 4_999]),
+            Err(OpenParamError::InvalidRatio)
+        ));
+    }
+
+    #[test]
+    fn tiered_payout_boundary_values() {
+        // 2H 구간 상한: 179 → 2H tier
+        assert_eq!(tiered_payout(179, false, tiers()), 40);
+        // 3H 구간 하한: 180, 상한: 239
+        assert_eq!(tiered_payout(239, false, tiers()), 60);
+        // 4-5H 구간 상한: 359
+        assert_eq!(tiered_payout(359, false, tiers()), 80);
+        // 6H 이상: 361
+        assert_eq!(tiered_payout(361, false, tiers()), 100);
+    }
+
+    #[test]
+    fn cancelled_overrides_any_delay_including_below_threshold() {
+        // cancelled=true 는 delay가 임계값 미만이어도 최대 payout
+        assert_eq!(tiered_payout(0, true, tiers()), 100);
+        assert_eq!(tiered_payout(119, true, tiers()), 100);
+        assert_eq!(tiered_payout(130, true, tiers()), 100);
+        assert_eq!(tiered_payout(180, true, tiers()), 100);
+    }
 }

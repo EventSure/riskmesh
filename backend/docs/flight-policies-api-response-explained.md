@@ -4,9 +4,9 @@
 
 관련 코드:
 
-- [web.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/web.rs)
-- [program_accounts.rs](/Users/deaver/Desktop/Repo/riskmesh/backend/src/oracle/program_accounts.rs)
-- [state.rs](/Users/deaver/Desktop/Repo/riskmesh/contract/programs/open_parametric/src/state.rs)
+- [web.rs](../src/api/router.rs)
+- [program_accounts.rs](../src/oracle/program_accounts/mod.rs)
+- [state.rs](../../contract/programs/open_parametric/src/state.rs)
 
 ## 1. 응답 구조 한눈에 보기
 
@@ -80,17 +80,17 @@
 
 ### `child_policy_id`
 
-해당 `MasterPolicy` 아래에서의 하위 가입 번호입니다.
+해당 `MasterAgreement` 아래에서의 하위 가입 번호입니다.
 
 - 전역 고유값이라고 보기보다 마스터별 로컬 번호로 이해하는 편이 안전합니다.
-- 서로 다른 `MasterPolicy` 아래에서 같은 숫자가 반복될 수 있습니다.
+- 서로 다른 `MasterAgreement` 아래에서 같은 숫자가 반복될 수 있습니다.
 
 ### `master`
 
-이 가입 건이 속한 상위 `MasterPolicy`의 주소입니다.
+이 가입 건이 속한 상위 `MasterAgreement`의 주소입니다.
 
-- `FlightPolicy -> MasterPolicy` 관계를 연결하는 핵심 필드입니다.
-- 화면에서는 이 값을 `MasterPolicy.pubkey`와 매칭해서 조인합니다.
+- `FlightPolicy -> MasterAgreement` 관계를 연결하는 핵심 필드입니다.
+- 화면에서는 이 값을 `MasterAgreement.pubkey`와 매칭해서 조인합니다.
 
 ### `creator`
 
@@ -131,7 +131,7 @@
 
 실제로 납부된 보험료입니다.
 
-- 일반적으로 `MasterPolicy.premium_per_policy`에서 온 값입니다.
+- 일반적으로 `MasterAgreement.premium_per_policy`에서 온 값입니다.
 - 개별 가입 건 단위의 실제 납부값을 나타냅니다.
 
 ### `delay_minutes`
@@ -153,7 +153,7 @@
 최종 지급액입니다.
 
 - 실제 계산 결과가 저장된 값입니다.
-- 계산 기준표 자체는 `MasterPolicy`의 `payout_delay_*` 값에 있습니다.
+- 계산 기준표 자체는 `MasterAgreement`의 `payout_delay_*` 값에 있습니다.
 
 ### `status`
 
@@ -225,7 +225,7 @@ PDA 생성에 사용된 bump seed 값입니다.
 
 실무에서는 보통 아래 순서로 읽습니다.
 
-1. `master`로 어느 `MasterPolicy` 소속인지 확인
+1. `master`로 어느 `MasterAgreement` 소속인지 확인
 2. `flight_no`, `route`, `departure_ts`로 대상 항공편 확인
 3. `subscriber_ref`로 가입자/외부 시스템 ref 확인
 4. `status_label`, `delay_minutes`, `cancelled`, `payout_amount`로 현재 처리 결과 확인
@@ -234,6 +234,6 @@ PDA 생성에 사용된 bump seed 값입니다.
 ## 6. 주의할 점
 
 - `child_policy_id`는 전역 유일값이라고 가정하면 안 됩니다.
-- `master`와 `MasterPolicy.pubkey`를 기준으로 관계를 복원해야 합니다.
-- `payout_amount`는 결과값이고, 계산 규칙 자체는 `MasterPolicy`를 같이 봐야 완전히 이해됩니다.
+- `master`와 `MasterAgreement.pubkey`를 기준으로 관계를 복원해야 합니다.
+- `payout_amount`는 결과값이고, 계산 규칙 자체는 `MasterAgreement`를 같이 봐야 완전히 이해됩니다.
 - `departure_ts`, `created_at`, `updated_at`는 모두 Unix timestamp이므로 화면 표시 전 변환이 필요합니다.

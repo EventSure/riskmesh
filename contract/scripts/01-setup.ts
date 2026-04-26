@@ -68,7 +68,7 @@ async function main() {
   console.log(".state.json 저장됨");
   console.log("\n다음 단계:");
   console.log("  Track B: yarn demo:2-feed-create  (Switchboard feed 생성)");
-  console.log("  공  통 : yarn demo:3-master-setup  (MasterPolicy 생성 및 활성화)");
+  console.log("  공  통 : yarn demo:3-master-setup  (MasterAgreement 생성 및 활성화)");
 }
 
 main().catch((e) => {

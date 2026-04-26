@@ -4,7 +4,7 @@ import { useProgram } from './useProgram';
 import { sendTx, type TxResult } from '@/lib/tx';
 
 export interface ResolveFlightDelayInput {
-  masterPolicy: PublicKey;
+  masterAgreement: PublicKey;
   flightPolicy: PublicKey;
   delayMinutes: number;
   cancelled: boolean;
@@ -29,7 +29,7 @@ export function useResolveFlightDelay() {
             .resolveFlightDelay(input.delayMinutes, input.cancelled)
             .accounts({
               resolver: wallet.publicKey,
-              masterPolicy: input.masterPolicy,
+              masterAgreement: input.masterAgreement,
               flightPolicy: input.flightPolicy,
             })
             .rpc(),

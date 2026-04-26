@@ -112,8 +112,8 @@ pub async fn run(
             flight.pubkey,
             flight.status
         );
-        let agreement = fetch_master_agreement(client, &flight.master_policy)
-            .with_context(|| format!("MasterAgreement 조회 실패: {}", flight.master_policy))?;
+        let agreement = fetch_master_agreement(client, &flight.master_agreement)
+            .with_context(|| format!("MasterAgreement 조회 실패: {}", flight.master_agreement))?;
         return do_settle(
             config, client, payer,
             &flight.flight_no, &flight.pubkey, &agreement, flight.status,
@@ -142,8 +142,8 @@ pub async fn run(
     );
 
     // 1. Master Agreement 계정 조회 → oracle_feed + 정산 지갑 목록 추출
-    let agreement = fetch_master_agreement(client, &flight.master_policy)
-        .with_context(|| format!("MasterAgreement 조회 실패: {}", flight.master_policy))?;
+    let agreement = fetch_master_agreement(client, &flight.master_agreement)
+        .with_context(|| format!("MasterAgreement 조회 실패: {}", flight.master_agreement))?;
 
     if agreement.oracle_feed == Pubkey::default() {
         tracing::info!(
@@ -281,7 +281,7 @@ fn fetch_master_agreement(
 
 /// Master Agreement 계정 데이터를 역직렬화한다 (borsh 레이아웃).
 ///
-/// MasterPolicy 필드 순서 (state.rs 기준):
+/// MasterAgreement 필드 순서 (state.rs 기준):
 ///   discriminator[8], master_id[8], leader[32], operator[32], currency_mint[32],
 ///   coverage_start_ts[8], coverage_end_ts[8], premium_per_policy[8],
 ///   payout_delay_2h[8], payout_delay_3h[8], payout_delay_4to5h[8],
@@ -359,7 +359,7 @@ fn parse_master_agreement(pubkey: &Pubkey, data: &[u8]) -> Result<MasterAgreemen
 ///
 /// 계정 순서 (check_oracle_and_resolve_flight.rs Accounts 구조체 기준):
 ///   [0] payer        (signer, mut)
-///   [1] master_policy (readonly)
+///   [1] master_agreement (readonly)
 ///   [2] flight_policy (mut)
 ///   [3] oracle_feed   (readonly, CHECK)
 ///   [4] queue         (readonly, CHECK — address = default_queue())
@@ -394,7 +394,7 @@ fn build_check_oracle_and_resolve_flight_ix(
 ///
 /// 계정 순서 (settle_flight_claim.rs Accounts 구조체 기준):
 ///   [0] executor            (signer)
-///   [1] master_policy        (readonly)
+///   [1] master_agreement        (readonly)
 ///   [2] flight_policy        (mut)
 ///   [3] leader_deposit_token (mut)
 ///   [4] reinsurer_pool_token (mut)
@@ -435,7 +435,7 @@ fn build_settle_flight_claim_ix(
 ///
 /// 계정 순서 (settle_flight_no_claim.rs Accounts 구조체 기준):
 ///   [0] executor               (signer)
-///   [1] master_policy           (readonly)
+///   [1] master_agreement           (readonly)
 ///   [2] flight_policy           (mut)
 ///   [3] leader_pool_token       (mut)
 ///   [4] leader_deposit_token    (mut)

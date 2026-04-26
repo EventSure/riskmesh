@@ -8,7 +8,7 @@
  *
  * 사전 조건:
  *   - anchor deploy 완료
- *   - Master Policy가 Active 상태
+ *   - Master Agreement가 Active 상태
  *   - FlightPolicy 계정이 존재해야 함 (create_flight_policy_from_master 완료)
  *
  * 환경변수:
@@ -21,7 +21,7 @@ import { PublicKey } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
 import {
   loadState, kp, makeProgram, saveState,
-  masterPolicyPub, flightPolicyPub,
+  masterAgreementPub, flightPolicyPub,
 } from "./common";
 import { fetchFlightDelay, requireApiKey } from "./lib/flight-api";
 
@@ -37,7 +37,7 @@ async function main() {
   if (!s.masterId || !s.masterPda || !s.flightPolicies?.length) {
     throw new Error(
       ".state.json에 masterId / masterPda / flightPolicies가 없습니다.\n" +
-        "Master Policy와 FlightPolicy를 먼저 생성하세요."
+        "Master Agreement와 FlightPolicy를 먼저 생성하세요."
     );
   }
 
@@ -94,7 +94,7 @@ async function main() {
     .resolveFlightDelay(delayMinutes10, result.cancelled)
     .accountsPartial({
       resolver: leader.publicKey,
-      masterPolicy: masterPda,
+      masterAgreement: masterPda,
       flightPolicy: flightPda,
     })
     .signers([leader])

@@ -11,7 +11,7 @@ use std::{
 pub struct FirebaseConfig {
     pub project_id: String,
     pub firestore_database: String,
-    pub master_policies_collection: String,
+    pub master_agreements_collection: String,
     pub flight_policies_collection: String,
     pub master_policy_display_names_collection: String,
     pub sync_metadata_collection: String,
@@ -28,9 +28,9 @@ impl FirebaseConfig {
             project_id: optional_nonempty_env("FIREBASE_PROJECT_ID")
                 .unwrap_or_else(|| service_account.project_id.clone()),
             firestore_database: optional_env("FIREBASE_DATABASE", "(default)"),
-            master_policies_collection: optional_env(
+            master_agreements_collection: optional_env(
                 "FIREBASE_MASTER_POLICIES_COLLECTION",
-                "master_policies",
+                "master_agreements",
             ),
             flight_policies_collection: optional_env(
                 "FIREBASE_FLIGHT_POLICIES_COLLECTION",
@@ -433,7 +433,7 @@ impl InsuranceRepository for FirebaseRepository {
             let fields = build_master_agreement_fields(config, synced_at, agreement)?;
             let path = format!(
                 "{}/{}",
-                self.client.config().master_policies_collection,
+                self.client.config().master_agreements_collection,
                 agreement.pubkey
             );
             self.client
@@ -471,13 +471,13 @@ impl InsuranceRepository for FirebaseRepository {
     }
 
     async fn list_master_agreements(&self) -> Result<Vec<MasterAgreementInfo>> {
-        self.list_payload_documents(&self.client.config().master_policies_collection)
+        self.list_payload_documents(&self.client.config().master_agreements_collection)
             .await
             .context("Firebase MasterAgreement 목록 조회 실패")
     }
 
     async fn get_master_agreement(&self, pubkey: &str) -> Result<Option<MasterAgreementInfo>> {
-        self.get_payload_document(&self.client.config().master_policies_collection, pubkey)
+        self.get_payload_document(&self.client.config().master_agreements_collection, pubkey)
             .await
             .with_context(|| format!("Firebase MasterAgreement 조회 실패: {pubkey}"))
     }
@@ -552,7 +552,7 @@ fn build_master_agreement_fields(
     let payload = serde_json::to_value(agreement).context("MasterAgreement JSON 직렬화 실패")?;
     Ok(json!({
         // TODO: Firestore field values are consumed outside backend; rename with frontend/data migration work.
-        "kind": { "stringValue": "master_policy" },
+        "kind": { "stringValue": "master_agreement" },
         "pubkey": { "stringValue": agreement.pubkey },
         "leader": { "stringValue": agreement.leader },
         "operator": { "stringValue": agreement.operator },
@@ -596,7 +596,7 @@ fn build_sync_metadata_fields(
         "rpc_url": { "stringValue": config.rpc_url },
         "synced_at": { "integerValue": synced_at.to_string() },
         // TODO: Firestore field names are consumed outside backend; rename with frontend/data migration work.
-        "master_policy_count": { "integerValue": master_agreements.len().to_string() },
+        "master_agreement_count": { "integerValue": master_agreements.len().to_string() },
         "flight_policy_count": { "integerValue": flight_policies.len().to_string() },
     })
 }

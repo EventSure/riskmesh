@@ -14,6 +14,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Build
 anchor build
 
+# After build, sync the IDL to the frontend
+cp target/idl/open_parametric.json ../frontend/src/lib/idl/open_parametric.json
+
 # Run all tests against local validator
 anchor test
 
@@ -43,6 +46,8 @@ cargo run
 RUST_LOG=debug cargo run
 ```
 
+Required env vars: `PROGRAM_ID`, `LEADER_PUBKEY`, `SWITCHBOARD_QUEUE`, `AVIATIONSTACK_API_KEY`. Optional: `DB_BACKEND` (`sqlite`|`firebase`), `DATABASE_PATH`, `WEB_BIND_ADDR` (default: `0.0.0.0:3000`), `ORACLE_CHECK_CRON`, `DB_SYNC_CRON`.
+
 ### Frontend (from `frontend/`)
 
 ```bash
@@ -61,6 +66,9 @@ npm test
 # Watch mode
 npm run test:watch
 
+# Run a single test file
+npx vitest run src/lib/__tests__/pda.test.ts
+
 # Lint / format
 npm run lint
 npm run format
@@ -68,15 +76,17 @@ npm run format
 
 ### Demo Scripts (from `contract/`, against devnet)
 
-```bash
-# Legacy Policy flow (localnet)
-yarn demo:setup && yarn demo:create-policy && yarn demo:open-uw \
-  && yarn demo:accept-shares && yarn demo:activate
+Scripts override cluster to devnet via `ANCHOR_PROVIDER_URL`; `Anchor.toml` defaults to localnet.
 
-# Master/Flight flow (devnet)
-yarn demo:master-setup   # creates MasterPolicy + confirms participants
-yarn demo:flight-create  # issues a FlightPolicy under the master
-yarn demo:settle         # runs resolve + settle after oracle check
+```bash
+yarn demo:1-setup         # mint + airdrop setup
+yarn demo:2-feed-create   # create Switchboard feed
+yarn demo:3-master-setup  # create MasterAgreement + confirm participants
+yarn demo:4-flight-create # issue a FlightPolicy under the master
+yarn demo:5a-resolve      # resolve flight delay (Track A)
+yarn demo:5b-claim        # settle claim (Track B)
+yarn demo:6-settle        # settle no-claim
+yarn demo:manual-list     # list current on-chain accounts
 ```
 
 ## Architecture
@@ -92,83 +102,68 @@ contract/programs/open_parametric/src/
   math.rs                  — tiered_payout, split_by_bps, effective_reinsurer_bps
   instructions/            — one file per instruction (+ *_test.rs unit tests)
 backend/src/
-  main.rs                  — tokio entry; loads config, starts scheduler
+  main.rs                  — tokio entry; loads config, starts scheduler + API server
   config.rs                — Config::from_env() (reads .env)
-  scheduler.rs             — cron job runner (default: every 15 min)
+  scheduler.rs             — two cron jobs: oracle check (default 15 min) + DB sync (30 s)
   oracle/track_a.rs        — AviationStack path: scan FlightPolicy → resolve → settle
-  oracle/track_b.rs        — Switchboard path: scan Policy → check_oracle → approve → settle
+  oracle/track_b.rs        — Switchboard path: scan FlightPolicy → check_oracle → settle
+  api/                     — Axum REST API + SSE server (port 3000)
+  db/                      — SQLite on-chain snapshot cache (InsuranceRepository trait)
+  firebase/                — Firebase Firestore alternative backend
+  events/                  — EventBus for SSE streams to frontend
   solana/client.rs         — RPC wrapper (get_program_accounts, send_tx)
   solana/pda.rs            — PDA derivation helpers
   flight_api.rs            — AviationStack HTTP client
   switchboard.rs           — Switchboard Crossbar fetch helpers
 frontend/src/
-  App.tsx                  — providers tree + routes (/  → LandingPage, /demo → Dashboard)
+  App.tsx                  — providers tree + routes + ChainSyncer component
   store/useProtocolStore.ts — Zustand store; simulation state + onchain sync
   lib/idl/                 — generated Anchor IDL (open_parametric.ts + .json)
-  lib/pda.ts               — client-side PDA derivation helpers (mirrors backend/solana/pda.rs)
-  lib/constants.ts         — PROGRAM_ID, RPC_ENDPOINT, payout defaults
-  hooks/                   — one hook per on-chain instruction (useCreateMasterPolicy, etc.)
+  lib/pda.ts               — client-side PDA derivation (mirrors backend/solana/pda.rs)
+  lib/constants.ts         — PROGRAM_ID, RPC_ENDPOINT, BACKEND_URL, payout defaults
+  hooks/                   — one hook per on-chain instruction (useCreateMasterAgreement, etc.)
+  services/insurerApi.ts   — HTTP client for backend REST API (enroll, fetch policies)
   components/tabs/         — tab-contract, tab-feed, tab-oracle, tab-settlement, tab-inspector
   i18n/locales/            — ko.ts / en.ts (react-i18next)
 ```
 
-### Two Policy Designs
+### On-Chain Design: Master/Flight
 
-**Legacy design** — co-insurance pool with Switchboard oracle (Track B):
-
-| Account | PDA Seeds | Purpose |
-|---|---|---|
-| `Policy` | `["policy", leader, policy_id_le]` | Single insurance product |
-| `Underwriting` | `["underwriting", policy]` | Co-insurance ratios & participant state |
-| `RiskPool` | `["pool", policy]` | Escrowed funds metadata |
-| `Claim` | `["claim", policy, oracle_round_le]` | Oracle-triggered claim |
-| `PolicyholderRegistry` | `["registry", policy]` | Policyholder external refs |
-| vault | ATA of `risk_pool` PDA | SPL token custody |
-
-Policy lifecycle: `Draft → Open → Funded → Active → Claimable → Approved → Settled` (or `Expired`)
-
-**Master/Flight design** — trusted resolver with tiered payouts (Track A):
+The protocol uses a two-level account structure:
 
 | Account | PDA Seeds | Purpose |
 |---|---|---|
-| `MasterPolicy` | `["master_policy", leader, master_id_le]` | Co-insurance agreement + reinsurance terms |
-| `FlightPolicy` | `["flight_policy", master_policy, child_policy_id_le]` | Individual flight issued under a master |
+| `MasterAgreement` | `["master_agreement", leader, master_id_le]` | Co-insurance agreement + reinsurance terms |
+| `FlightPolicy` | `["flight_policy", master_agreement, child_policy_id_le]` | Individual flight issued under a master |
 
-MasterPolicy lifecycle: `Draft → PendingConfirm → Active → Closed/Cancelled`
+MasterAgreement lifecycle: `Draft → PendingConfirm → Active → Closed/Cancelled`
 FlightPolicy lifecycle: `Issued → AwaitingOracle → Claimable/NoClaim → Paid/Expired`
 
 ### Oracle Daemon Tracks
 
 **Track A** (`oracle/track_a.rs`): calls AviationStack API for flight data → sends `resolve_flight_delay` tx (sets delay/cancelled on `FlightPolicy`) → automatically calls `settle_flight_claim` or `settle_flight_no_claim`.
 
-**Track B** (`oracle/track_b.rs`): fetches Switchboard On-Demand update from Crossbar API → sends a 3-instruction transaction: `[Ed25519 ix, verified_update ix, check_oracle_and_create_claim]` → if delay ≥ 120 min, automatically calls `approve_claim` then `settle_claim`.
+**Track B** (`oracle/track_b.rs`): fetches Switchboard On-Demand update from Crossbar API → sends a 3-instruction transaction: `[Ed25519 ix, verified_update ix, check_oracle_and_resolve_flight]` → if delay ≥ 120 min, automatically calls `settle_flight_claim`.
 
-Both tracks run in the same cron cycle via `scheduler::run_oracle_check`.
+Both tracks run in the same cron cycle via `scheduler::run_oracle_check`. A separate `run_db_sync` job snapshots on-chain state to the DB backend every 30 seconds.
 
 ### Instructions & Authorization
 
 | Instruction | Signer | Notes |
 |---|---|---|
-| `create_policy` | Leader | Creates Policy + Underwriting + RiskPool + Registry in one tx |
-| `open_underwriting` | Leader | Policy must be Draft |
-| `accept_share` | Participant | Deposits SPL tokens into vault; ratio_bps > 0 required |
-| `reject_share` | Participant | Validates `insurer == participant.pubkey` |
-| `activate_policy` | Leader | Moves Policy to Active |
-| `check_oracle_and_create_claim` | Anyone | Requires 3 ixs in same tx (Ed25519 + Switchboard + this) |
-| `approve_claim` / `settle_claim` | Leader | Auto-called by Track B daemon |
-| `expire_policy` / `refund_after_expiry` | Anyone / Participant | Time-gated |
-| `create_master_policy` | Leader | Sets tiered payouts + ceded/reins ratios |
+| `create_master_agreement` | Leader | Sets tiered payouts + ceded/reins ratios |
+| `register_participant_wallets` | Leader | Registers token wallet PDAs for all participants |
 | `confirm_master` | Participant or Reinsurer | `role: u8` (0=Participant, 1=Reinsurer) |
 | `activate_master` | Leader | All participants must have confirmed |
 | `create_flight_policy_from_master` | Anyone (operator) | Issues child FlightPolicy |
-| `resolve_flight_delay` | Leader or Operator | Sets delay_minutes + payout tier |
-| `settle_flight_claim` / `settle_flight_no_claim` | Leader or Operator | Auto-called by Track A daemon |
+| `resolve_flight_delay` | Leader or Operator | Track A: sets delay_minutes + triggers settlement |
+| `check_oracle_and_resolve_flight` | Anyone | Track B: requires 3 ixs in same tx (Ed25519 + Switchboard + this) |
+| `settle_flight_claim` | Leader or Operator | Auto-called after delay confirmed |
+| `settle_flight_no_claim` | Leader or Operator | Auto-called when no delay |
 
 ### SPL Token Flow
 
-**Legacy:** participants deposit to vault (ATA of `risk_pool` PDA) on `accept_share`. On `settle_claim`, `risk_pool` PDA signs transfer from vault to `beneficiary_token`. On `refund_after_expiry`, same PDA signs transfer back to participant.
-
-**Master/Flight:** on `settle_flight_claim`, payout is split by `calc_claim_split` (reinsurer effective bps first, remainder by participant share bps), with transfers from each participant's `pool_wallet` and the `reinsurer_pool_wallet` to `leader_deposit_wallet`. On `settle_flight_no_claim`, premiums flow from `leader_deposit_wallet` to each participant's `deposit_wallet`.
+On `settle_flight_claim`, payout is split by `calc_claim_split` (reinsurer effective bps first, remainder by participant share bps), with transfers from each participant's `pool_wallet` and the `reinsurer_pool_wallet` to `leader_deposit_wallet`. On `settle_flight_no_claim`, premiums flow from `leader_deposit_wallet` to each participant's `deposit_wallet`.
 
 ### Math Helpers (`math.rs`)
 
@@ -179,33 +174,43 @@ Both tracks run in the same cron cycle via `scheduler::run_oracle_check`.
 ### Key Constants
 
 ```rust
-DELAY_THRESHOLD_MIN: u16 = 120          // 2 hours
 ORACLE_MAX_STALENESS_SLOTS: u64 = 150   // ~60-90s
-MAX_PARTICIPANTS: usize = 16
-MAX_MASTER_PARTICIPANTS: usize = 8
-MAX_POLICYHOLDERS: usize = 128
-REGISTRY_SPACE: usize = 8192            // constrained by 10240-byte CPI realloc limit
+MAX_MASTER_PARTICIPANTS: usize = 4
+MAX_ROUTE_LEN: usize = 16
+MAX_FLIGHT_NO_LEN: usize = 16
+MAX_SUBSCRIBER_REF_LEN: usize = 64
 ```
 
 Ratios use basis points: 10000 bps = 100%. All participant ratios must sum to exactly 10000 bps.
 
+Frontend key constants (`lib/constants.ts`):
+- `PROGRAM_ID` — deployed program address (devnet: `ETEEEss...`)
+- `CURRENCY_MINT` — SPL token mint used for all premiums and payouts (devnet: `5YsAiRY...`)
+- `BACKEND_URL` — defaults to `http://localhost:3000`; override with `VITE_BACKEND_URL` env var
+
 ### Frontend Architecture
 
-The frontend is a React 19 + Vite + TypeScript SPA, styled with Emotion (`jsxImportSource: '@emotion/react'`, `@emotion/babel-plugin`). The `@` alias resolves to `frontend/src/`.
+The frontend is a React 19 + Vite + TypeScript SPA, styled with Emotion (`jsxImportSource: '@emotion/react'`). The `@` alias resolves to `frontend/src/`.
 
-**Routing:** `BrowserRouter` with `basename="/riskmesh"`. Two pages: `/` (LandingPage) and `/demo` (Dashboard). The Dashboard is a tabbed layout (`tab-contract`, `tab-feed`, `tab-oracle`, `tab-settlement`, `tab-inspector`).
+**Routing:** `BrowserRouter` with `basename="/riskmesh"`. Four pages:
+- `/` → `LandingPage`
+- `/dashboard` → `Dashboard` (wrapped in `Layout`; tabbed: contract, feed, oracle, settlement, inspector)
+- `/portal` → `PortalPage` (operator/insurer portal)
+- `/insurance` → `InsurancePage` (policyholder enrollment flow)
 
 **State:** A single Zustand store (`useProtocolStore`) drives all UI state. It has two modes:
 - `simulation` — all actions are local state mutations; no wallet required
-- `onchain` — actions send real Anchor transactions; `ChainSyncer` component polls `MasterPolicyAccount` and `FlightPolicy` accounts and calls `syncMasterFromChain` / `syncFlightPoliciesFromChain` to update the store
+- `onchain` — actions send real Anchor transactions; `ChainSyncer` component (in `App.tsx`) polls `MasterAgreementAccount` and `FlightPolicy` accounts and calls `syncMasterFromChain` / `syncFlightPoliciesFromChain` to update the store
 
-**On-chain integration:** `useProgram()` constructs an `AnchorProvider` + `Program` from the wallet adapter connection. Each instruction has a dedicated hook in `hooks/` (e.g. `useCreateMasterPolicy`, `useSettleFlight`). The IDL at `lib/idl/open_parametric.json` must be regenerated after `anchor build` (`anchor build` outputs it to `target/idl/`). Client-side PDA derivation is in `lib/pda.ts` — seeds must stay in sync with the on-chain program.
+**On-chain integration:** `useProgram()` constructs an `AnchorProvider` + `Program` from the wallet adapter connection. Each instruction has a dedicated hook in `hooks/`. The IDL at `lib/idl/open_parametric.json` must be copied from `contract/target/idl/` after every `anchor build` — it is not auto-synced. Client-side PDA derivation is in `lib/pda.ts` — seeds must stay in sync with the on-chain program.
+
+**Backend API integration:** `services/insurerApi.ts` calls the Axum REST API (URL from `lib/constants.ts` `BACKEND_URL`). The backend also pushes real-time events via SSE.
 
 **Styling convention:** Use Emotion `styled` components and `p.theme.*` tokens (from `src/styles/theme.ts`). Avoid raw `var(--*)` CSS variables in new code. Common primitives (`Card`, `Button`, `Tag`, `Form`, `SummaryRow`, `Divider`, `Mono`) are exported from `components/common/`.
 
 **i18n:** `react-i18next` with `ko` and `en` locales in `src/i18n/locales/`. Add both locale keys when adding new strings.
 
-**Frontend tests:** Vitest with jsdom. Test files live under `src/**/__tests__/`. Run a single test: `npx vitest run src/lib/__tests__/pda.test.ts`.
+**Frontend tests:** Vitest with jsdom. Test files live under `src/**/__tests__/`.
 
 ### Dependencies
 

@@ -23,11 +23,11 @@ pub struct CheckOracleAndResolveFlight<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     /// oracle_feed 주소와 tiered payout 기준을 제공하는 마스터 계약.
-    pub master_policy: Account<'info, MasterPolicy>,
+    pub master_agreement: Account<'info, MasterAgreement>,
     /// 지연 결과가 기록될 FlightPolicy.
     #[account(mut)]
     pub flight_policy: Account<'info, FlightPolicy>,
-    /// CHECK: master_policy.oracle_feed와 일치 여부를 handler에서 검증
+    /// CHECK: master_agreement.oracle_feed와 일치 여부를 handler에서 검증
     pub oracle_feed: UncheckedAccount<'info>,
     /// CHECK: Switchboard 기본 큐 — address constraint으로 검증됨
     #[account(address = default_queue())]
@@ -38,28 +38,77 @@ pub struct CheckOracleAndResolveFlight<'info> {
     pub instructions: Sysvar<'info, Instructions>,
 }
 
+/// 계정 상태·주소 사전 검증 (QuoteVerifier CPI 이전에 실행).
+pub(crate) fn validate_oracle_context(
+    master_status: u8,
+    oracle_feed_key: Pubkey,
+    stored_oracle_feed: Pubkey,
+    flight_master: Pubkey,
+    master_key: Pubkey,
+    flight_status: u8,
+) -> std::result::Result<(), OpenParamError> {
+    if master_status != MasterAgreementStatus::Active as u8 {
+        return Err(OpenParamError::MasterNotActive);
+    }
+    if oracle_feed_key != stored_oracle_feed {
+        return Err(OpenParamError::InvalidInput);
+    }
+    if flight_master != master_key {
+        return Err(OpenParamError::InvalidInput);
+    }
+    if flight_status != FlightPolicyStatus::AwaitingOracle as u8
+        && flight_status != FlightPolicyStatus::Issued as u8
+    {
+        return Err(OpenParamError::InvalidState);
+    }
+    Ok(())
+}
+
+/// QuoteVerifier CPI 이후 오라클 값 파싱 + payout 계산.
+/// staleness 이중 확인, scale/mantissa 검증, tiered_payout 계산을 수행한다.
+/// 반환: (delay_minutes, payout_amount, new_flight_status)
+pub(crate) fn apply_oracle_reading(
+    mantissa: i128,
+    scale: u32,
+    oracle_slot: u64,
+    current_slot: u64,
+    tiers: TierPayouts,
+) -> std::result::Result<(u16, u64, u8), OpenParamError> {
+    let staleness = current_slot.saturating_sub(oracle_slot);
+    if staleness > ORACLE_MAX_STALENESS_SLOTS {
+        return Err(OpenParamError::OracleStale);
+    }
+    if scale != 0 {
+        return Err(OpenParamError::OracleFormat);
+    }
+    if mantissa < 0 {
+        return Err(OpenParamError::OracleFormat);
+    }
+    if mantissa > u16::MAX as i128 {
+        return Err(OpenParamError::OracleFormat);
+    }
+    let delay_minutes = mantissa as u16;
+    let payout = tiered_payout(delay_minutes, false, tiers);
+    let status = if payout > 0 {
+        FlightPolicyStatus::Claimable as u8
+    } else {
+        FlightPolicyStatus::NoClaim as u8
+    };
+    Ok((delay_minutes, payout, status))
+}
+
 pub fn handler(ctx: Context<CheckOracleAndResolveFlight>) -> Result<()> {
-    let master = &ctx.accounts.master_policy;
+    let master = &ctx.accounts.master_agreement;
     let flight = &mut ctx.accounts.flight_policy;
 
-    // 마스터 Active 상태 확인.
-    require!(
-        master.status == MasterPolicyStatus::Active as u8,
-        OpenParamError::MasterNotActive
-    );
-    // oracle_feed 주소가 마스터에 등록된 것과 일치해야 한다.
-    require!(
-        ctx.accounts.oracle_feed.key() == master.oracle_feed,
-        OpenParamError::InvalidInput
-    );
-    // FlightPolicy가 이 MasterPolicy 소속인지 확인.
-    require!(flight.master == master.key(), OpenParamError::InvalidInput);
-    // oracle 대기 중인 상태만 처리한다.
-    require!(
-        flight.status == FlightPolicyStatus::AwaitingOracle as u8
-            || flight.status == FlightPolicyStatus::Issued as u8,
-        OpenParamError::InvalidState
-    );
+    validate_oracle_context(
+        master.status,
+        ctx.accounts.oracle_feed.key(),
+        master.oracle_feed,
+        flight.master,
+        master.key(),
+        flight.status,
+    )?;
 
     // Switchboard QuoteVerifier: Ed25519(ix[0])와 verified_update(ix[1])를 검증한다.
     let oracle_quote = QuoteVerifier::new()
@@ -71,48 +120,29 @@ pub fn handler(ctx: Context<CheckOracleAndResolveFlight>) -> Result<()> {
         .verify_instruction_at(0)
         .map_err(|_| OpenParamError::OracleStale)?;
 
-    // 슬롯 기준 staleness 이중 확인.
     let current_slot = Clock::get()?.slot;
-    let staleness = current_slot.saturating_sub(oracle_quote.slot());
-    require!(
-        staleness <= ORACLE_MAX_STALENESS_SLOTS,
-        OpenParamError::OracleStale
-    );
 
-    // 피드 값을 파싱한다.
     let feeds = oracle_quote.feeds();
     require!(!feeds.is_empty(), OpenParamError::OracleFormat);
-    let feed = &feeds[0];
+    let decimal_value = feeds[0].value();
 
-    // 오라클 값은 "분 단위 정수"만 허용한다(scale=0, 음수 불가).
-    let decimal_value = feed.value();
-    require!(decimal_value.scale() == 0, OpenParamError::OracleFormat);
-    let mantissa = decimal_value.mantissa();
-    require!(mantissa >= 0, OpenParamError::OracleFormat);
-    require!(mantissa <= u16::MAX as i128, OpenParamError::OracleFormat);
-    let delay_minutes = mantissa as u16;
-
-    // tiered_payout으로 지연 구간별 지급액 계산.
-    // cancelled는 false 고정 — Switchboard 피드는 boolean을 직접 표현할 수 없음.
-    let payout = tiered_payout(
-        delay_minutes,
-        false,
+    let (delay_minutes, payout, status) = apply_oracle_reading(
+        decimal_value.mantissa(),
+        decimal_value.scale(),
+        oracle_quote.slot(),
+        current_slot,
         TierPayouts {
             delay_2h: master.payout_delay_2h,
             delay_3h: master.payout_delay_3h,
             delay_4to5h: master.payout_delay_4to5h,
             delay_6h_or_cancelled: master.payout_delay_6h_or_cancelled,
         },
-    );
+    )?;
 
     flight.delay_minutes = delay_minutes;
     flight.cancelled = false;
     flight.payout_amount = payout;
-    flight.status = if payout > 0 {
-        FlightPolicyStatus::Claimable as u8
-    } else {
-        FlightPolicyStatus::NoClaim as u8
-    };
+    flight.status = status;
     flight.updated_at = Clock::get()?.unix_timestamp;
 
     Ok(())

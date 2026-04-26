@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FLIGHTS, FLIGHT_ROUTES, useProtocolStore } from '@/store/useProtocolStore';
-import { enrollPolicy, fetchActiveMasterPolicies, type EnrollmentResult, type MasterPolicyInfo } from '@/services/insurerApi';
+import { enrollPolicy, fetchActiveMasterAgreements, type EnrollmentResult, type MasterAgreementInfo } from '@/services/insurerApi';
 import { LightFormGroup as FormGroup, LightFormLabel as FormLabel, LightFormInput as FormInput, LightFormSelect as FormSelect } from '@/components/insurance/InsuranceStyles';
 import {
   PageWrap, Header, BrandWrap, BrandIcon, BrandName, BrandSub,
@@ -42,12 +42,12 @@ export function InsurancePage() {
   const [date, setDate] = useState('');
   const [loading, setLoading] = useState(false);
   const [completion, setCompletion] = useState<CompletionData | null>(null);
-  const [masterAgreements, setMasterAgreements] = useState<MasterPolicyInfo[]>([]);
+  const [masterAgreements, setMasterAgreements] = useState<MasterAgreementInfo[]>([]);
   const [selectedMasterPDA, setSelectedMasterPDA] = useState<string>(storedMasterPDA ?? '');
   const formRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    fetchActiveMasterPolicies().then(list => {
+    fetchActiveMasterAgreements().then(list => {
       setMasterAgreements(list);
       if (!selectedMasterPDA && list.length > 0) {
         setSelectedMasterPDA(list[0]!.pubkey);
@@ -85,7 +85,7 @@ export function InsurancePage() {
           premium: result.premium,
         });
         setPageState('complete');
-      } else if (result.error === 'no_master_policy') {
+      } else if (result.error === 'no_master_agreement') {
         alert(t('insurance.error.inactive'));
       } else {
         alert(t('insurance.error.apiFailed'));
@@ -228,13 +228,13 @@ export function InsurancePage() {
 
           {!storedMasterPDA && (
             <FormGroup>
-              <FormLabel>{t('insurance.form.masterPolicy')}</FormLabel>
+              <FormLabel>{t('insurance.form.masterAgreement')}</FormLabel>
               <FormSelect
                 value={selectedMasterPDA}
                 onChange={e => setSelectedMasterPDA(e.target.value)}
               >
                 {masterAgreements.length === 0 && (
-                  <option value="">{t('insurance.form.masterPolicyLoading')}</option>
+                  <option value="">{t('insurance.form.masterAgreementLoading')}</option>
                 )}
                 {masterAgreements.map(p => (
                   <option key={p.pubkey} value={p.pubkey}>

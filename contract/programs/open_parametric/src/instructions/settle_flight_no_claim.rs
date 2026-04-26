@@ -8,7 +8,7 @@ use crate::state::*;
 #[derive(Accounts)]
 pub struct SettleFlightNoClaim<'info> {
     pub executor: Signer<'info>,
-    pub master_policy: Account<'info, MasterPolicy>,
+    pub master_agreement: Account<'info, MasterAgreement>,
     #[account(mut)]
     pub flight_policy: Account<'info, FlightPolicy>,
     #[account(mut)]
@@ -20,47 +20,76 @@ pub struct SettleFlightNoClaim<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn validate_settle_no_claim(
+    master_status: u8,
+    executor: Pubkey,
+    leader: Pubkey,
+    operator: Pubkey,
+    flight_master: Pubkey,
+    master_key: Pubkey,
+    flight_status: u8,
+    premium_distributed: bool,
+    leader_pool_key: Pubkey,
+    stored_pool: Pubkey,
+    pool_owner: Pubkey,
+    leader_deposit_key: Pubkey,
+    stored_deposit: Pubkey,
+    remaining_len: usize,
+    participants_len: usize,
+) -> std::result::Result<(), OpenParamError> {
+    if master_status != MasterAgreementStatus::Active as u8 {
+        return Err(OpenParamError::MasterNotActive);
+    }
+    if executor != leader && executor != operator {
+        return Err(OpenParamError::Unauthorized);
+    }
+    if flight_master != master_key {
+        return Err(OpenParamError::InvalidInput);
+    }
+    if flight_status != FlightPolicyStatus::NoClaim as u8 {
+        return Err(OpenParamError::InvalidState);
+    }
+    if premium_distributed {
+        return Err(OpenParamError::AlreadySettled);
+    }
+    if leader_pool_key != stored_pool {
+        return Err(OpenParamError::InvalidInput);
+    }
+    if pool_owner != master_key {
+        return Err(OpenParamError::InvalidSettlementTarget);
+    }
+    if leader_deposit_key != stored_deposit {
+        return Err(OpenParamError::InvalidInput);
+    }
+    if remaining_len != participants_len {
+        return Err(OpenParamError::InvalidAccountList);
+    }
+    Ok(())
+}
+
 pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightNoClaim<'a>>) -> Result<()> {
-    let master = &ctx.accounts.master_policy;
+    let master = &ctx.accounts.master_agreement;
     let flight = &mut ctx.accounts.flight_policy;
 
     // NoClaim 상태의 child 정책만 프리미엄 정산을 수행한다.
-    require!(
-        master.status == MasterPolicyStatus::Active as u8,
-        OpenParamError::MasterNotActive
-    );
-    require!(
-        ctx.accounts.executor.key() == master.leader
-            || ctx.accounts.executor.key() == master.operator,
-        OpenParamError::Unauthorized
-    );
-    require!(flight.master == master.key(), OpenParamError::InvalidInput);
-    require!(
-        flight.status == FlightPolicyStatus::NoClaim as u8,
-        OpenParamError::InvalidState
-    );
-    require!(!flight.premium_distributed, OpenParamError::AlreadySettled);
-
-    require!(
-        ctx.accounts.leader_pool_token.key() == master.leader_pool_wallet,
-        OpenParamError::InvalidInput
-    );
-    require!(
-        ctx.accounts.leader_pool_token.mint == master.currency_mint,
-        OpenParamError::InvalidInput
-    );
-    require!(
-        ctx.accounts.leader_pool_token.owner == master.key(),
-        OpenParamError::InvalidSettlementTarget
-    );
-    require!(
-        ctx.accounts.leader_deposit_token.key() == master.leader_deposit_wallet,
-        OpenParamError::InvalidInput
-    );
-    require!(
-        ctx.accounts.leader_deposit_token.mint == master.currency_mint,
-        OpenParamError::InvalidInput
-    );
+    validate_settle_no_claim(
+        master.status,
+        ctx.accounts.executor.key(),
+        master.leader,
+        master.operator,
+        flight.master,
+        master.key(),
+        flight.status,
+        flight.premium_distributed,
+        ctx.accounts.leader_pool_token.key(),
+        master.leader_pool_wallet,
+        ctx.accounts.leader_pool_token.owner,
+        ctx.accounts.leader_deposit_token.key(),
+        master.leader_deposit_wallet,
+        ctx.remaining_accounts.len(),
+        master.participants.len(),
+    )?;
 
     if let Some(reinsurer_deposit_wallet) = master.reinsurer_deposit_wallet {
         require!(
@@ -72,11 +101,6 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightNoClaim<'a>>) -> Res
             OpenParamError::InvalidInput
         );
     }
-
-    require!(
-        ctx.remaining_accounts.len() == master.participants.len(),
-        OpenParamError::InvalidAccountList
-    );
 
     let insurer_ratios: Vec<u16> = std::iter::once(master.leader_share_bps)
         .chain(master.participants.iter().map(|p| p.share_bps))
@@ -90,7 +114,7 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightNoClaim<'a>>) -> Res
 
     let seed_master_id = master.master_id.to_le_bytes();
     let seeds = &[
-        b"master_policy".as_ref(),
+        b"master_agreement".as_ref(),
         master.leader.as_ref(),
         seed_master_id.as_ref(),
         &[master.bump],
@@ -104,7 +128,7 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightNoClaim<'a>>) -> Res
             Transfer {
                 from: ctx.accounts.leader_pool_token.to_account_info(),
                 to: ctx.accounts.reinsurer_deposit_token.to_account_info(),
-                authority: ctx.accounts.master_policy.to_account_info(),
+                authority: ctx.accounts.master_agreement.to_account_info(),
             },
             signer,
         );
@@ -119,7 +143,7 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightNoClaim<'a>>) -> Res
             Transfer {
                 from: ctx.accounts.leader_pool_token.to_account_info(),
                 to: ctx.accounts.leader_deposit_token.to_account_info(),
-                authority: ctx.accounts.master_policy.to_account_info(),
+                authority: ctx.accounts.master_agreement.to_account_info(),
             },
             signer,
         );
@@ -149,7 +173,7 @@ pub fn handler<'a>(ctx: Context<'_, '_, 'a, 'a, SettleFlightNoClaim<'a>>) -> Res
             Transfer {
                 from: ctx.accounts.leader_pool_token.to_account_info(),
                 to: deposit_info.to_account_info(),
-                authority: ctx.accounts.master_policy.to_account_info(),
+                authority: ctx.accounts.master_agreement.to_account_info(),
             },
             signer,
         );

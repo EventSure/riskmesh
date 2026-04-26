@@ -4,7 +4,7 @@ use crate::constants::MAX_MASTER_PARTICIPANTS;
 use crate::errors::OpenParamError;
 use crate::state::MasterParticipantInit;
 
-use super::create_master_policy::validate_master_participants;
+use super::create_master_agreement::validate_master_participants;
 
 #[test]
 fn master_participants_require_10000_bps_with_separate_leader_share() {
@@ -100,17 +100,48 @@ fn master_participants_single_participant_plus_leader_is_valid() {
 
 #[test]
 fn master_participants_accept_exactly_max_count() {
-    // 리더 지분 + MAX_MASTER_PARTICIPANTS명이 정확히 10000 bps를 나눠 가지면 유효하다.
+    // 리더 4000 bps + 참여사 합계 6000 bps = 10000이면 유효하다.
     let leader = Pubkey::new_unique();
-    let per_bps = 1_500u16;
+    let participant_total: u16 = 6_000;
+    let per_bps = participant_total / MAX_MASTER_PARTICIPANTS as u16;
     let mut participants: Vec<MasterParticipantInit> = (0..MAX_MASTER_PARTICIPANTS)
         .map(|_| MasterParticipantInit {
             insurer: Pubkey::new_unique(),
             share_bps: per_bps,
         })
         .collect();
-    // 리더 4000bps + 참여사 6000bps.
     let total: u16 = participants.iter().map(|p| p.share_bps).sum();
-    participants[0].share_bps += 6_000u16 - total;
+    participants[0].share_bps += participant_total - total;
     assert!(validate_master_participants(4_000, &participants, leader).is_ok());
+}
+
+#[test]
+fn master_participants_reject_zero_share_bps() {
+    // share_bps=0인 참여사는 지분이 없으므로 InvalidInput.
+    let leader = Pubkey::new_unique();
+    let participants = vec![
+        MasterParticipantInit {
+            insurer: Pubkey::new_unique(),
+            share_bps: 0,
+        },
+        MasterParticipantInit {
+            insurer: Pubkey::new_unique(),
+            share_bps: 10_000,
+        },
+    ];
+    assert!(matches!(
+        validate_master_participants(0, &participants, leader),
+        Err(OpenParamError::InvalidInput)
+    ));
+}
+
+#[test]
+fn master_participants_accept_leader_zero_share_if_total_is_10000() {
+    // 리더 지분이 0이어도 참여사 합계 10000이면 유효하다.
+    let leader = Pubkey::new_unique();
+    let participants = vec![MasterParticipantInit {
+        insurer: Pubkey::new_unique(),
+        share_bps: 10_000,
+    }];
+    assert!(validate_master_participants(0, &participants, leader).is_ok());
 }

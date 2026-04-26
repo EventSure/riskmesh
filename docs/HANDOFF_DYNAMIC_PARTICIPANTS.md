@@ -86,7 +86,7 @@ const REINSURER_COLOR = '#EC4899'; // 핑크
 
 ## 3. 컨트랙트 변경 필요사항
 
-### 3-1. `MasterPolicy` 계정 구조
+### 3-1. `MasterAgreement` 계정 구조
 
 현재 컨트랙트는 participants 배열이 고정 크기(leader + partA + partB = 3)로 설계되어 있습니다.
 
@@ -113,13 +113,13 @@ const REINSURER_COLOR = '#EC4899'; // 핑크
   ```
 - account space 재계산: 참여사 수에 따른 가변 크기 고려
 
-### 3-2. `create_master_policy` instruction
+### 3-2. `create_master_agreement` instruction
 
 ```rust
 // 기존: participants 고정 (partA, partB, reinsurer pubkey 분리)
 // 변경: participants Vec<ParticipantInput> + reinsurer: Option<ReinsurerInput>
 
-pub struct CreateMasterPolicyArgs {
+pub struct CreateMasterAgreementArgs {
     pub master_id: u32,
     pub participants: Vec<ParticipantInput>,  // 최대 4개 (leader 제외)
     pub reinsurer: Option<ReinsurerInput>,
@@ -169,11 +169,11 @@ pool_wallet remaining accounts도 동적으로 전달해야 합니다.
 // 변경: master.participants[1..].iter()로 루프하여 pool_wallet 처리
 ```
 
-### 4-2. API 응답 (`BackendMasterPolicy`)
+### 4-2. API 응답 (`BackendMasterAgreement`)
 
 ```rust
 // 현재
-pub struct BackendMasterPolicy {
+pub struct BackendMasterAgreement {
     pub participants: Vec<ParticipantInfo>,  // 이미 배열 — 길이만 동적화
     // ...
 }

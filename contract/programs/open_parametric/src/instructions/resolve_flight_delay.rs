@@ -7,9 +7,35 @@ use crate::state::*;
 #[derive(Accounts)]
 pub struct ResolveFlightDelay<'info> {
     pub resolver: Signer<'info>,
-    pub master_policy: Account<'info, MasterPolicy>,
+    pub master_agreement: Account<'info, MasterAgreement>,
     #[account(mut)]
     pub flight_policy: Account<'info, FlightPolicy>,
+}
+
+pub(crate) fn validate_resolve_inputs(
+    master_status: u8,
+    resolver: Pubkey,
+    leader: Pubkey,
+    operator: Pubkey,
+    flight_master: Pubkey,
+    master_key: Pubkey,
+    flight_status: u8,
+) -> std::result::Result<(), OpenParamError> {
+    if master_status != MasterAgreementStatus::Active as u8 {
+        return Err(OpenParamError::MasterNotActive);
+    }
+    if resolver != leader && resolver != operator {
+        return Err(OpenParamError::Unauthorized);
+    }
+    if flight_master != master_key {
+        return Err(OpenParamError::InvalidInput);
+    }
+    if flight_status != FlightPolicyStatus::AwaitingOracle as u8
+        && flight_status != FlightPolicyStatus::Issued as u8
+    {
+        return Err(OpenParamError::InvalidState);
+    }
+    Ok(())
 }
 
 pub fn handler(
@@ -17,25 +43,18 @@ pub fn handler(
     delay_minutes: u16,
     cancelled: bool,
 ) -> Result<()> {
-    let master = &ctx.accounts.master_policy;
+    let master = &ctx.accounts.master_agreement;
     let flight = &mut ctx.accounts.flight_policy;
 
-    // 지연 결과 확정은 권한자(leader/operator)만 수행할 수 있다.
-    require!(
-        master.status == MasterPolicyStatus::Active as u8,
-        OpenParamError::MasterNotActive
-    );
-    require!(
-        ctx.accounts.resolver.key() == master.leader
-            || ctx.accounts.resolver.key() == master.operator,
-        OpenParamError::Unauthorized
-    );
-    require!(flight.master == master.key(), OpenParamError::InvalidInput);
-    require!(
-        flight.status == FlightPolicyStatus::AwaitingOracle as u8
-            || flight.status == FlightPolicyStatus::Issued as u8,
-        OpenParamError::InvalidState
-    );
+    validate_resolve_inputs(
+        master.status,
+        ctx.accounts.resolver.key(),
+        master.leader,
+        master.operator,
+        flight.master,
+        master.key(),
+        flight.status,
+    )?;
 
     // 지연 구간별 테이블에 따라 payout을 계산한다.
     let payout = tiered_payout(

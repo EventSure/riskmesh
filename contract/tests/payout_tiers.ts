@@ -40,7 +40,7 @@ describe("payout_tiers", () => {
   const PAYOUT_6H    = 6n * UNIT;
   const PREMIUM      = 1n * UNIT;
 
-  let masterPolicyPda: PublicKey;
+  let masterAgreementPda: PublicKey;
   let leaderDeposit: PublicKey;
   let leaderPool: PublicKey;
   let participantPool: PublicKey;
@@ -65,16 +65,16 @@ describe("payout_tiers", () => {
     const mint = await createMint(connection, payer, payer.publicKey, null, 6);
     const masterId = new anchor.BN(30);
 
-    [masterPolicyPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("master_policy"), payer.publicKey.toBuffer(), masterId.toArrayLike(Buffer, "le", 8)],
+    [masterAgreementPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("master_agreement"), payer.publicKey.toBuffer(), masterId.toArrayLike(Buffer, "le", 8)],
       program.programId
     );
 
     leaderDeposit    = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
-    reinsurerPool    = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
-    reinsurerDeposit = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
-    leaderPool       = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
-    participantPool  = await createAccount(connection, payer, mint, masterPolicyPda, Keypair.generate());
+    reinsurerPool    = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
+    reinsurerDeposit = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
+    leaderPool       = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
+    participantPool  = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
     participantDeposit = await createAccount(connection, payer, mint, participant.publicKey);
 
     // 풀: 6 tiers × 6 USDC = 36 USDC (충분히 적립)
@@ -87,7 +87,7 @@ describe("payout_tiers", () => {
 
     const now = Math.floor(Date.now() / 1000);
     await program.methods
-      .createMasterPolicy({
+      .createMasterAgreement({
         masterId,
         coverageStartTs: new anchor.BN(now - 10),
         coverageEndTs:   new anchor.BN(now + 86400),
@@ -105,7 +105,7 @@ describe("payout_tiers", () => {
       .accountsPartial({
         leader: payer.publicKey, operator: payer.publicKey,
         reinsurer: reinsurer.publicKey, currencyMint: mint,
-        masterPolicy: masterPolicyPda,
+        masterAgreement: masterAgreementPda,
         leaderDepositWallet:    leaderDeposit,
         reinsurerPoolWallet:    reinsurerPool,
         reinsurerDepositWallet: reinsurerDeposit,
@@ -115,16 +115,16 @@ describe("payout_tiers", () => {
 
     await program.methods
       .registerParticipantWallets()
-      .accounts({ insurer: payer.publicKey, masterPolicy: masterPolicyPda, poolWallet: leaderPool, depositWallet: leaderDeposit })
+      .accounts({ insurer: payer.publicKey, masterAgreement: masterAgreementPda, poolWallet: leaderPool, depositWallet: leaderDeposit })
       .rpc();
     await program.methods
       .registerParticipantWallets()
-      .accounts({ insurer: participant.publicKey, masterPolicy: masterPolicyPda, poolWallet: participantPool, depositWallet: participantDeposit })
+      .accounts({ insurer: participant.publicKey, masterAgreement: masterAgreementPda, poolWallet: participantPool, depositWallet: participantDeposit })
       .signers([participant])
       .rpc();
-    await program.methods.confirmMaster(0).accounts({ actor: payer.publicKey, masterPolicy: masterPolicyPda }).rpc();
-    await program.methods.confirmMaster(0).accounts({ actor: participant.publicKey, masterPolicy: masterPolicyPda }).signers([participant]).rpc();
-    await program.methods.activateMaster().accounts({ operator: payer.publicKey, masterPolicy: masterPolicyPda }).rpc();
+    await program.methods.confirmMaster(0).accounts({ actor: payer.publicKey, masterAgreement: masterAgreementPda }).rpc();
+    await program.methods.confirmMaster(0).accounts({ actor: participant.publicKey, masterAgreement: masterAgreementPda }).signers([participant]).rpc();
+    await program.methods.activateMaster().accounts({ operator: payer.publicKey, masterAgreement: masterAgreementPda }).rpc();
   });
 
   /**
@@ -140,7 +140,7 @@ describe("payout_tiers", () => {
   ): Promise<void> {
     const childId = new anchor.BN(nextChildId++);
     const [flightPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("flight_policy"), masterPolicyPda.toBuffer(), childId.toArrayLike(Buffer, "le", 8)],
+      [Buffer.from("flight_policy"), masterAgreementPda.toBuffer(), childId.toArrayLike(Buffer, "le", 8)],
       program.programId
     );
 
@@ -153,7 +153,7 @@ describe("payout_tiers", () => {
         departureTs:    new anchor.BN(Math.floor(Date.now() / 1000) + 600),
       })
       .accountsPartial({
-        creator: payer.publicKey, masterPolicy: masterPolicyPda, flightPolicy: flightPda,
+        creator: payer.publicKey, masterAgreement: masterAgreementPda, flightPolicy: flightPda,
         payerToken, leaderPoolToken: leaderPool,
         tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
       })
@@ -161,7 +161,7 @@ describe("payout_tiers", () => {
 
     await program.methods
       .resolveFlightDelay(delayMinutes, cancelled)
-      .accounts({ resolver: payer.publicKey, masterPolicy: masterPolicyPda, flightPolicy: flightPda })
+      .accounts({ resolver: payer.publicKey, masterAgreement: masterAgreementPda, flightPolicy: flightPda })
       .rpc();
 
     const fp = await program.account.flightPolicy.fetch(flightPda);
@@ -180,7 +180,7 @@ describe("payout_tiers", () => {
     await program.methods
       .settleFlightClaim()
       .accountsPartial({
-        executor: payer.publicKey, masterPolicy: masterPolicyPda, flightPolicy: flightPda,
+        executor: payer.publicKey, masterAgreement: masterAgreementPda, flightPolicy: flightPda,
         leaderDepositToken: leaderDeposit, leaderPoolToken: leaderPool, reinsurerPoolToken: reinsurerPool,
         tokenProgram: TOKEN_PROGRAM_ID,
       })

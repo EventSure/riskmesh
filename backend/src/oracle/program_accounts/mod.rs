@@ -75,8 +75,8 @@ pub fn scan_master_agreements(
     client: &SolanaClient,
     program_id: &Pubkey,
 ) -> Result<Vec<MasterAgreementInfo>> {
-    // TODO: 온체인 Anchor account discriminator는 smart contract와 맞물려 있어 "MasterPolicy"를 유지한다.
-    scan_accounts(client, program_id, "MasterPolicy", parse_master_agreement)
+    // TODO: 온체인 Anchor account discriminator는 smart contract와 맞물려 있어 "MasterAgreement"를 유지한다.
+    scan_accounts(client, program_id, "MasterAgreement", parse_master_agreement)
 }
 
 pub fn fetch_master_agreement(

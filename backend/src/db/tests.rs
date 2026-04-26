@@ -218,7 +218,7 @@ async fn sync_snapshots_writes_legacy_metadata_fields() {
     assert_eq!(metadata["kind"], "policy_sync_metadata");
     assert_eq!(metadata["program_id"], config.program_id.to_string());
     assert_eq!(metadata["rpc_url"], config.rpc_url);
-    assert_eq!(metadata["master_policy_count"], 1);
+    assert_eq!(metadata["master_agreement_count"], 1);
     assert_eq!(metadata["flight_policy_count"], 1);
     assert!(metadata["synced_at"].as_u64().unwrap() > 0);
 

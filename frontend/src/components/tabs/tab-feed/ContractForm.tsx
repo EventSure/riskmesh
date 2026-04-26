@@ -40,15 +40,15 @@ export function ContractForm() {
     const departureTs = Math.floor(new Date(date).getTime() / 1000);
     const masterPK = new PublicKey(masterAgreementPDA);
 
-    // MasterPolicy에서 leader_deposit_wallet, currency_mint를 읽어서 사용
+    // MasterAgreement에서 leader_deposit_wallet, currency_mint를 읽어서 사용
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const masterData = await (program as any).account.masterPolicy.fetch(masterPK);
+    const masterData = await (program as any).account.masterAgreement.fetch(masterPK);
     const leaderPoolToken: PublicKey = masterData.leaderPoolWallet;
     const currencyMint: PublicKey = masterData.currencyMint;
     const walletATA = await getAssociatedTokenAddress(currencyMint, wallet.publicKey);
 
     const result = await createFlightPolicy({
-      masterPolicy: masterPK,
+      masterAgreement: masterPK,
       childPolicyId: childId,
       subscriberRef: name,
       flightNo: flight,

@@ -10,7 +10,7 @@ import { Tag, Mono } from '@/components/common';
 import { useParticipantRole } from '@/hooks/useParticipantRole';
 import { useMyPolicies, type MyPolicySummary } from '@/hooks/useMyPolicies';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { POLICY_STATE_LABELS, PolicyState, MasterPolicyStatus } from '@/lib/idl/open_parametric';
+import { MasterAgreementStatus, POLICY_STATE_LABELS, PolicyState } from '@/lib/idl/open_parametric';
 import { LeaderPortal } from './portal/LeaderPortal';
 import { ParticipantPortal } from './portal/ParticipantPortal';
 import { ReinPortal } from './portal/ReinPortal';
@@ -79,19 +79,19 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<number, string> = {
-  [MasterPolicyStatus.Draft]: 'Draft',
-  [MasterPolicyStatus.PendingConfirm]: 'Pending',
-  [MasterPolicyStatus.Active]: 'Active',
-  [MasterPolicyStatus.Closed]: 'Closed',
-  [MasterPolicyStatus.Cancelled]: 'Cancelled',
+  [MasterAgreementStatus.Draft]: 'Draft',
+  [MasterAgreementStatus.PendingConfirm]: 'Pending',
+  [MasterAgreementStatus.Active]: 'Active',
+  [MasterAgreementStatus.Closed]: 'Closed',
+  [MasterAgreementStatus.Cancelled]: 'Cancelled',
 };
 
 const STATUS_COLORS: Record<number, string> = {
-  [MasterPolicyStatus.Draft]: '#94A3B8',
-  [MasterPolicyStatus.PendingConfirm]: '#F59E0B',
-  [MasterPolicyStatus.Active]: '#22C55E',
-  [MasterPolicyStatus.Closed]: '#64748B',
-  [MasterPolicyStatus.Cancelled]: '#EF4444',
+  [MasterAgreementStatus.Draft]: '#94A3B8',
+  [MasterAgreementStatus.PendingConfirm]: '#F59E0B',
+  [MasterAgreementStatus.Active]: '#22C55E',
+  [MasterAgreementStatus.Closed]: '#64748B',
+  [MasterAgreementStatus.Cancelled]: '#EF4444',
 };
 
 const TRACK_B_STATUS_COLORS: Record<number, string> = {

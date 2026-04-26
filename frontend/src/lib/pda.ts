@@ -3,17 +3,17 @@ import BN from 'bn.js';
 import { PROGRAM_ID } from './constants';
 
 /**
- * Derive PDA for MasterPolicy account.
- * Seeds: ["master_policy", leader, master_id_le]
+ * Derive PDA for MasterAgreement account.
+ * Seeds: ["master_agreement", leader, master_id_le]
  */
-export function getMasterPolicyPDA(
+export function getMasterAgreementPDA(
   leader: PublicKey,
   masterId: BN,
   programId: PublicKey = PROGRAM_ID,
 ): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
     [
-      Buffer.from('master_policy'),
+      Buffer.from('master_agreement'),
       leader.toBuffer(),
       masterId.toArrayLike(Buffer, 'le', 8),
     ],
@@ -23,17 +23,17 @@ export function getMasterPolicyPDA(
 
 /**
  * Derive PDA for FlightPolicy account.
- * Seeds: ["flight_policy", master_policy, child_policy_id_le]
+ * Seeds: ["flight_policy", master_agreement, child_policy_id_le]
  */
 export function getFlightPolicyPDA(
-  masterPolicy: PublicKey,
+  masterAgreement: PublicKey,
   childPolicyId: BN,
   programId: PublicKey = PROGRAM_ID,
 ): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
     [
       Buffer.from('flight_policy'),
-      masterPolicy.toBuffer(),
+      masterAgreement.toBuffer(),
       childPolicyId.toArrayLike(Buffer, 'le', 8),
     ],
     programId,

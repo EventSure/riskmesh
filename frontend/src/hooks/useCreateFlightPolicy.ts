@@ -8,7 +8,7 @@ import { sendTx, type TxResult } from '@/lib/tx';
 import type { CreateFlightPolicyParams } from '@/lib/idl/open_parametric';
 
 export interface CreateFlightPolicyInput {
-  masterPolicy: PublicKey;
+  masterAgreement: PublicKey;
   childPolicyId: number;
   subscriberRef: string;
   flightNo: string;
@@ -31,7 +31,7 @@ export function useCreateFlightPolicy() {
       setLoading(true);
       try {
         const childIdBN = new BN(input.childPolicyId);
-        const [flightPolicyPDA] = getFlightPolicyPDA(input.masterPolicy, childIdBN);
+        const [flightPolicyPDA] = getFlightPolicyPDA(input.masterAgreement, childIdBN);
 
         const params: CreateFlightPolicyParams = {
           childPolicyId: childIdBN,
@@ -48,7 +48,7 @@ export function useCreateFlightPolicy() {
             .createFlightPolicyFromMaster(params)
             .accounts({
               creator: wallet.publicKey,
-              masterPolicy: input.masterPolicy,
+              masterAgreement: input.masterAgreement,
               flightPolicy: flightPolicyPDA,
               payerToken: input.payerToken,
               leaderPoolToken: input.leaderPoolToken,

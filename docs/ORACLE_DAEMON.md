@@ -37,7 +37,7 @@ devnet 스캔 (Issued / AwaitingOracle 상태)
 
 ```
 devnet 스캔 (AwaitingOracle / Claimable / NoClaim 상태)
- → MasterPolicy에서 oracle_feed 추출
+ → MasterAgreement에서 oracle_feed 추출
  → Switchboard Crossbar API에서 오라클 업데이트 수신
  → 3-instruction tx 전송:
     [Ed25519 ix, verified_update ix, check_oracle_and_resolve_flight ix]
@@ -54,7 +54,7 @@ devnet 스캔 (AwaitingOracle / Claimable / NoClaim 상태)
 
 ```
 devnet 전체 스캔 (getProgramAccounts)
- → MasterPolicy + FlightPolicy 파싱
+ → MasterAgreement + FlightPolicy 파싱
  → event_bus.publish_policy_updates() 호출
     - 최초 실행: 스냅샷 초기화만 (SSE 없음)
     - 이후 실행: 이전 스냅샷과 diff → 변경된 계정만 SSE 발화
@@ -66,7 +66,7 @@ devnet 전체 스캔 (getProgramAccounts)
 | 이벤트명 | 트리거 조건 |
 |---|---|
 | `flight_policy_updated` | FlightPolicy 필드가 이전 스냅샷과 다를 때 |
-| `master_policy_updated` | MasterPolicy 필드가 이전 스냅샷과 다를 때 |
+| `master_agreement_updated` | MasterAgreement 필드가 이전 스냅샷과 다를 때 |
 | `heartbeat` | 30초마다 (연결 유지용) |
 
 ---
@@ -103,7 +103,7 @@ oracle_check를 수동으로 호출하는 HTTP 엔드포인트는 없다.
 
 ```bash
 # FlightPolicy 생성 (백엔드 API)
-curl -X POST http://localhost:3000/api/master-policies/<MASTER_PDA>/flight-policies \
+curl -X POST http://localhost:3000/api/master-agreements/<MASTER_PDA>/flight-policies \
   -H "Content-Type: application/json" \
   -d '{"subscriber_ref":"test","flight_no":"KE001","route":"ICN-NRT","departure_ts":1712000000}'
 

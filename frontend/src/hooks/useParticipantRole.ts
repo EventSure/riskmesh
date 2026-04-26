@@ -12,7 +12,7 @@ export interface ParticipantInfo {
   participantIndex: number;
 }
 
-interface BackendMasterPolicy {
+interface BackendMasterAgreement {
   leader: string;
   leader_share_bps: number;
   reinsurer: string | null;
@@ -22,7 +22,7 @@ interface BackendMasterPolicy {
 }
 
 /**
- * Detect all roles the connected wallet holds in a MasterPolicy.
+ * Detect all roles the connected wallet holds in a MasterAgreement.
  * Uses backend API instead of direct RPC.
  */
 export function useParticipantRole(masterAgreementPDA: PublicKey | null) {
@@ -47,9 +47,9 @@ export function useParticipantRole(masterAgreementPDA: PublicKey | null) {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`${BACKEND_URL}/api/master-policies/${pda}`);
+        const res = await fetch(`${BACKEND_URL}/api/master-agreements/${pda}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const account: BackendMasterPolicy = await res.json();
+        const account: BackendMasterAgreement = await res.json();
         const found: ParticipantInfo[] = [];
 
         if (account.leader === walletKey) {

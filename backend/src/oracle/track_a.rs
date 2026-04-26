@@ -25,7 +25,7 @@ use crate::{
 #[derive(Debug)]
 pub struct FlightPolicyInfo {
     pub pubkey: Pubkey,
-    pub master_policy: Pubkey,
+    pub master_agreement: Pubkey,
     pub flight_no: String,
     pub departure_ts: i64,
     pub status: u8,
@@ -84,7 +84,7 @@ pub fn parse_flight_policy(pubkey: &Pubkey, data: &[u8]) -> Result<FlightPolicyI
     let _child_id = read_u64(data, &mut offset)?;
 
     // master (Pubkey, 32 bytes)
-    let master_policy = read_pubkey(data, &mut offset)?;
+    let master_agreement = read_pubkey(data, &mut offset)?;
 
     // creator (Pubkey, 32 bytes)
     let _creator = read_pubkey(data, &mut offset)?;
@@ -118,7 +118,7 @@ pub fn parse_flight_policy(pubkey: &Pubkey, data: &[u8]) -> Result<FlightPolicyI
 
     Ok(FlightPolicyInfo {
         pubkey: *pubkey,
-        master_policy,
+        master_agreement,
         flight_no,
         departure_ts,
         status,
@@ -182,7 +182,7 @@ pub async fn run(
     let ix = build_resolve_flight_delay_ix(
         &config.program_id,
         &leader.pubkey(),
-        &policy.master_policy,
+        &policy.master_agreement,
         &policy.pubkey,
         delay_minutes,
         cancelled,
@@ -206,7 +206,7 @@ pub async fn run(
 fn build_resolve_flight_delay_ix(
     program_id: &Pubkey,
     resolver: &Pubkey,
-    master_policy: &Pubkey,
+    master_agreement: &Pubkey,
     flight_policy: &Pubkey,
     delay_minutes: u16,
     cancelled: bool,
@@ -223,7 +223,7 @@ fn build_resolve_flight_delay_ix(
         program_id: *program_id,
         accounts: vec![
             AccountMeta::new_readonly(*resolver, true),
-            AccountMeta::new_readonly(*master_policy, false),
+            AccountMeta::new_readonly(*master_agreement, false),
             AccountMeta::new(*flight_policy, false),
         ],
         data,

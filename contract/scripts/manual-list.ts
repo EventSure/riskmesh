@@ -1,11 +1,11 @@
 /**
  * yarn demo:manual-list
  *
- * 특정 MasterPolicy에 속한 모든 FlightPolicy를 조회합니다.
+ * 특정 MasterAgreement에 속한 모든 FlightPolicy를 조회합니다.
  * .state.json 없이 온체인에서 직접 읽어옵니다.
  *
  * 환경변수:
- *   MASTER_PDA       MasterPolicy 주소 (필수)
+ *   MASTER_PDA       MasterAgreement 주소 (필수)
  *   KEYPAIR_PATH     키페어 경로 (기본값: ~/.config/solana/riskmesh-leader.json)
  */
 import * as anchor from "@coral-xyz/anchor";
@@ -53,7 +53,7 @@ async function main() {
   ]);
 
   if (allFlights.length === 0) {
-    console.log(`\nMasterPolicy (${masterPda.toBase58().slice(0, 12)}...)에 속한 FlightPolicy가 없습니다.`);
+    console.log(`\nMasterAgreement (${masterPda.toBase58().slice(0, 12)}...)에 속한 FlightPolicy가 없습니다.`);
     return;
   }
 
@@ -62,7 +62,7 @@ async function main() {
     a.account.childPolicyId.toNumber() - b.account.childPolicyId.toNumber()
   );
 
-  console.log(`\n=== FlightPolicy 목록 (MasterPolicy: ${masterPda.toBase58().slice(0, 12)}...) ===\n`);
+  console.log(`\n=== FlightPolicy 목록 (MasterAgreement: ${masterPda.toBase58().slice(0, 12)}...) ===\n`);
   console.log(
     "ID".padStart(4),
     "flightNo".padEnd(10),

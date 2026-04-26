@@ -12,12 +12,12 @@
 
 1. [공통 사항](#공통-사항)
 2. [GET /health](#get-health)
-3. [GET /api/master-policies](#get-apimaster-policies)
-4. [GET /api/master-policies/accounts](#get-apimaster-policiesaccounts)
-5. [GET /api/master-policies/tree](#get-apimaster-policiestree)
-6. [GET /api/master-policies/:master_policy_pubkey](#get-apimaster-policiesmaster_policy_pubkey)
-7. [GET /api/master-policies/:master_policy_pubkey/flight-policies](#get-apimaster-policiesmaster_policy_pubkeyflight-policies)
-8. [POST /api/master-policies/:master_policy_pubkey/flight-policies](#post-apimaster-policiesmaster_policy_pubkeyflight-policies)
+3. [GET /api/master-agreements](#get-apimaster-agreements)
+4. [GET /api/master-agreements/accounts](#get-apimaster-agreementsaccounts)
+5. [GET /api/master-agreements/tree](#get-apimaster-agreementstree)
+6. [GET /api/master-agreements/:master_agreement_pubkey](#get-apimaster-agreementsmaster_agreement_pubkey)
+7. [GET /api/master-agreements/:master_agreement_pubkey/flight-policies](#get-apimaster-agreementsmaster_agreement_pubkeyflight-policies)
+8. [POST /api/master-agreements/:master_agreement_pubkey/flight-policies](#post-apimaster-agreementsmaster_agreement_pubkeyflight-policies)
 9. [GET /api/flight-policies](#get-apiflight-policies)
 10. [GET /api/flight-policies/:flight_policy_pubkey](#get-apiflight-policiesflight_policy_pubkey)
 11. [GET /api/events](#get-apievents)
@@ -45,7 +45,7 @@
 
 ### Status 코드 매핑
 
-**MasterPolicy Status**
+**MasterAgreement Status**
 
 | 값 | 라벨 |
 |---|---|
@@ -98,9 +98,9 @@
 
 ---
 
-## GET /api/master-policies
+## GET /api/master-agreements
 
-Firebase에 저장된 MasterPolicy 목록을 조회합니다. leader 필터링을 지원합니다.
+Firebase에 저장된 MasterAgreement 목록을 조회합니다. leader 필터링을 지원합니다.
 
 ### Query Parameters
 
@@ -112,21 +112,21 @@ Firebase에 저장된 MasterPolicy 목록을 조회합니다. leader 필터링�
 
 ```typescript
 {
-  master_policies: MasterPolicyInfo[]
+  master_agreements: MasterAgreementInfo[]
 }
 ```
 
 ### 예시
 
 ```
-GET /api/master-policies?leader=7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU
+GET /api/master-agreements?leader=7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU
 ```
 
 ---
 
-## GET /api/master-policies/accounts
+## GET /api/master-agreements/accounts
 
-Solana 온체인에서 직접 MasterPolicy 계정의 공개키 목록을 조회합니다. Firebase가 아닌 `getProgramAccounts` RPC를 사용합니다.
+Solana 온체인에서 직접 MasterAgreement 계정의 공개키 목록을 조회합니다. Firebase가 아닌 `getProgramAccounts` RPC를 사용합니다.
 
 ### Parameters
 
@@ -137,8 +137,8 @@ Solana 온체인에서 직접 MasterPolicy 계정의 공개키 목록을 조회�
 ```typescript
 {
   program_id: string,              // 프로그램 ID (Base58)
-  count: number,                   // MasterPolicy 계정 수
-  master_policy_pubkeys: string[]  // MasterPolicy 공개키 목록 (Base58)
+  count: number,                   // MasterAgreement 계정 수
+  master_agreement_pubkeys: string[]  // MasterAgreement 공개키 목록 (Base58)
 }
 ```
 
@@ -148,7 +148,7 @@ Solana 온체인에서 직접 MasterPolicy 계정의 공개키 목록을 조회�
 {
   "program_id": "FKLP2...xxxx",
   "count": 2,
-  "master_policy_pubkeys": [
+  "master_agreement_pubkeys": [
     "8dF3q...",
     "9eG4r..."
   ]
@@ -157,9 +157,9 @@ Solana 온체인에서 직접 MasterPolicy 계정의 공개키 목록을 조회�
 
 ---
 
-## GET /api/master-policies/tree
+## GET /api/master-agreements/tree
 
-전체 MasterPolicy와 하위 FlightPolicy의 트리 구조를 반환합니다. 각 MasterPolicy에 속한 FlightPolicy 공개키 목록이 포함됩니다.
+전체 MasterAgreement와 하위 FlightPolicy의 트리 구조를 반환합니다. 각 MasterAgreement에 속한 FlightPolicy 공개키 목록이 포함됩니다.
 
 ### Parameters
 
@@ -170,16 +170,16 @@ Solana 온체인에서 직접 MasterPolicy 계정의 공개키 목록을 조회�
 ```typescript
 {
   program_id: string,                       // 프로그램 ID (Base58)
-  count: number,                            // MasterPolicy 수
-  master_policies: MasterPolicyAccountTree[]
+  count: number,                            // MasterAgreement 수
+  master_agreements: MasterAgreementAccountTree[]
 }
 ```
 
-**MasterPolicyAccountTree**
+**MasterAgreementAccountTree**
 
 ```typescript
 {
-  master_policy_pubkey: string,      // MasterPolicy 공개키 (Base58)
+  master_agreement_pubkey: string,      // MasterAgreement 공개키 (Base58)
   flight_policy_pubkeys: string[]    // 하위 FlightPolicy 공개키 목록 (Base58)
 }
 ```
@@ -190,9 +190,9 @@ Solana 온체인에서 직접 MasterPolicy 계정의 공개키 목록을 조회�
 {
   "program_id": "FKLP2...xxxx",
   "count": 1,
-  "master_policies": [
+  "master_agreements": [
     {
-      "master_policy_pubkey": "8dF3q...",
+      "master_agreement_pubkey": "8dF3q...",
       "flight_policy_pubkeys": ["Abc12...", "Def34..."]
     }
   ]
@@ -201,45 +201,45 @@ Solana 온체인에서 직접 MasterPolicy 계정의 공개키 목록을 조회�
 
 ---
 
-## GET /api/master-policies/:master_policy_pubkey
+## GET /api/master-agreements/:master_agreement_pubkey
 
-특정 MasterPolicy의 상세 정보를 Firebase에서 조회합니다.
+특정 MasterAgreement의 상세 정보를 Firebase에서 조회합니다.
 
 ### Path Parameters
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `master_policy_pubkey` | `string` | Yes | MasterPolicy 계정의 공개키 (Base58) |
+| `master_agreement_pubkey` | `string` | Yes | MasterAgreement 계정의 공개키 (Base58) |
 
 ### Response `200 OK`
 
-`MasterPolicyInfo` 객체를 반환합니다. (하단 [공통 타입 정의](#공통-타입-정의) 참조)
+`MasterAgreementInfo` 객체를 반환합니다. (하단 [공통 타입 정의](#공통-타입-정의) 참조)
 
 ### Error
 
 | Status | 조건 |
 |---|---|
-| `404` | 해당 공개키의 MasterPolicy가 존재하지 않을 때 |
+| `404` | 해당 공개키의 MasterAgreement가 존재하지 않을 때 |
 | `500` | 공개키 파싱 실패 등 |
 
 ---
 
-## GET /api/master-policies/:master_policy_pubkey/flight-policies
+## GET /api/master-agreements/:master_agreement_pubkey/flight-policies
 
-특정 MasterPolicy에 속한 FlightPolicy 목록을 조회합니다.
+특정 MasterAgreement에 속한 FlightPolicy 목록을 조회합니다.
 
 ### Path Parameters
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `master_policy_pubkey` | `string` | Yes | MasterPolicy 계정의 공개키 (Base58) |
+| `master_agreement_pubkey` | `string` | Yes | MasterAgreement 계정의 공개키 (Base58) |
 
 ### Response `200 OK`
 
 ```typescript
 {
   program_id: string,              // 프로그램 ID (Base58)
-  master_policy_pubkey: string,    // 조회한 MasterPolicy 공개키
+  master_agreement_pubkey: string,    // 조회한 MasterAgreement 공개키
   count: number,                   // 하위 FlightPolicy 수
   flight_policies: FlightPolicyInfo[]
 }
@@ -249,19 +249,19 @@ Solana 온체인에서 직접 MasterPolicy 계정의 공개키 목록을 조회�
 
 | Status | 조건 |
 |---|---|
-| `404` | 해당 MasterPolicy가 존재하지 않을 때 |
+| `404` | 해당 MasterAgreement가 존재하지 않을 때 |
 
 ---
 
-## POST /api/master-policies/:master_policy_pubkey/flight-policies
+## POST /api/master-agreements/:master_agreement_pubkey/flight-policies
 
-특정 MasterPolicy 하위에 새 FlightPolicy를 생성합니다. 온체인 트랜잭션을 전송합니다.
+특정 MasterAgreement 하위에 새 FlightPolicy를 생성합니다. 온체인 트랜잭션을 전송합니다.
 
 ### Path Parameters
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `master_policy_pubkey` | `string` | Yes | MasterPolicy 계정의 공개키 (Base58) |
+| `master_agreement_pubkey` | `string` | Yes | MasterAgreement 계정의 공개키 (Base58) |
 
 ### Request Body (`application/json`)
 
@@ -279,7 +279,7 @@ Solana 온체인에서 직접 MasterPolicy 계정의 공개키 목록을 조회�
 ```typescript
 {
   program_id: string,             // 프로그램 ID (Base58)
-  master_policy_pubkey: string,   // 부모 MasterPolicy 공개키
+  master_agreement_pubkey: string,   // 부모 MasterAgreement 공개키
   child_policy_id: number,        // 자동 부여된 FlightPolicy ID (u64)
   flight_policy_pubkey: string,   // 생성된 FlightPolicy PDA 공개키 (Base58)
   tx_signature: string            // Solana 트랜잭션 서명 (Base58)
@@ -290,7 +290,7 @@ Solana 온체인에서 직접 MasterPolicy 계정의 공개키 목록을 조회�
 
 | Status | 조건 |
 |---|---|
-| `500` | MasterPolicy가 Active 상태가 아닐 때 |
+| `500` | MasterAgreement가 Active 상태가 아닐 때 |
 | `500` | 서버 키가 leader/operator 권한이 없을 때 |
 | `500` | subscriber_ref, flight_no, route가 비어 있을 때 |
 | `500` | 온체인 트랜잭션 실패 시 |
@@ -298,7 +298,7 @@ Solana 온체인에서 직접 MasterPolicy 계정의 공개키 목록을 조회�
 ### 예시
 
 ```bash
-curl -X POST http://localhost:3000/api/master-policies/8dF3q.../flight-policies \
+curl -X POST http://localhost:3000/api/master-agreements/8dF3q.../flight-policies \
   -H "Content-Type: application/json" \
   -d '{
     "subscriber_ref": "user-001",
@@ -312,13 +312,13 @@ curl -X POST http://localhost:3000/api/master-policies/8dF3q.../flight-policies 
 
 ## GET /api/flight-policies
 
-Firebase에 저장된 FlightPolicy 목록을 조회합니다. MasterPolicy 공개키와 상태로 필터링을 지원합니다.
+Firebase에 저장된 FlightPolicy 목록을 조회합니다. MasterAgreement 공개키와 상태로 필터링을 지원합니다.
 
 ### Query Parameters
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `master` | `string` | No | 부모 MasterPolicy 공개키(Base58)로 필터링 |
+| `master` | `string` | No | 부모 MasterAgreement 공개키(Base58)로 필터링 |
 | `status` | `number` (u8) | No | FlightPolicy 상태 코드로 필터링 (0~5) |
 
 ### Response `200 OK`
@@ -367,7 +367,7 @@ SSE (Server-Sent Events) 스트림을 반환합니다. 온체인 계정 상태 �
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `master` | `string` | No | 특정 MasterPolicy 공개키로 이벤트 필터링. 미지정 시 전체 이벤트 수신 |
+| `master` | `string` | No | 특정 MasterAgreement 공개키로 이벤트 필터링. 미지정 시 전체 이벤트 수신 |
 
 ### Response `200 OK` (`text/event-stream`)
 
@@ -377,7 +377,7 @@ Connection은 유지되며, 아래 이벤트가 스트림으로 전송됩니다.
 
 | event | data 형식 | 설명 |
 |---|---|---|
-| `master_policy_updated` | `MasterPolicyInfo` (JSON) | MasterPolicy 계정 상태가 변경됨 |
+| `master_agreement_updated` | `MasterAgreementInfo` (JSON) | MasterAgreement 계정 상태가 변경됨 |
 | `flight_policy_updated` | `FlightPolicyInfo` (JSON) | FlightPolicy 계정 상태가 변경됨 |
 | `heartbeat` | `{"ts": <unix_seconds>}` | 30초 간격 keepalive |
 
@@ -385,7 +385,7 @@ Connection은 유지되며, 아래 이벤트가 스트림으로 전송됩니다.
 
 - `master` 파라미터 지정 시:
   - `flight_policy_updated`: data의 `master` 필드가 필터 값과 일치하는 이벤트만 전송
-  - `master_policy_updated`: data의 `pubkey` 필드가 필터 값과 일치하는 이벤트만 전송
+  - `master_agreement_updated`: data의 `pubkey` 필드가 필터 값과 일치하는 이벤트만 전송
   - 그 외 이벤트: 필터 무시하고 전송
 
 ### 예시
@@ -395,7 +395,7 @@ curl -N "http://localhost:3000/api/events?master=8dF3q..."
 ```
 
 ```
-event: master_policy_updated
+event: master_agreement_updated
 data: {"pubkey":"8dF3q...","master_id":1,"leader":"7xKXtg...","status":2,...}
 
 event: flight_policy_updated
@@ -431,14 +431,14 @@ Firebase Firestore 연결 테스트용 엔드포인트. 테스트 문서를 생�
 
 ## 공통 타입 정의
 
-### MasterPolicyInfo
+### MasterAgreementInfo
 
-MasterPolicy(공동보험 계약) 온체인 계정의 역직렬화된 정보입니다.
+MasterAgreement(공동보험 계약) 온체인 계정의 역직렬화된 정보입니다.
 
 ```typescript
 {
   pubkey: string,                         // 계정 공개키 (Base58)
-  master_id: number,                      // MasterPolicy 고유 ID (u64)
+  master_id: number,                      // MasterAgreement 고유 ID (u64)
   leader: string,                         // leader 지갑 공개키 (Base58)
   operator: string,                       // operator 지갑 공개키 (Base58)
   currency_mint: string,                  // SPL 토큰 민트 주소 (Base58)
@@ -467,7 +467,7 @@ MasterPolicy(공동보험 계약) 온체인 계정의 역직렬화된 정보입�
 
 ### MasterParticipantInfo
 
-MasterPolicy 내 개별 참여자(보험사) 정보입니다.
+MasterAgreement 내 개별 참여자(보험사) 정보입니다.
 
 ```typescript
 {
@@ -486,8 +486,8 @@ FlightPolicy(항공편 보험증권) 온체인 계정의 역직렬화된 정보�
 ```typescript
 {
   pubkey: string,              // 계정 공개키 (Base58)
-  child_policy_id: number,     // MasterPolicy 하위 증권 ID (u64)
-  master: string,              // 부모 MasterPolicy 공개키 (Base58)
+  child_policy_id: number,     // MasterAgreement 하위 증권 ID (u64)
+  master: string,              // 부모 MasterAgreement 공개키 (Base58)
   creator: string,             // 증권 생성자 공개키 (Base58)
   subscriber_ref: string,      // 가입자 참조 ID
   flight_no: string,           // 항공편 번호 (예: "KE123")

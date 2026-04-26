@@ -7,8 +7,8 @@ use crate::math::effective_reinsurer_bps;
 use crate::state::*;
 
 #[derive(Accounts)]
-#[instruction(params: CreateMasterPolicyParams)]
-pub struct CreateMasterPolicy<'info> {
+#[instruction(params: CreateMasterAgreementParams)]
+pub struct CreateMasterAgreement<'info> {
     #[account(mut)]
     pub leader: Signer<'info>,
     /// CHECK: operator can be leader or protocol operator account
@@ -20,10 +20,10 @@ pub struct CreateMasterPolicy<'info> {
         init,
         payer = leader,
         space = MASTER_POLICY_SPACE,
-        seeds = [b"master_policy", leader.key().as_ref(), &params.master_id.to_le_bytes()],
+        seeds = [b"master_agreement", leader.key().as_ref(), &params.master_id.to_le_bytes()],
         bump
     )]
-    pub master_policy: Account<'info, MasterPolicy>,
+    pub master_agreement: Account<'info, MasterAgreement>,
     #[account(mut)]
     pub leader_deposit_wallet: Account<'info, TokenAccount>,
     #[account(mut)]
@@ -33,8 +33,11 @@ pub struct CreateMasterPolicy<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<CreateMasterPolicy>, params: CreateMasterPolicyParams) -> Result<()> {
-    let master = &mut ctx.accounts.master_policy;
+pub fn handler(
+    ctx: Context<CreateMasterAgreement>,
+    params: CreateMasterAgreementParams,
+) -> Result<()> {
+    let master = &mut ctx.accounts.master_agreement;
     let has_reinsurer = params.ceded_ratio_bps > 0;
 
     // 마스터 계약 생성 시점 기본 유효성 검증.
@@ -92,9 +95,9 @@ pub fn handler(ctx: Context<CreateMasterPolicy>, params: CreateMasterPolicyParam
     master.leader_pool_wallet = Pubkey::default();
     master.leader_deposit_wallet = ctx.accounts.leader_deposit_wallet.key();
     master.oracle_feed = params.oracle_feed;
-    master.status = MasterPolicyStatus::PendingConfirm as u8;
+    master.status = MasterAgreementStatus::PendingConfirm as u8;
     master.created_at = Clock::get()?.unix_timestamp;
-    master.bump = ctx.bumps.master_policy;
+    master.bump = ctx.bumps.master_agreement;
     // 참여사 목록은 지분/확인여부/정산지갑 정보를 포함한 내부 구조로 변환한다.
     master.participants = params
         .participants

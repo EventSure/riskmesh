@@ -63,9 +63,9 @@ npx vitest run src/lib/__tests__/tx.test.ts
 
 | 함수 | 검증 항목 |
 |------|----------|
-| `getMasterPolicyPDA` | 결정론적 출력, 다른 masterId→다른 PDA, 다른 leader→다른 PDA, bump 범위(0~255) |
+| `getMasterAgreementPDA` | 결정론적 출력, 다른 masterId→다른 PDA, 다른 leader→다른 PDA, bump 범위(0~255) |
 | `getFlightPolicyPDA` | 결정론적 출력, 다른 childPolicyId→다른 PDA |
-| `getPolicyPDA` | 결정론적 출력, master_policy 시드와 다른 결과 확인 |
+| `getPolicyPDA` | 결정론적 출력, master_agreement 시드와 다른 결과 확인 |
 | `getUnderwritingPDA` | 결정론적 출력, 다른 policy→다른 PDA |
 | `getRiskPoolPDA` | 결정론적 출력, underwriting PDA와 다른 결과 |
 | `getClaimPDA` | 결정론적 출력, 다른 oracleRound→다른 PDA |
@@ -270,5 +270,5 @@ Duration    ~1s
 | 영역 | 이유 |
 |------|------|
 | UI 컴포넌트 렌더링 | 스냅샷/e2e는 별도 도구 필요 |
-| 온체인 훅 (`useProgram`, `useMasterPolicies` 등) | Solana RPC 연결 필요 |
+| 온체인 훅 (`useProgram`, `useMasterAgreements` 등) | Solana RPC 연결 필요 |
 | i18n 번역 문자열 | 번역 내용 변경에 취약, 별도 관리 |

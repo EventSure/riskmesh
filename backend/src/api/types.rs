@@ -10,7 +10,7 @@ pub(super) struct HealthResponse {
 
 #[derive(Serialize)]
 pub(super) struct MasterAgreementsResponse {
-    #[serde(rename = "master_policies")]
+    #[serde(rename = "master_agreements")]
     pub master_agreements: Vec<crate::oracle::program_accounts::MasterAgreementInfo>,
 }
 
@@ -18,8 +18,7 @@ pub(super) struct MasterAgreementsResponse {
 pub(super) struct MasterAgreementAccountsResponse {
     pub program_id: String,
     pub count: usize,
-    // TODO: response field is consumed outside backend; rename with frontend contract update.
-    #[serde(rename = "master_policy_pubkeys")]
+    #[serde(rename = "master_agreement_pubkeys")]
     pub master_agreement_pubkeys: Vec<String>,
 }
 
@@ -32,15 +31,14 @@ pub(super) struct FlightPoliciesResponse {
 pub(super) struct MasterAgreementsTreeResponse {
     pub program_id: String,
     pub count: usize,
-    #[serde(rename = "master_policies")]
+    #[serde(rename = "master_agreements")]
     pub master_agreements: Vec<MasterAgreementAccountTree>,
 }
 
 #[derive(Serialize)]
 pub(super) struct MasterAgreementFlightPoliciesResponse {
     pub program_id: String,
-    // TODO: response field is consumed outside backend; rename with frontend contract update.
-    #[serde(rename = "master_policy_pubkey")]
+    #[serde(rename = "master_agreement_pubkey")]
     pub master_agreement_pubkey: String,
     pub count: usize,
     pub flight_policies: Vec<crate::oracle::program_accounts::FlightPolicyInfo>,
@@ -74,8 +72,7 @@ pub(super) struct PutMasterAgreementDisplayNamesRequest {
 
 #[derive(Serialize)]
 pub(super) struct MasterAgreementAccountTree {
-    // TODO: response field is consumed outside backend; rename with frontend contract update.
-    #[serde(rename = "master_policy_pubkey")]
+    #[serde(rename = "master_agreement_pubkey")]
     pub master_agreement_pubkey: String,
     pub flight_policy_pubkeys: Vec<String>,
 }
@@ -91,8 +88,7 @@ pub(super) struct CreateFlightPolicyRequest {
 #[derive(Serialize)]
 pub(super) struct CreateFlightPolicyResponse {
     pub program_id: String,
-    // TODO: response field is consumed outside backend; rename with frontend contract update.
-    #[serde(rename = "master_policy_pubkey")]
+    #[serde(rename = "master_agreement_pubkey")]
     pub master_agreement_pubkey: String,
     pub child_policy_id: u64,
     pub flight_policy_pubkey: String,

@@ -5,3 +5,4 @@ frontend/package-lock.json
 backend/.env.production
 .omx/
 .worktrees/
+docs/superpowers/
