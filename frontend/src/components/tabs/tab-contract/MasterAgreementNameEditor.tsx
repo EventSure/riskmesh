@@ -17,6 +17,8 @@ export function MasterAgreementNameEditor() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const masterAgreementPDA = useProtocolStore(s => s.masterAgreementPDA);
+  const selectedMasterAgreementName = useProtocolStore(s => s.selectedMasterAgreementName);
+  const setSelectedMasterAgreementName = useProtocolStore(s => s.setSelectedMasterAgreementName);
   const masterAgreementKey = useMemo(
     () => (masterAgreementPDA ? new PublicKey(masterAgreementPDA) : null),
     [masterAgreementPDA],
@@ -27,14 +29,14 @@ export function MasterAgreementNameEditor() {
   const [draftName, setDraftName] = useState('');
 
   useEffect(() => {
-    setDraftName(account?.name ?? '');
-  }, [account?.name]);
+    setDraftName(selectedMasterAgreementName ?? account?.name ?? '');
+  }, [account?.name, selectedMasterAgreementName]);
 
   if (!masterAgreementKey) {
     return null;
   }
 
-  const normalizedCurrentName = account?.name?.trim() ?? '';
+  const normalizedCurrentName = selectedMasterAgreementName?.trim() || account?.name?.trim() || '';
   const normalizedDraftName = draftName.trim();
 
   const handleSave = async () => {
@@ -53,8 +55,11 @@ export function MasterAgreementNameEditor() {
       return;
     }
 
-    await Promise.allSettled([refetchAccount(), refetchPolicies()]);
-    toast(t('master.nameSaved'), 's');
+    setSelectedMasterAgreementName(normalizedDraftName);
+
+    const refreshResults = await Promise.allSettled([refetchAccount(), refetchPolicies()]);
+    const refreshSucceeded = refreshResults.some((refreshResult) => refreshResult.status === 'fulfilled');
+    toast(refreshSucceeded ? t('master.nameSaved') : t('master.nameSavedLocalWarning'), refreshSucceeded ? 's' : 'w');
   };
 
   return (

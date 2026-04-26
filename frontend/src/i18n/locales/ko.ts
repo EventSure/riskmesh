@@ -70,6 +70,7 @@ const ko = {
   'master.nameRequired': '마스터 계약 생성 또는 이름 변경 전에 공식 계약명을 입력하세요',
   'master.nameSave': '이름 저장',
   'master.nameSaved': '마스터 계약명이 업데이트되었습니다',
+  'master.nameSavedLocalWarning': '마스터 계약명은 로컬에 반영되었지만 새로고침 동기화는 아직 지연되고 있습니다',
   'master.noNameFallback': '아직 공식 계약명이 없습니다',
   'master.premiumPerContract': '건당 보험료 (USDC)',
   'master.payoutByTier': '지연 구간별 보험금',

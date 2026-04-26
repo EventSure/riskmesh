@@ -92,6 +92,7 @@ export function MasterAgreementReviewPanel({ selectedStep }: { selectedStep: Mas
     processStep,
     masterActive,
     masterAgreementPDA,
+    selectedMasterAgreementName,
   } = useProtocolStore(useShallow(state => ({
     mode: state.mode,
     coverageStart: state.coverageStart,
@@ -104,6 +105,7 @@ export function MasterAgreementReviewPanel({ selectedStep }: { selectedStep: Mas
     processStep: state.processStep,
     masterActive: state.masterActive,
     masterAgreementPDA: state.masterAgreementPDA,
+    selectedMasterAgreementName: state.selectedMasterAgreementName,
   })));
 
   const shareTotal = leaderShare + participants.reduce((sum, participant) => sum + participant.share, 0);
@@ -143,7 +145,7 @@ export function MasterAgreementReviewPanel({ selectedStep }: { selectedStep: Mas
         <SummaryStack>
           <SummaryRow>
             <SummaryLabel>{t('master.review.name')}</SummaryLabel>
-            <SummaryValue>{account?.name?.trim() || t('master.noNameFallback')}</SummaryValue>
+            <SummaryValue>{account?.name?.trim() || selectedMasterAgreementName?.trim() || t('master.noNameFallback')}</SummaryValue>
           </SummaryRow>
 
           <SummaryRow>

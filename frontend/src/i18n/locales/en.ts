@@ -70,6 +70,7 @@ const en = {
   'master.nameRequired': 'Enter an official name before creating or renaming the master agreement',
   'master.nameSave': 'Save Name',
   'master.nameSaved': 'Master agreement name updated',
+  'master.nameSavedLocalWarning': 'Master agreement name updated locally; refresh is still catching up',
   'master.noNameFallback': 'No official name yet',
   'master.premiumPerContract': 'Premium per Policy (USDC)',
   'master.payoutByTier': 'Payout by Delay Tier',

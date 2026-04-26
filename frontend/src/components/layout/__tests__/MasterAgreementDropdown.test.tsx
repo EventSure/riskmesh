@@ -57,6 +57,22 @@ describe('MasterAgreementDropdown', () => {
     expect(await screen.findByRole('option', { name: /대한-뉴욕 2026 리더 공동계약/ })).toBeInTheDocument();
   });
 
+  it('keeps the optimistic selected name visible while the backend list catches up', async () => {
+    useProtocolStore.setState({
+      masterAgreementPDA: 'FreshCreate1111111111111111111111111111111',
+      selectedMasterAgreementName: '즉시 반영된 신규 공동계약명',
+    });
+    mockUseMasterAgreements.mockReturnValue({
+      loading: false,
+      refetch: vi.fn(),
+      policies: [],
+    });
+
+    renderSubject();
+
+    expect(await screen.findByRole('option', { name: /즉시 반영된 신규 공동계약명/ })).toBeInTheDocument();
+  });
+
   it('syncs the selected operator role into the protocol store', () => {
     mockUseMasterAgreements.mockReturnValue({
       loading: false,

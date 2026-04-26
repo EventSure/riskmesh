@@ -258,6 +258,7 @@ interface ProtocolState {
   // On-chain state
   poolRefreshKey: number;
   masterAgreementPDA: string | null;
+  selectedMasterAgreementName: string | null;
   lastTxSignature: string | null;
   masterAgreements: MasterAgreementSummary[];
   lastDaemonActivityTs: number | null;
@@ -287,9 +288,11 @@ interface ProtocolState {
   addLog: (msg: string, color: string, instruction: string, detail?: string, txSignature?: string) => void;
   applyMasterAgreementDisplayNames: (payload: MasterAgreementDisplayNames) => void;
   setMasterAgreementPDA: (pda: string | null) => void;
+  setSelectedMasterAgreementName: (name: string | null) => void;
   setMasterAgreements: (list: MasterAgreementSummary[]) => void;
   selectMasterAgreement: (pda: string | null) => void;
   onChainSetTerms: (txSignature: string, opts?: {
+    masterAgreementName?: string;
     cededRatioBps?: number;
     reinsCommissionBps?: number;
     premium?: number;
@@ -345,6 +348,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
   // On-chain state
   poolRefreshKey: 0,
   masterAgreementPDA: null,
+  selectedMasterAgreementName: null,
   lastTxSignature: null,
   masterAgreements: [],
   lastDaemonActivityTs: null,
@@ -640,6 +644,8 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
 
   setMasterAgreementPDA: (pda) => set({ masterAgreementPDA: pda }),
 
+  setSelectedMasterAgreementName: (name) => set({ selectedMasterAgreementName: name?.trim() || null }),
+
   setMasterAgreements: (list) => set({ masterAgreements: list }),
 
   selectMasterAgreement: (pda) => {
@@ -657,10 +663,10 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       ...getDefaultMasterTerms(),
     };
     if (pda === null) {
-      set({ masterAgreementPDA: null, displayNamesByWallet: {}, ...resetMirror });
+      set({ masterAgreementPDA: null, selectedMasterAgreementName: null, displayNamesByWallet: {}, ...resetMirror });
       get().addLog('새 마스터계약 생성 모드', '#94A3B8', 'select_master');
     } else {
-      set({ masterAgreementPDA: pda, displayNamesByWallet: {}, ...resetMirror });
+      set({ masterAgreementPDA: pda, selectedMasterAgreementName: null, displayNamesByWallet: {}, ...resetMirror });
       get().addLog(`마스터계약 전환: ${pda.slice(0, 8)}...`, '#9945FF', 'select_master', '체인에서 상태 조회 중...');
     }
   },
@@ -672,6 +678,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     set({
       processStep: 1,
       policyStateIdx: 0,
+      ...(opts?.masterAgreementName != null && { selectedMasterAgreementName: opts.masterAgreementName.trim() || null }),
       ...(opts?.cededRatioBps != null && { cededRatioBps: opts.cededRatioBps }),
       ...(opts?.reinsCommissionBps != null && { reinsCommissionBps: opts.reinsCommissionBps }),
       ...(opts?.premium != null && { premiumPerPolicy: opts.premium }),
@@ -875,6 +882,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       logs: [], logIdCounter: 0,
       masterAgreementPDA: null, lastTxSignature: null,
       kpiSnapshot: null,
+      selectedMasterAgreementName: null,
       displayNamesByWallet: {},
     });
     get().addLog(i18n.t('store.resetMsg'), '#9945FF', 'system_init');
@@ -956,6 +964,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       }),
       ...(data.coverageStartTs && { coverageStart: toDateStr(data.coverageStartTs) }),
       ...(data.coverageEndTs && { coverageEnd: toDateStr(data.coverageEndTs) }),
+      selectedMasterAgreementName: data.name?.trim() || null,
       policyStateIdx: isActive ? 3 : processStep > 0 ? 0 : -1,
     });
   },

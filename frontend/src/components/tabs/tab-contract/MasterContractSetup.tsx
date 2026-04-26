@@ -100,6 +100,7 @@ export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
     setTerms,
     onChainSetTerms,
     setMasterAgreementPDA,
+    setSelectedMasterAgreementName,
     setCoverage,
     setCollateralClaimCount,
   } = store;
@@ -328,7 +329,9 @@ export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
 
       // ── Update store ──
       setMasterAgreementPDA(masterAgreementPDA.toBase58());
+      setSelectedMasterAgreementName(normalizedName);
       onChainSetTerms(sig, {
+        masterAgreementName: normalizedName,
         cededRatioBps: reinsurer.enabled ? 5000 : 0,
         reinsCommissionBps: reinsurer.enabled ? 1000 : 0,
         premium,
