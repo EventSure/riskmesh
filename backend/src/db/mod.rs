@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::{
-    api::repository::{InsuranceRepository, SyncSummary},
+    api::repository::{InsuranceRepository, MasterAgreementDisplayNames, SyncSummary},
     config::Config,
     oracle::program_accounts::{FlightPolicyInfo, MasterAgreementInfo},
 };
@@ -16,6 +16,7 @@ use crate::{
 // TODO: persisted collection names are consumed outside backend; rename with frontend/data migration work.
 const MASTER_POLICIES: &str = "master_policies";
 const FLIGHT_POLICIES: &str = "flight_policies";
+const MASTER_POLICY_DISPLAY_NAMES: &str = "master_policy_display_names";
 const SYNC_METADATA: &str = "sync_metadata";
 
 /// SQLite 기반 InsuranceRepository 구현.
@@ -129,9 +130,7 @@ impl InsuranceRepository for SqliteRepository {
 
         tokio::task::spawn_blocking(move || {
             let mut conn = repo.conn.lock().unwrap();
-            let tx = conn
-                .transaction()
-                .context("스냅샷 트랜잭션 시작 실패")?;
+            let tx = conn.transaction().context("스냅샷 트랜잭션 시작 실패")?;
 
             tx.execute(
                 "DELETE FROM documents WHERE collection IN (?1, ?2)",
@@ -208,6 +207,54 @@ impl InsuranceRepository for SqliteRepository {
         tokio::task::spawn_blocking(move || {
             repo.get_parsed(FLIGHT_POLICIES, &pubkey)
                 .with_context(|| format!("FlightPolicy 조회 실패: {pubkey}"))
+        })
+        .await
+        .context("spawn_blocking 실패")?
+    }
+
+    async fn get_master_agreement_display_names(
+        &self,
+        master_policy_pubkey: &str,
+    ) -> Result<Option<MasterAgreementDisplayNames>> {
+        let repo = self.clone();
+        let master_policy_pubkey = master_policy_pubkey.to_string();
+        tokio::task::spawn_blocking(move || {
+            repo.get_parsed(MASTER_POLICY_DISPLAY_NAMES, &master_policy_pubkey)
+                .with_context(|| {
+                    format!("MasterAgreementDisplayNames 조회 실패: {master_policy_pubkey}")
+                })
+        })
+        .await
+        .context("spawn_blocking 실패")?
+    }
+
+    async fn put_master_agreement_display_names(
+        &self,
+        payload: &MasterAgreementDisplayNames,
+    ) -> Result<()> {
+        let repo = self.clone();
+        let payload = payload.clone();
+        tokio::task::spawn_blocking(move || {
+            let mut conn = repo.conn.lock().unwrap();
+            let tx = conn.transaction().context("표시 이름 트랜잭션 시작 실패")?;
+            let serialized =
+                serde_json::to_string(&payload).context("표시 이름 JSON 직렬화 실패")?;
+
+            upsert_document(
+                &tx,
+                MASTER_POLICY_DISPLAY_NAMES,
+                &payload.master_policy_pubkey,
+                &serialized,
+            )
+            .with_context(|| {
+                format!(
+                    "MasterAgreementDisplayNames 저장 실패: {}",
+                    payload.master_policy_pubkey
+                )
+            })?;
+
+            tx.commit().context("표시 이름 트랜잭션 커밋 실패")?;
+            Ok(())
         })
         .await
         .context("spawn_blocking 실패")?
