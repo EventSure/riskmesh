@@ -318,7 +318,7 @@ export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
             : null,
         });
       } catch {
-        toast('Display names were not saved to backend', 'd');
+        toast('Display names were not saved to backend', 'w');
       }
 
       toast(`Master policy created! TX: ${sig.slice(0, 8)}...`, 's');

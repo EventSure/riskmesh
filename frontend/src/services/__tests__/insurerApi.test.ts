@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { BACKEND_URL } from '@/lib/constants';
 import { putMasterAgreementDisplayNames } from '../insurerApi';
 
 describe('putMasterAgreementDisplayNames', () => {
@@ -14,9 +15,13 @@ describe('putMasterAgreementDisplayNames', () => {
       reinsurer: { wallet: 'wallet-r', displayName: 'Korean Re' },
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/api/master-policies/master-1/display-names'),
-      expect.objectContaining({ method: 'PUT' }),
-    );
+    expect(fetchMock).toHaveBeenCalledWith(`${BACKEND_URL}/api/master-policies/master-1/display-names`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        participants: [{ wallet: 'wallet-1', display_name: 'Samsung Life' }],
+        reinsurer: { wallet: 'wallet-r', display_name: 'Korean Re' },
+      }),
+    });
   });
 });
