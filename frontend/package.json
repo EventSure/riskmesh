@@ -6,10 +6,10 @@
   "scripts": {
     "dev": "vite",
     "dev:stable": "VITE_PROGRAM_STAGE=stable vite",
-    "dev:stage": "VITE_PROGRAM_STAGE=staging vite",
+    "dev:stage": "node scripts/require-staging-program-id.mjs && VITE_PROGRAM_STAGE=staging vite",
     "build": "tsc -b && vite build",
     "build:stable": "VITE_PROGRAM_STAGE=stable npm run build",
-    "build:stage": "VITE_PROGRAM_STAGE=staging npm run build",
+    "build:stage": "node scripts/require-staging-program-id.mjs && VITE_PROGRAM_STAGE=staging npm run build",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
