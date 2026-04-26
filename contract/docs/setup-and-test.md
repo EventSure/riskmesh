@@ -74,7 +74,7 @@ yarn ts-mocha -p ./tsconfig.json -t 1000000 tests/settle_flight_claim.ts
 
 | 번호 | 명령어 | 파일 | 설명 |
 |---|---|---|---|
-| 1 | `demo:1-setup` | `01-setup.ts` | 리더 키페어 + SPL 민트 생성, `.state.json` 초기화 |
+| 1 | `demo:1-setup` | `01-setup.ts` | 리더 키페어 + `.state.json` 초기화 (stable/devnet master mint는 `demo:3-master-setup`에서 approved mint `A6ty...` 사용) |
 | 2 | `demo:2-feed-create` | `02-feed-create.ts` | **Track B 전용** — Switchboard Pull Feed 생성 (1회) |
 | 3 | `demo:3-master-setup` | `03-master-setup.ts` | MasterAgreement 생성·활성화 + 토큰 계정 셋업 |
 | 4 | `demo:4-flight-create` | `04-flight-create.ts` | FlightPolicy 발행 (프리미엄 이체) |
@@ -91,21 +91,26 @@ yarn ts-mocha -p ./tsconfig.json -t 1000000 tests/settle_flight_claim.ts
 ```bash
 cd contract
 
-# 1. 초기 셋업 (리더 키페어·민트 생성, 최초 1회)
+# 1. 초기 셋업 (리더 키페어·.state.json 초기화, 최초 1회)
 yarn demo:1-setup
 
-# 2. MasterAgreement 생성 및 활성화
+# 2. approved mint 테스트 자금 준비
+./scripts/mint-test-token-to-operator.sh
+./scripts/prefund-parties.sh
+
+# 3. MasterAgreement 생성 및 활성화
 #    oracle_feed = PublicKey.default (Track A 전용)
+#    stable/devnet master mint는 고정 approved mint A6ty... 만 허용
 #    이미 MASTER_ID=1 계정이 있으면: MASTER_ID=2 yarn demo:3-master-setup
 yarn demo:3-master-setup
 
-# 3. FlightPolicy 발행
+# 4. FlightPolicy 발행
 FLIGHT_NO=KE017 yarn demo:4-flight-create
 
-# 4. AviationStack API로 지연 데이터 조회 → 온체인 반영
+# 5. AviationStack API로 지연 데이터 조회 → 온체인 반영
 AVIATIONSTACK_API_KEY=<키> FLIGHT_NO=KE017 yarn demo:5a-resolve
 
-# 5. 정산
+# 6. 정산
 yarn demo:6-settle
 ```
 
@@ -116,26 +121,31 @@ yarn demo:6-settle
 ```bash
 cd contract
 
-# 1. 초기 셋업 (최초 1회)
+# 1. 초기 셋업 (리더 키페어·.state.json 초기화, 최초 1회)
 yarn demo:1-setup
 
 # 2. Switchboard Pull Feed 생성 (1회, devnet)
 #    생성된 feedPubkey가 .state.json에 저장됨
 AVIATIONSTACK_API_KEY=<키> FLIGHT_NO=KE017 yarn demo:2-feed-create
 
-# 3. MasterAgreement 생성 및 활성화
+# 3. approved mint 테스트 자금 준비
+./scripts/mint-test-token-to-operator.sh
+./scripts/prefund-parties.sh
+
+# 4. MasterAgreement 생성 및 활성화
 #    oracle_feed = state.json의 feedPubkey (자동으로 읽어 등록)
+#    stable/devnet master mint는 고정 approved mint A6ty... 만 허용
 #    이미 MASTER_ID=1 계정이 있으면: MASTER_ID=2 yarn demo:3-master-setup
 yarn demo:3-master-setup
 
-# 4. FlightPolicy 발행
+# 5. FlightPolicy 발행
 FLIGHT_NO=KE017 yarn demo:4-flight-create
 
-# 5. Switchboard oracle → check_oracle_and_resolve_flight
+# 6. Switchboard oracle → check_oracle_and_resolve_flight
 #    1~2분 대기 후 실행 (oracle 노드 처리 시간)
 yarn demo:5b-claim
 
-# 6. 정산
+# 7. 정산
 yarn demo:6-settle
 ```
 
@@ -185,7 +195,7 @@ solana-keygen new --outfile ~/.config/solana/riskmesh-reinsurer.json --no-passph
 
 ```jsonc
 {
-  "mint": "...",                         // 1-setup이 생성
+  "mint": "A6ty3ZmdzFW9JS92QCc5n7XPUM2cfwKzdnPmyXP2hY8w", // 3-master-setup이 approved mint로 저장/덮어씀
   "leaderKey": [...],                    // 1-setup이 생성
   "feedPubkey": "...",                   // 2-feed-create가 저장 (Track B만) — 온체인 PullFeed 주소
   "feedCid": "bafkrei...",              // 2-feed-create가 저장 (Track B만) — IPFS CID
