@@ -101,11 +101,11 @@ export function useMasterAgreementAccount(masterAgreementPDA: PublicKey | null) 
   const pdaRef = useRef(pdaKey);
   pdaRef.current = pdaKey;
 
-  const fetchAccount = useCallback(async () => {
+  const fetchAccount = useCallback(async (): Promise<boolean> => {
     const pda = pdaRef.current;
     if (!pda) {
       setAccount(null);
-      return;
+      return false;
     }
 
     setLoading(true);
@@ -116,17 +116,19 @@ export function useMasterAgreementAccount(masterAgreementPDA: PublicKey | null) 
         if (pdaRef.current === pda) {
           setAccount(null);
         }
-        return;
+        return false;
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: BackendMasterAgreement = await res.json();
       if (pdaRef.current === pda) {
         setAccount(toMasterAgreementAccount(data));
       }
+      return true;
     } catch (err: unknown) {
       if (pdaRef.current === pda) {
         setError(err instanceof Error ? err.message : String(err));
       }
+      return false;
     } finally {
       if (pdaRef.current === pda) {
         setLoading(false);
@@ -141,7 +143,7 @@ export function useMasterAgreementAccount(masterAgreementPDA: PublicKey | null) 
 
   // Initial fetch
   useEffect(() => {
-    fetchAccount();
+    void fetchAccount();
   }, [fetchAccount]);
 
   // SSE subscription for real-time updates

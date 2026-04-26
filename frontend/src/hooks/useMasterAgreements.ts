@@ -30,10 +30,10 @@ export function useMasterAgreements() {
   const [policies, setPolicies] = useState<MasterAgreementSummary[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchPolicies = useCallback(async () => {
+  const fetchPolicies = useCallback(async (): Promise<boolean> => {
     if (!publicKey) {
       setPolicies([]);
-      return;
+      return false;
     }
 
     setLoading(true);
@@ -56,15 +56,17 @@ export function useMasterAgreements() {
 
       mapped.sort((a, b) => Number(b.masterId) - Number(a.masterId));
       setPolicies(mapped);
+      return true;
     } catch {
       setPolicies([]);
+      return false;
     } finally {
       setLoading(false);
     }
   }, [publicKey]);
 
   useEffect(() => {
-    fetchPolicies();
+    void fetchPolicies();
   }, [fetchPolicies]);
 
   return { policies, loading, refetch: fetchPolicies };

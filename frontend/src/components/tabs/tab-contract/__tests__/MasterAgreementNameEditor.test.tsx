@@ -77,8 +77,8 @@ describe('MasterAgreementNameEditor', () => {
   });
 
   it('updates the visible selected name immediately and warns when refresh reconciliation fails', async () => {
-    mockRefetchAccount.mockRejectedValue(new Error('account refresh failed'));
-    mockRefetchPolicies.mockRejectedValue(new Error('policies refresh failed'));
+    mockRefetchAccount.mockResolvedValue(false);
+    mockRefetchPolicies.mockResolvedValue(true);
 
     renderSubject();
 
