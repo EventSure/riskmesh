@@ -51,18 +51,19 @@ that selection in one place.
 
 ### 왜 별도로 설정하는가?
 
-프론트엔드에서 프로그램 주소를 두 곳에서 사용합니다:
+프론트엔드에서 프로그램 주소를 두 경로에서 참조합니다:
 
 | 위치 | 용도 |
 |------|------|
-| `idl/open_parametric.json` → `address` 필드 | `new Program(idl, provider)` — Anchor Program 인스턴스 생성 |
 | Active program id resolver | `PublicKey.findProgramAddressSync(seeds, programId)` — PDA 파생 |
+| `useProgram()` | env에서 선택된 program id로 IDL `address`를 덮어쓴 뒤 `new Program(...)` 생성 |
 
-**두 값이 다르면:**
-- Program 인스턴스는 프로그램 A를 호출하는데
-- PDA는 프로그램 B 기준으로 파생됨
-- → 모든 PDA 기반 계정(MasterAgreement, FlightPolicy 등)이 불일치
-- → `AccountNotInitialized`, `AccountOwnedByWrongProgram` 등의 에러 발생
+즉, 현재 프런트엔드는 `VITE_PROGRAM_STAGE`, `VITE_PROGRAM_ID`,
+`VITE_STAGING_PROGRAM_ID`에서 선택된 program id 하나를 PDA 파생과 Anchor 호출에
+공통으로 사용합니다.
+
+그래도 IDL 전체 교체는 계속 필요합니다. `address`만의 문제가 아니라 instruction,
+account layout, discriminator가 바뀌면 직렬화/호출 자체가 깨지기 때문입니다.
 
 ## 3. CURRENCY_MINT 설정
 
@@ -195,5 +196,5 @@ requires a separate deploy workflow that aligns the program keypair, `declare_id
 | `AccountOwnedByWrongProgram (3007)` | raw wallet 주소를 SPL token account 자리에 전달 | ATA 주소 사용 확인 |
 | `AccountNotInitialized (3012)` | ATA가 생성되지 않음 | `spl-token create-account` 실행 |
 | `InvalidInput (6010)` | mint 불일치 또는 wallet 미등록 | `CURRENCY_MINT` 확인 |
-| PDA 불일치 | active frontend program id와 `idl.address`가 다름 | `VITE_PROGRAM_STAGE`, `VITE_PROGRAM_ID`, `VITE_STAGING_PROGRAM_ID`를 확인해 현재 선택된 program id가 IDL과 일치하도록 설정 |
+| PDA 불일치 | 선택된 frontend program id와 실제 배포 대상 프로그램이 다름 | `VITE_PROGRAM_STAGE`, `VITE_PROGRAM_ID`, `VITE_STAGING_PROGRAM_ID`를 확인하고 backend/contract deploy 대상과 같은 주소인지 검증 |
 | IDL mismatch | 배포된 프로그램과 IDL 버전 불일치 | `anchor build` 후 IDL 재복사 |
