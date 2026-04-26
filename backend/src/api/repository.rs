@@ -42,7 +42,7 @@ pub(crate) trait InsuranceRepository: Send + Sync {
         master_policy_pubkey: &str,
     ) -> Result<Option<MasterAgreementDisplayNames>> {
         let _ = master_policy_pubkey;
-        Ok(None)
+        anyhow::bail!("display name persistence is not implemented for this repository")
     }
 
     /// Master Agreement 표시 이름 메타데이터를 저장한다.

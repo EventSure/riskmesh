@@ -1,6 +1,9 @@
 use super::*;
 use crate::{
-    api::repository::{InsuranceRepository, MasterAgreementDisplayNames, SyncSummary},
+    api::repository::{
+        display_names::{ParticipantDisplayName, ReinsurerDisplayName},
+        InsuranceRepository, MasterAgreementDisplayNames, SyncSummary,
+    },
     config::{Config, DbBackend},
     oracle::program_accounts::{
         FlightPolicyInfo, MasterAgreementInfo, MasterAgreementParticipantInfo,
@@ -14,6 +17,7 @@ use std::str::FromStr;
 struct MockRepository {
     master_agreements: Vec<MasterAgreementInfo>,
     flight_policies: Vec<FlightPolicyInfo>,
+    display_names: Option<MasterAgreementDisplayNames>,
 }
 
 #[async_trait]
@@ -53,9 +57,13 @@ impl InsuranceRepository for MockRepository {
 
     async fn get_master_agreement_display_names(
         &self,
-        _master_policy_pubkey: &str,
+        master_policy_pubkey: &str,
     ) -> Result<Option<MasterAgreementDisplayNames>> {
-        Ok(None)
+        Ok(self
+            .display_names
+            .as_ref()
+            .filter(|payload| payload.master_policy_pubkey == master_policy_pubkey)
+            .cloned())
     }
 
     async fn put_master_agreement_display_names(
@@ -168,6 +176,24 @@ fn mock_repository() -> MockRepository {
             flight_policy("flight-a2", &agreement_a.pubkey, 2, 2),
             flight_policy("flight-b1", &agreement_b.pubkey, 2, 1),
         ],
+        display_names: None,
+    }
+}
+
+fn mock_repository_with_display_names() -> MockRepository {
+    MockRepository {
+        display_names: Some(MasterAgreementDisplayNames {
+            master_policy_pubkey: "master-1".to_string(),
+            participants: vec![ParticipantDisplayName {
+                wallet: "participant-1".to_string(),
+                display_name: "Participant One".to_string(),
+            }],
+            reinsurer: Some(ReinsurerDisplayName {
+                wallet: "reinsurer-1".to_string(),
+                display_name: "Reinsurer One".to_string(),
+            }),
+        }),
+        ..mock_repository()
     }
 }
 
@@ -266,6 +292,31 @@ async fn get_display_names_returns_empty_payload_when_repository_has_no_metadata
     assert_eq!(response.master_policy_pubkey, "master-1");
     assert!(response.participants.is_empty());
     assert!(response.reinsurer.is_none());
+}
+
+#[tokio::test]
+async fn get_display_names_returns_repository_payload_when_present() {
+    let repository = mock_repository_with_display_names();
+
+    let response = get_master_agreement_display_names(&repository, "master-1")
+        .await
+        .unwrap();
+
+    assert_eq!(response.master_policy_pubkey, "master-1");
+    assert_eq!(
+        response.participants,
+        vec![ParticipantDisplayName {
+            wallet: "participant-1".to_string(),
+            display_name: "Participant One".to_string(),
+        }]
+    );
+    assert_eq!(
+        response.reinsurer,
+        Some(ReinsurerDisplayName {
+            wallet: "reinsurer-1".to_string(),
+            display_name: "Reinsurer One".to_string(),
+        })
+    );
 }
 
 #[tokio::test]
