@@ -7,6 +7,11 @@ use crate::{
     oracle::program_accounts::{FlightPolicyInfo, MasterAgreementInfo},
 };
 
+#[path = "display_names.rs"]
+pub(crate) mod display_names;
+
+pub(crate) use display_names::MasterAgreementDisplayNames;
+
 /// 정책 데이터 저장소 추상화.
 /// Firebase, SQLite 등 백엔드를 갈아끼울 수 있다.
 #[async_trait]
@@ -30,6 +35,24 @@ pub(crate) trait InsuranceRepository: Send + Sync {
 
     /// 단일 FlightPolicy를 조회한다.
     async fn get_flight_policy(&self, pubkey: &str) -> Result<Option<FlightPolicyInfo>>;
+
+    /// Master Agreement 표시 이름 메타데이터를 조회한다.
+    async fn get_master_agreement_display_names(
+        &self,
+        master_policy_pubkey: &str,
+    ) -> Result<Option<MasterAgreementDisplayNames>> {
+        let _ = master_policy_pubkey;
+        Ok(None)
+    }
+
+    /// Master Agreement 표시 이름 메타데이터를 저장한다.
+    async fn put_master_agreement_display_names(
+        &self,
+        payload: &MasterAgreementDisplayNames,
+    ) -> Result<()> {
+        let _ = payload;
+        anyhow::bail!("display name persistence is not implemented for this repository")
+    }
 }
 
 #[derive(Debug, Serialize)]

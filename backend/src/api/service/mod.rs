@@ -18,13 +18,13 @@ use crate::{
 
 use super::{
     client::ProgramClient,
-    repository::InsuranceRepository,
+    repository::{InsuranceRepository, MasterAgreementDisplayNames},
     types::{
         CreateFlightPolicyParamsWire, CreateFlightPolicyRequest, CreateFlightPolicyResponse,
         EventsQuery, FlightPoliciesQuery, FlightPoliciesResponse, HealthResponse,
         MasterAgreementAccountTree, MasterAgreementAccountsResponse,
-        MasterAgreementFlightPoliciesResponse, MasterAgreementsQuery,
-        MasterAgreementsResponse, MasterAgreementsTreeResponse,
+        MasterAgreementFlightPoliciesResponse, MasterAgreementsQuery, MasterAgreementsResponse,
+        MasterAgreementsTreeResponse,
     },
 };
 
@@ -121,6 +121,20 @@ pub(super) async fn get_master_agreement(
         .ok_or_else(|| anyhow::anyhow!("account not found"))?;
 
     Ok(master_agreement)
+}
+
+pub(super) async fn get_master_agreement_display_names(
+    repository: &dyn InsuranceRepository,
+    master_policy_pubkey: &str,
+) -> Result<MasterAgreementDisplayNames> {
+    Ok(repository
+        .get_master_agreement_display_names(master_policy_pubkey)
+        .await?
+        .unwrap_or_else(|| MasterAgreementDisplayNames {
+            master_policy_pubkey: master_policy_pubkey.to_string(),
+            participants: Vec::new(),
+            reinsurer: None,
+        }))
 }
 
 pub(super) async fn create_db_test_document(

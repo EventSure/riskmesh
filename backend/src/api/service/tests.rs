@@ -1,6 +1,6 @@
 use super::*;
 use crate::{
-    api::repository::{InsuranceRepository, SyncSummary},
+    api::repository::{InsuranceRepository, MasterAgreementDisplayNames, SyncSummary},
     config::{Config, DbBackend},
     oracle::program_accounts::{
         FlightPolicyInfo, MasterAgreementInfo, MasterAgreementParticipantInfo,
@@ -49,6 +49,20 @@ impl InsuranceRepository for MockRepository {
             .iter()
             .find(|policy| policy.pubkey == pubkey)
             .cloned())
+    }
+
+    async fn get_master_agreement_display_names(
+        &self,
+        _master_policy_pubkey: &str,
+    ) -> Result<Option<MasterAgreementDisplayNames>> {
+        Ok(None)
+    }
+
+    async fn put_master_agreement_display_names(
+        &self,
+        _payload: &MasterAgreementDisplayNames,
+    ) -> Result<()> {
+        unreachable!("put_master_agreement_display_names is not used in api::service unit tests")
     }
 }
 
@@ -111,12 +125,7 @@ fn master_agreement(
     }
 }
 
-fn flight_policy(
-    pubkey: &str,
-    master: &str,
-    status: u8,
-    child_policy_id: u64,
-) -> FlightPolicyInfo {
+fn flight_policy(pubkey: &str, master: &str, status: u8, child_policy_id: u64) -> FlightPolicyInfo {
     FlightPolicyInfo {
         pubkey: pubkey.to_string(),
         child_policy_id,
@@ -239,9 +248,24 @@ async fn list_flight_policies_filters_by_master_and_status() {
 async fn get_master_agreement_returns_not_found_error_when_missing() {
     let repository = mock_repository();
 
-    let error = get_master_agreement(&repository, "missing").await.unwrap_err();
+    let error = get_master_agreement(&repository, "missing")
+        .await
+        .unwrap_err();
 
     assert!(error.to_string().contains("account not found"));
+}
+
+#[tokio::test]
+async fn get_display_names_returns_empty_payload_when_repository_has_no_metadata() {
+    let repository = mock_repository();
+
+    let response = get_master_agreement_display_names(&repository, "master-1")
+        .await
+        .unwrap();
+
+    assert_eq!(response.master_policy_pubkey, "master-1");
+    assert!(response.participants.is_empty());
+    assert!(response.reinsurer.is_none());
 }
 
 #[tokio::test]
@@ -250,10 +274,9 @@ async fn list_flight_policies_by_master_agreement_filters_children_only() {
     let config = test_config();
     let master_pubkey = Pubkey::from_str("A1111111111111111111111111111111111111111111").unwrap();
 
-    let response =
-        list_flight_policies_by_master_agreement(&repository, &config, &master_pubkey)
-            .await
-            .unwrap();
+    let response = list_flight_policies_by_master_agreement(&repository, &config, &master_pubkey)
+        .await
+        .unwrap();
 
     assert_eq!(response.program_id, config.program_id.to_string());
     assert_eq!(response.master_agreement_pubkey, master_pubkey.to_string());
@@ -294,7 +317,10 @@ fn message_matches_filter_handles_master_and_flight_events() {
         data: r#"{"pubkey":"master-1"}"#.to_string(),
     };
     assert!(message_matches_filter(&agreement_message, Some("master-1")));
-    assert!(!message_matches_filter(&agreement_message, Some("master-2")));
+    assert!(!message_matches_filter(
+        &agreement_message,
+        Some("master-2")
+    ));
 }
 
 #[test]
