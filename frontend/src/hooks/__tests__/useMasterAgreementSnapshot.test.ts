@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest';
 import type { BN } from '@coral-xyz/anchor';
 import type { CollateralStatus } from '@/lib/collateral';
 import type { FlightPolicyAccount, MasterAgreementAccount } from '@/lib/idl/open_parametric';
+import { resolveLeaderLabel } from '../usePoolCollateralStatus';
 import type { FlightPolicyWithKey } from '../useFlightPolicies';
 import { buildMasterAgreementSnapshot } from '../useMasterAgreementSnapshot';
 
@@ -97,6 +98,12 @@ function makeCollateralStatus(): CollateralStatus {
 }
 
 describe('buildMasterAgreementSnapshot', () => {
+  test('prefers selected agreement name for the leader-facing label path', () => {
+    expect(resolveLeaderLabel('  Fresh Named Agreement  ', 'Chain Name', 'Leader')).toBe('Fresh Named Agreement');
+    expect(resolveLeaderLabel('', 'Chain Name', 'Leader')).toBe('Chain Name');
+    expect(resolveLeaderLabel(null, '   ', 'Leader')).toBe('Leader');
+  });
+
   test('derives premium inflow, claim outflow, net balance, and blockers', () => {
     const snapshot = buildMasterAgreementSnapshot(
       makeMasterAgreement(),

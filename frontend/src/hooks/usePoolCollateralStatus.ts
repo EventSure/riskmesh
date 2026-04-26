@@ -27,6 +27,14 @@ function rawMicroUsdcToNumber(amount: { toString(): string }): number {
   return Number(amount.toString()) / 1_000_000;
 }
 
+export function resolveLeaderLabel(
+  selectedMasterAgreementName: string | null | undefined,
+  masterAgreementName: string | null | undefined,
+  fallbackLabel: string,
+): string {
+  return selectedMasterAgreementName?.trim() || masterAgreementName?.trim() || fallbackLabel;
+}
+
 function resolvePartyLabel(
   wallet: PublicKey | null | undefined,
   fallbackLabel: string,
@@ -82,11 +90,17 @@ export function usePoolCollateralStatus(
 ): UsePoolCollateralStatusResult {
   const { connection, wallet } = useProgram();
   const { account: masterData } = useMasterAgreementAccount(masterPDA);
-  const { displayNamesByWallet, participants: storedParticipants, reinsurer: storedReinsurer } = useProtocolStore(
+  const {
+    displayNamesByWallet,
+    participants: storedParticipants,
+    reinsurer: storedReinsurer,
+    selectedMasterAgreementName,
+  } = useProtocolStore(
     useShallow((state) => ({
       displayNamesByWallet: state.displayNamesByWallet,
       participants: state.participants,
       reinsurer: state.reinsurer,
+      selectedMasterAgreementName: state.selectedMasterAgreementName,
     })),
   );
   const [balances, setBalances] = useState<PoolCollateralBalances | null>(null);
@@ -150,7 +164,7 @@ export function usePoolCollateralStatus(
         reinsurerEffectiveBps: masterData.reinsurerEffectiveBps,
         leaderShareBps: masterData.leaderShareBps,
         leader: {
-          label: 'Leader',
+          label: resolveLeaderLabel(selectedMasterAgreementName, masterData.name, 'Leader'),
           confirmed: true,
           balance: safeBalances.leader,
         },
@@ -180,7 +194,7 @@ export function usePoolCollateralStatus(
     } catch {
       return null;
     }
-  }, [balances, displayNamesByWallet, masterData, storedParticipants, storedReinsurer.name]);
+  }, [balances, displayNamesByWallet, masterData, selectedMasterAgreementName, storedParticipants, storedReinsurer.name]);
 
   return { status, activePartyId, masterData };
 }
