@@ -715,6 +715,35 @@ export type OpenParametric = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "updateMasterAgreementName",
+      "discriminator": [
+        214,
+        111,
+        112,
+        115,
+        193,
+        69,
+        193,
+        59
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "signer": true
+        },
+        {
+          "name": "masterAgreement",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "name",
+          "type": "string"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -874,6 +903,10 @@ export type OpenParametric = {
           {
             "name": "masterId",
             "type": "u64"
+          },
+          {
+            "name": "name",
+            "type": "string"
           },
           {
             "name": "coverageStartTs",
@@ -1064,6 +1097,10 @@ export type OpenParametric = {
           {
             "name": "masterId",
             "type": "u64"
+          },
+          {
+            "name": "name",
+            "type": "string"
           },
           {
             "name": "leader",
