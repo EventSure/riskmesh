@@ -12,6 +12,7 @@ import { getMasterPolicyPDA } from '@/lib/pda';
 import { CURRENCY_MINT } from '@/lib/constants';
 import { setPoolWallet } from '@/lib/demo-keypairs';
 import { ConfirmRole } from '@/lib/idl/open_parametric';
+import { putMasterAgreementDisplayNames } from '@/services/insurerApi';
 import { ParticipationStructure } from './ParticipationStructure';
 
 type MasterContractSetupProps = {
@@ -302,6 +303,23 @@ export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
         participants,
         reinsurer,
       });
+
+      try {
+        await putMasterAgreementDisplayNames(masterAgreementPDA.toBase58(), {
+          participants: participants.map((p, i) => ({
+            wallet: participantPubkeys[i]!.toBase58(),
+            displayName: p.name.trim() || `${t('confirm.participant')} ${i + 1}`,
+          })),
+          reinsurer: reinsurer.enabled && reinsurerPubkey
+            ? {
+              wallet: reinsurerPubkey.toBase58(),
+              displayName: (reinsurer.name ?? '').trim() || t('party.reinsurer'),
+            }
+            : null,
+        });
+      } catch {
+        toast('Display names were not saved to backend', 'd');
+      }
 
       toast(`Master policy created! TX: ${sig.slice(0, 8)}...`, 's');
       onTermsSet?.();

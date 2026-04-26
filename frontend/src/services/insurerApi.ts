@@ -34,6 +34,28 @@ export interface MasterPolicyInfo {
   coverage_end_ts: number;
 }
 
+export interface DisplayNamePayload {
+  wallet: string;
+  displayName: string;
+}
+
+export interface MasterAgreementDisplayNamesPayload {
+  participants: DisplayNamePayload[];
+  reinsurer: DisplayNamePayload | null;
+}
+
+interface MasterAgreementDisplayNamesResponse {
+  master_policy_pubkey: string;
+  participants: Array<{
+    wallet: string;
+    display_name: string;
+  }>;
+  reinsurer: {
+    wallet: string;
+    display_name: string;
+  } | null;
+}
+
 export async function fetchActiveMasterPolicies(): Promise<MasterPolicyInfo[]> {
   try {
     const res = await fetch(`${BACKEND_URL}/api/master-policies`);
@@ -43,6 +65,37 @@ export async function fetchActiveMasterPolicies(): Promise<MasterPolicyInfo[]> {
   } catch {
     return [];
   }
+}
+
+export async function putMasterAgreementDisplayNames(
+  masterPolicyPubkey: string,
+  payload: MasterAgreementDisplayNamesPayload,
+): Promise<MasterAgreementDisplayNamesResponse> {
+  const res = await fetch(
+    `${BACKEND_URL}/api/master-policies/${masterPolicyPubkey}/display-names`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        participants: payload.participants.map(participant => ({
+          wallet: participant.wallet,
+          display_name: participant.displayName,
+        })),
+        reinsurer: payload.reinsurer
+          ? {
+            wallet: payload.reinsurer.wallet,
+            display_name: payload.reinsurer.displayName,
+          }
+          : null,
+      }),
+    },
+  );
+
+  if (!res.ok) {
+    throw new Error(await res.text() || 'api_error');
+  }
+
+  return await res.json() as MasterAgreementDisplayNamesResponse;
 }
 
 /* ── Helpers ── */
