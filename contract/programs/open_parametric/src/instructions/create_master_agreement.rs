@@ -1,13 +1,10 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount};
-use std::str::FromStr;
 
 use crate::constants::*;
 use crate::errors::OpenParamError;
 use crate::math::effective_reinsurer_bps;
 use crate::state::*;
-
-const APPROVED_MASTER_CURRENCY_MINT: &str = "A6ty3ZmdzFW9JS92QCc5n7XPUM2cfwKzdnPmyXP2hY8w";
 
 #[derive(Accounts)]
 #[instruction(params: CreateMasterAgreementParams)]
@@ -55,8 +52,7 @@ pub fn handler(
         ctx.accounts.leader.key(),
         params.collateral_claim_count,
     )?;
-    let approved_mint =
-        Pubkey::from_str(APPROVED_MASTER_CURRENCY_MINT).map_err(|_| OpenParamError::InvalidInput)?;
+    let approved_mint = approved_master_currency_mint()?;
     require!(
         ctx.accounts.currency_mint.key() == approved_mint,
         OpenParamError::InvalidInput

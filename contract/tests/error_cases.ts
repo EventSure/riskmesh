@@ -15,6 +15,7 @@ import {
 } from "@solana/spl-token";
 import { OpenParametric } from "../target/types/open_parametric";
 import { strict as assert } from "assert";
+import { ensureApprovedMasterCurrencyMint } from "./helpers/approvedMint";
 
 describe("error_cases", () => {
   const provider = anchor.AnchorProvider.env();
@@ -139,7 +140,7 @@ describe("error_cases", () => {
   }
 
   before(async () => {
-    mint = await createMint(connection, payer, payer.publicKey, null, 6);
+    mint = await ensureApprovedMasterCurrencyMint(connection, payer, payer.publicKey, null, 6);
   });
 
   // ── createMasterAgreement 입력 검증 ─────────────────────────────────────────────

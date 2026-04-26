@@ -20,12 +20,12 @@ import { Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram } from "@solana/web
 import {
   TOKEN_PROGRAM_ID,
   createAccount,
-  createMint,
   getAccount,
   mintTo,
 } from "@solana/spl-token";
 import { OpenParametric } from "../target/types/open_parametric";
 import { strict as assert } from "assert";
+import { ensureApprovedMasterCurrencyMint } from "./helpers/approvedMint";
 
 describe("multiple_flights", () => {
   const provider = anchor.AnchorProvider.env();
@@ -67,7 +67,7 @@ describe("multiple_flights", () => {
     await airdrop(reinsurer.publicKey);
     await airdrop(participantA.publicKey);
 
-    const mint     = await createMint(connection, payer, payer.publicKey, null, 6);
+    const mint     = await ensureApprovedMasterCurrencyMint(connection, payer, payer.publicKey, null, 6);
     const masterId = new anchor.BN(40);
 
     [masterAgreementPda] = PublicKey.findProgramAddressSync(

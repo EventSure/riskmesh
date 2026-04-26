@@ -4,12 +4,12 @@ import { Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram } from "@solana/web
 import {
   TOKEN_PROGRAM_ID,
   createAccount,
-  createMint,
   getAccount,
   mintTo,
 } from "@solana/spl-token";
 import { OpenParametric } from "../target/types/open_parametric";
 import { strict as assert } from "assert";
+import { ensureApprovedMasterCurrencyMint } from "./helpers/approvedMint";
 
 describe("settle_flight_claim", () => {
   const provider = anchor.AnchorProvider.env();
@@ -44,7 +44,7 @@ describe("settle_flight_claim", () => {
     await airdrop(participantA.publicKey);
     await airdrop(participantB.publicKey);
 
-    const mint = await createMint(
+    const mint = await ensureApprovedMasterCurrencyMint(
       connection,
       payer,
       payer.publicKey,
