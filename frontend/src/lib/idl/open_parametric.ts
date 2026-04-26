@@ -83,6 +83,7 @@ export interface MasterParticipant {
 /** Mirrors the runtime Anchor JS camelCase account shape. */
 export interface MasterAgreementAccount {
   masterId: BN;
+  name: string;
   leader: PublicKey;
   operator: PublicKey;
   currencyMint: PublicKey;

@@ -24,6 +24,13 @@ pub mod open_parametric {
         instructions::create_master_agreement::handler(ctx, params)
     }
 
+    pub fn update_master_agreement_name(
+        ctx: Context<UpdateMasterAgreementName>,
+        name: String,
+    ) -> Result<()> {
+        instructions::update_master_agreement_name::handler(ctx, name)
+    }
+
     pub fn register_participant_wallets(ctx: Context<RegisterParticipantWallets>) -> Result<()> {
         instructions::register_participant_wallets::handler(ctx)
     }

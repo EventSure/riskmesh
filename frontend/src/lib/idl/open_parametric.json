@@ -505,6 +505,35 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "update_master_agreement_name",
+      "discriminator": [
+        214,
+        111,
+        112,
+        115,
+        193,
+        69,
+        193,
+        59
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "signer": true
+        },
+        {
+          "name": "master_agreement",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "name",
+          "type": "string"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -666,6 +695,10 @@
             "type": "u64"
           },
           {
+            "name": "name",
+            "type": "string"
+          },
+          {
             "name": "coverage_start_ts",
             "type": "i64"
           },
@@ -806,6 +839,10 @@
           {
             "name": "master_id",
             "type": "u64"
+          },
+          {
+            "name": "name",
+            "type": "string"
           },
           {
             "name": "leader",
