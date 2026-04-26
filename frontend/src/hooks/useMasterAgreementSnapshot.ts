@@ -22,6 +22,8 @@ export interface MasterAgreementSnapshot {
   aggregateReady: boolean;
 }
 
+export type MasterAgreementPolicyStatus = 'loading' | 'error' | 'ready';
+
 function rawMicroUsdcToDisplay(amount: { toString(): string }): number {
   return Number(amount.toString()) / MICRO_USDC_FACTOR;
 }
@@ -69,6 +71,7 @@ export function useMasterAgreementSnapshot(masterPda: PublicKey | null) {
   const { account: masterData, loading: masterLoading, error: masterError } = useMasterAgreementAccount(masterPda);
   const { status, activePartyId } = usePoolCollateralStatus(masterPda);
   const { policies, loading: policiesLoading, error: policiesError } = useFlightPolicies(masterPda);
+  const policyStatus: MasterAgreementPolicyStatus = policiesLoading ? 'loading' : policiesError ? 'error' : 'ready';
 
   const snapshot = useMemo(
     () => buildMasterAgreementSnapshot(masterData, policies, status),
@@ -82,5 +85,6 @@ export function useMasterAgreementSnapshot(masterPda: PublicKey | null) {
     masterData,
     loading: masterLoading || policiesLoading,
     error: masterError ?? policiesError,
+    policyStatus,
   };
 }

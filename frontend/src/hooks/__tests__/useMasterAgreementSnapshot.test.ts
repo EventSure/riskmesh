@@ -1,11 +1,32 @@
-import { PublicKey } from '@solana/web3.js';
-import { describe, expect, test } from 'vitest';
+import { Keypair, PublicKey } from '@solana/web3.js';
+import { renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { BN } from '@coral-xyz/anchor';
 import type { CollateralStatus } from '@/lib/collateral';
 import type { FlightPolicyAccount, MasterAgreementAccount } from '@/lib/idl/open_parametric';
-import { resolveLeaderLabel } from '../usePoolCollateralStatus';
+import { resolveLeaderLabel, resolvePartyLabel } from '../usePoolCollateralStatus';
 import type { FlightPolicyWithKey } from '../useFlightPolicies';
-import { buildMasterAgreementSnapshot } from '../useMasterAgreementSnapshot';
+import { buildMasterAgreementSnapshot, useMasterAgreementSnapshot } from '../useMasterAgreementSnapshot';
+
+const mockUseFlightPolicies = vi.fn();
+const mockUseMasterAgreementAccount = vi.fn();
+const mockUsePoolCollateralStatus = vi.fn();
+
+vi.mock('../useFlightPolicies', () => ({
+  useFlightPolicies: (...args: unknown[]) => mockUseFlightPolicies(...args),
+}));
+
+vi.mock('../useMasterAgreementAccount', () => ({
+  useMasterAgreementAccount: (...args: unknown[]) => mockUseMasterAgreementAccount(...args),
+}));
+
+vi.mock('../usePoolCollateralStatus', async () => {
+  const actual = await vi.importActual<typeof import('../usePoolCollateralStatus')>('../usePoolCollateralStatus');
+  return {
+    ...actual,
+    usePoolCollateralStatus: (...args: unknown[]) => mockUsePoolCollateralStatus(...args),
+  };
+});
 
 function fakeBn(value: number): BN {
   return {
@@ -97,11 +118,40 @@ function makeCollateralStatus(): CollateralStatus {
   };
 }
 
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockUseMasterAgreementAccount.mockReturnValue({
+    account: makeMasterAgreement(),
+    loading: false,
+    error: null,
+  });
+  mockUsePoolCollateralStatus.mockReturnValue({
+    status: makeCollateralStatus(),
+    activePartyId: 'leader',
+    masterData: makeMasterAgreement(),
+  });
+  mockUseFlightPolicies.mockReturnValue({
+    policies: [],
+    loading: false,
+    error: null,
+  });
+});
+
 describe('buildMasterAgreementSnapshot', () => {
   test('prefers selected agreement name for the leader-facing label path', () => {
     expect(resolveLeaderLabel('  Fresh Named Agreement  ', 'Chain Name', 'Leader')).toBe('Fresh Named Agreement');
     expect(resolveLeaderLabel('', 'Chain Name', 'Leader')).toBe('Chain Name');
     expect(resolveLeaderLabel(null, '   ', 'Leader')).toBe('Leader');
+  });
+
+  test('prefers wallet display names, then stored labels, then fallbacks for participants and reinsurers', () => {
+    const wallet = Keypair.generate().publicKey;
+
+    expect(
+      resolvePartyLabel(wallet, 'Participant 1', { [wallet.toBase58()]: '  Hana Fire  ' }, 'Stored Participant'),
+    ).toBe('Hana Fire');
+    expect(resolvePartyLabel(wallet, 'Reinsurer', {}, '  Korean Re  ')).toBe('Korean Re');
+    expect(resolvePartyLabel(null, 'Participant 2', {}, '   ')).toBe('Participant 2');
   });
 
   test('derives premium inflow, claim outflow, net balance, and blockers', () => {
@@ -116,5 +166,26 @@ describe('buildMasterAgreementSnapshot', () => {
     expect(snapshot?.totalClaimOutflow).toBe(8);
     expect(snapshot?.netBalance).toBe(-2);
     expect(snapshot?.blockers).toContain('leader');
+  });
+
+  test('exposes loading, error, and ready policy states separately from snapshot totals', () => {
+    mockUseFlightPolicies.mockReturnValueOnce({
+      policies: [],
+      loading: true,
+      error: null,
+    });
+    const loadingResult = renderHook(() => useMasterAgreementSnapshot(PublicKey.default));
+    expect(loadingResult.result.current.policyStatus).toBe('loading');
+
+    mockUseFlightPolicies.mockReturnValueOnce({
+      policies: [],
+      loading: false,
+      error: 'policy fetch failed',
+    });
+    const errorResult = renderHook(() => useMasterAgreementSnapshot(PublicKey.default));
+    expect(errorResult.result.current.policyStatus).toBe('error');
+
+    const readyResult = renderHook(() => useMasterAgreementSnapshot(PublicKey.default));
+    expect(readyResult.result.current.policyStatus).toBe('ready');
   });
 });

@@ -35,7 +35,7 @@ export function resolveLeaderLabel(
   return selectedMasterAgreementName?.trim() || masterAgreementName?.trim() || fallbackLabel;
 }
 
-function resolvePartyLabel(
+export function resolvePartyLabel(
   wallet: PublicKey | null | undefined,
   fallbackLabel: string,
   displayNamesByWallet: Record<string, string>,

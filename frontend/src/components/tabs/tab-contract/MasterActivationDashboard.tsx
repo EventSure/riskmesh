@@ -3,8 +3,9 @@ import { PublicKey } from '@solana/web3.js';
 import styled from '@emotion/styled';
 import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
-import { Card, CardBody, CardHeader, CardTitle, Tag } from '@/components/common';
+import { Button, Card, CardBody, CardHeader, CardTitle, Tag } from '@/components/common';
 import { PoolHealthVisual } from '@/components/tabs/shared/PoolHealthVisual';
+import { useMasterAgreementActivation } from '@/hooks/useMasterAgreementActivation';
 import { useMasterAgreementSnapshot } from '@/hooks/useMasterAgreementSnapshot';
 import { formatNum, useProtocolStore } from '@/store/useProtocolStore';
 
@@ -111,21 +112,29 @@ const MoneyValue = styled.span<{ tone?: 'default' | 'danger' | 'accent' }>`
   }};
 `;
 
+const ActionStack = styled.div`
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+`;
+
 function formatUsdc(value: number | null | undefined): string {
   return value == null ? '—' : `${formatNum(value, 2)} USDC`;
 }
 
 export function MasterActivationDashboard() {
   const { t } = useTranslation();
-  const { masterAgreementPDA, selectedMasterAgreementName } = useProtocolStore(useShallow((state) => ({
+  const { masterAgreementPDA, masterActive, selectedMasterAgreementName } = useProtocolStore(useShallow((state) => ({
     masterAgreementPDA: state.masterAgreementPDA,
+    masterActive: state.masterActive,
     selectedMasterAgreementName: state.selectedMasterAgreementName,
   })));
   const masterAgreementKey = useMemo(
     () => (masterAgreementPDA ? new PublicKey(masterAgreementPDA) : null),
     [masterAgreementPDA],
   );
-  const { snapshot, status, activePartyId, masterData, loading, error } = useMasterAgreementSnapshot(masterAgreementKey);
+  const { snapshot, status, activePartyId, masterData, loading, error, policyStatus } = useMasterAgreementSnapshot(masterAgreementKey);
+  const { activateLoading, canActivate, handleActivate } = useMasterAgreementActivation();
 
   const agreementName =
     snapshot?.agreementName ||
@@ -135,6 +144,8 @@ export function MasterActivationDashboard() {
   const readinessTag = snapshot?.aggregateReady ? t('pool.healthAggregateReady') : t('pool.healthAggregateActionNeeded');
   const readinessVariant = snapshot?.aggregateReady ? 'accent' : 'warning';
   const emptyMessage = loading ? t('master.loading') : error || t('master.step3.empty');
+  const moneyMessage = policyStatus === 'loading' ? t('master.loading') : policyStatus === 'error' ? error || t('master.step3.empty') : emptyMessage;
+  const showMoneySnapshot = policyStatus === 'ready' && !!snapshot;
 
   return (
     <DashboardStack data-testid="master-activation-dashboard">
@@ -175,6 +186,20 @@ export function MasterActivationDashboard() {
           ) : null}
 
           {!snapshot && <BlockerNote>{emptyMessage}</BlockerNote>}
+
+          {!masterActive && (
+            <ActionStack>
+              <Button
+                variant="accent"
+                fullWidth
+                onClick={() => void handleActivate()}
+                disabled={!canActivate || activateLoading}
+                data-testid="master-activation-cta"
+              >
+                {activateLoading ? 'Sending TX...' : t('confirm.activateBtn')}
+              </Button>
+            </ActionStack>
+          )}
         </CardBody>
       </Card>
 
@@ -196,7 +221,7 @@ export function MasterActivationDashboard() {
           <CardTitle>{t('master.step3.moneyTitle')}</CardTitle>
         </CardHeader>
         <CardBody>
-          {snapshot ? (
+          {showMoneySnapshot ? (
             <MoneyStack>
               <MoneyRow>
                 <MoneyLabel>{t('master.step3.totalPremiumInflow')}</MoneyLabel>
@@ -214,7 +239,7 @@ export function MasterActivationDashboard() {
               </MoneyRow>
             </MoneyStack>
           ) : (
-            <EmptyState>{emptyMessage}</EmptyState>
+            <EmptyState>{moneyMessage}</EmptyState>
           )}
         </CardBody>
       </Card>

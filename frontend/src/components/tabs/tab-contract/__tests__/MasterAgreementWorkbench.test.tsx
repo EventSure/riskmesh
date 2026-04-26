@@ -17,6 +17,10 @@ vi.mock('../ParticipantConfirm', () => ({
   ),
 }));
 
+vi.mock('../MasterActivationDashboard', () => ({
+  MasterActivationDashboard: () => <section>Mock activation dashboard</section>,
+}));
+
 vi.mock('../MasterAgreementReviewPanel', () => ({
   MasterAgreementReviewPanel: ({ selectedStep }: { selectedStep: string }) => (
     <aside data-testid="selected-step">{selectedStep}</aside>
@@ -108,6 +112,20 @@ describe('MasterAgreementWorkbench', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Mock activate' }));
 
+    expect(screen.getByText('Mock activation dashboard')).toBeInTheDocument();
+    expect(screen.getByTestId('selected-step')).toHaveTextContent('activate');
+  }, 15000);
+
+  test('opens the activation dashboard directly once confirmations reach process step 4', () => {
+    useProtocolStore.setState({
+      processStep: 4,
+      masterActive: false,
+    });
+
+    renderSubject();
+
+    expect(screen.queryByText('Mock participant step')).not.toBeInTheDocument();
+    expect(screen.getByText('Mock activation dashboard')).toBeInTheDocument();
     expect(screen.getByTestId('selected-step')).toHaveTextContent('activate');
   }, 15000);
 });
