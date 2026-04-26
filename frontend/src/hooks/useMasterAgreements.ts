@@ -8,6 +8,7 @@ interface BackendMasterAgreementItem {
   master_id: number;
   name: string;
   leader: string;
+  operator: string;
   reinsurer: string;
   status: number;
   status_label: string;
@@ -17,6 +18,7 @@ interface BackendMasterAgreementItem {
 
 function detectRole(m: BackendMasterAgreementItem, wallet: string): MasterAgreementSummary['myRole'] {
   if (m.leader === wallet) return 'leader';
+  if (m.operator === wallet) return 'operator';
   if (m.reinsurer === wallet) return 'rein';
   const nonLeaders = m.participants.filter(p => p.insurer !== m.leader);
   if (nonLeaders.some(p => p.insurer === wallet)) return 'participant';

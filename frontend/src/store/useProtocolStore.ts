@@ -92,7 +92,7 @@ export interface MasterAgreementSummary {
   status: number;
   statusLabel: string;
   coverageEndTs: number;
-  myRole?: 'leader' | 'participant' | 'rein';
+  myRole?: 'leader' | 'participant' | 'rein' | 'operator';
 }
 
 export interface PoolHistEntry {

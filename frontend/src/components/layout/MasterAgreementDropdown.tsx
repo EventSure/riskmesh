@@ -37,10 +37,11 @@ function formatDate(ts: number): string {
   });
 }
 
-const ROLE_LABEL: Record<'leader' | 'participant' | 'rein', string> = {
+const ROLE_LABEL: Record<'leader' | 'participant' | 'rein' | 'operator', string> = {
   leader: '리더사',
   participant: '참여사',
   rein: '재보험사',
+  operator: 'Operator',
 };
 
 export function MasterAgreementDropdown() {

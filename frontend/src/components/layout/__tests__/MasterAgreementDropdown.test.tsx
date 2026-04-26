@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { ThemeProvider } from '@emotion/react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { darkTheme } from '@/styles/theme';
 import { useProtocolStore } from '@/store/useProtocolStore';
@@ -55,5 +55,29 @@ describe('MasterAgreementDropdown', () => {
     renderSubject();
 
     expect(await screen.findByRole('option', { name: /대한-뉴욕 2026 리더 공동계약/ })).toBeInTheDocument();
+  });
+
+  it('syncs the selected operator role into the protocol store', () => {
+    mockUseMasterAgreements.mockReturnValue({
+      loading: false,
+      refetch: vi.fn(),
+      policies: [
+        {
+          pda: '9Op3r4t0rFake',
+          name: '오퍼레이터 전용 공동계약',
+          masterId: '1710000001',
+          status: 2,
+          statusLabel: 'Active',
+          coverageEndTs: 1770000001,
+          myRole: 'operator',
+        },
+      ],
+    });
+
+    renderSubject();
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: '9Op3r4t0rFake' } });
+
+    expect(useProtocolStore.getState().role).toBe('operator');
   });
 });
