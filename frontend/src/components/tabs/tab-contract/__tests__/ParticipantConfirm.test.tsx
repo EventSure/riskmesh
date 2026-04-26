@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ParticipantConfirm } from '../ParticipantConfirm';
 import { darkTheme } from '@/styles/theme';
 import { useProtocolStore } from '@/store/useProtocolStore';
+import { GUIDE_STEPS } from '@/components/guide/guideSteps';
 
 const mockToast = vi.fn();
 const mockActivateMasterOnChain = vi.fn();
@@ -59,6 +60,11 @@ beforeEach(() => {
 });
 
 describe('ParticipantConfirm', () => {
+  it('routes the guide tour through the Step 2 transition before the Step 3 activation CTA', () => {
+    expect(GUIDE_STEPS.find((step) => step.step === 9)?.target).toBe('activate-transition-btn');
+    expect(GUIDE_STEPS.find((step) => step.step === 10)?.target).toBe('activate-btn');
+  });
+
   it('advances to the Step 3 dashboard when all confirmations are ready without activating on-chain', async () => {
     const onActivated = vi.fn();
 
@@ -66,7 +72,7 @@ describe('ParticipantConfirm', () => {
 
     const transitionButton = screen.getByRole('button', { name: 'master.step.activate' });
     expect(transitionButton).toBeEnabled();
-    expect(transitionButton).not.toHaveAttribute('data-guide', 'activate-btn');
+    expect(transitionButton).toHaveAttribute('data-guide', 'activate-transition-btn');
 
     fireEvent.click(transitionButton);
 

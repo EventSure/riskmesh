@@ -212,7 +212,7 @@ function getTooltipStyle(rect: DOMRect, position: string): React.CSSProperties {
 }
 
 /* Steps that need a manual "Next" button (auto-advance not reliable) */
-const MANUAL_STEPS = new Set([11, 13]);
+const MANUAL_STEPS = new Set([12, 14]);
 
 /* ── Component ── */
 
@@ -300,11 +300,12 @@ export function GuideTour({ activeTab }: Props) {
       case 7: ok = !reinsurer.enabled || reinsurer.confirmed; break;
       case 8: ok = role === 'leader'; break;
       case 9: ok = masterActive; break;
-      case 10: ok = activeTab === 'tab-feed'; break;
-      case 12: ok = activeTab === 'tab-oracle'; break;
-      case 14: ok = claims.length > claimsAtStart.current; break;
-      case 15: ok = claims.some(c => c.status === 'settled'); break;
-      case 16: ok = activeTab === 'tab-settlement'; break;
+      case 10: ok = masterActive; break;
+      case 11: ok = activeTab === 'tab-feed'; break;
+      case 13: ok = activeTab === 'tab-oracle'; break;
+      case 15: ok = claims.length > claimsAtStart.current; break;
+      case 16: ok = claims.some(c => c.status === 'settled'); break;
+      case 17: ok = activeTab === 'tab-settlement'; break;
     }
     if (ok) {
       const timer = setTimeout(nextStep, 350);
@@ -315,7 +316,7 @@ export function GuideTour({ activeTab }: Props) {
   /* ── Step 13: DOM event listener for select change ── */
 
   useEffect(() => {
-    if (currentStep === null || GUIDE_STEPS[currentStep]!.step !== 13) return;
+    if (currentStep === null || GUIDE_STEPS[currentStep]!.step !== 14) return;
     const el = document.querySelector('[data-guide="select-contract"]') as HTMLSelectElement;
     if (!el) return;
     const handler = () => {

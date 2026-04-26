@@ -46,7 +46,8 @@ export function useMasterAgreementActivation(options: UseMasterAgreementActivati
   const allParticipantsConfirmed = participants.every((participant) => participant.confirmed);
   const reinOk = !reinsurer.enabled || reinsurer.confirmed;
   const allConfirmed = allParticipantsConfirmed && reinOk;
-  const canActivate = allConfirmed && !masterActive && (role === 'leader' || role === 'operator');
+  const hasActivationAccountData = mode === 'simulation' || (!!masterAgreementKey && !!masterAccount);
+  const canActivate = allConfirmed && !masterActive && (role === 'leader' || role === 'operator') && hasActivationAccountData;
 
   const handleActivate = async () => {
     if (mode === 'simulation') {

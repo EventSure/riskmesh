@@ -124,6 +124,7 @@ export function ParticipantConfirm({ onActivated }: ParticipantConfirmProps) {
             onClick={onActivated}
             disabled={!allConfirmed}
             style={{ marginTop: 4 }}
+            data-guide="activate-transition-btn"
           >
             {t('master.step.activate')}
           </Button>

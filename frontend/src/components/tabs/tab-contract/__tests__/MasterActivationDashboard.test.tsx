@@ -147,6 +147,22 @@ describe('MasterActivationDashboard', () => {
     expect(useProtocolStore.getState().processStep).toBe(5);
   });
 
+  test('disables the activation CTA in on-chain mode until the master account is loaded', () => {
+    useProtocolStore.setState({
+      mode: 'onchain',
+      masterAgreementPDA: '11111111111111111111111111111111',
+    });
+    mockUseMasterAgreementAccount.mockReturnValue({
+      account: null,
+      loading: true,
+      error: null,
+    });
+
+    renderSubject();
+
+    expect(screen.getByRole('button', { name: 'confirm.activateBtn' })).toBeDisabled();
+  });
+
   test('suppresses zero-valued money rows while policy data is still loading', () => {
     mockUseMasterAgreementSnapshot.mockReturnValue({
       snapshot: makeSnapshot(),
