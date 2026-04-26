@@ -23,6 +23,26 @@ If `DeclaredProgramIdMismatch (4100)` appears while calling the stable program,
 the deployed binary and the declared program id are out of sync. Rebuild and
 redeploy the stable program to the same `ETEEEss...` address.
 
+## Approved Master Mint
+Stable/devnet MasterAgreement creation is pinned to the approved currency mint:
+
+- `A6ty3ZmdzFW9JS92QCc5n7XPUM2cfwKzdnPmyXP2hY8w`
+
+`scripts/03-master-setup.ts` now uses that mint directly and no longer creates
+or reuses arbitrary mint addresses from `scripts/.state.json`.
+
+Before running `yarn demo:3-master-setup`, prefund the fixed mint flow from
+`contract/`:
+
+```bash
+./scripts/mint-test-token-to-operator.sh
+./scripts/prefund-parties.sh
+./scripts/apply-test-token-metadata.sh
+```
+
+The helper scripts validate the expected operator, mint authority, and approved
+mint address before they mint or transfer test tokens.
+
 ## Build/Test
 - `anchor build`
 - `anchor test`
