@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { useProgram } from './useProgram';
+import { CURRENCY_MINT } from '@/lib/constants';
 import { getMasterAgreementPDA } from '@/lib/pda';
 import { sendTx, type TxResult } from '@/lib/tx';
 import type { CreateMasterAgreementParams, MasterParticipantInit } from '@/lib/idl/open_parametric';
@@ -31,7 +32,7 @@ export interface CreateMasterAgreementInput extends LegacyPayoutDelayFields, Cur
   reinsCommissionBps: number;
   operator: PublicKey;
   reinsurer: PublicKey;
-  currencyMint: PublicKey;
+  currencyMint?: PublicKey;
   leaderDepositWallet: PublicKey;
   reinsurerPoolWallet: PublicKey;
   reinsurerDepositWallet: PublicKey;
@@ -109,7 +110,7 @@ export function useCreateMasterAgreement() {
               leader: leader,
               operator: input.operator,
               reinsurer: input.reinsurer,
-              currencyMint: input.currencyMint,
+              currencyMint: CURRENCY_MINT,
               masterAgreement: masterAgreementPDA,
               leaderDepositWallet: input.leaderDepositWallet,
               reinsurerPoolWallet: input.reinsurerPoolWallet,

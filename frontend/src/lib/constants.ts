@@ -11,7 +11,7 @@ export const PROGRAM_STAGE = programConfig.stage;
 export const PROGRAM_ID_SELECTED_KEY = programConfig.selectedKey;
 export const PROGRAM_ID = programConfig.programId;
 
-export const CURRENCY_MINT = new PublicKey('5YsAiRYU3tTFc5B8aaGwVL1oC9DVxBEddnXCaHcQQg2k');
+export const CURRENCY_MINT = new PublicKey('A6ty3ZmdzFW9JS92QCc5n7XPUM2cfwKzdnPmyXP2hY8w');
 
 export const POLICY_STATES = [
   'Draft',
