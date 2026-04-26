@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { useProtocolStore } from '../useProtocolStore';
 import type { Participant } from '../useProtocolStore';
 import i18n from '@/i18n';
-import { MasterPolicyStatus } from '@/lib/idl/open_parametric';
+import { MasterAgreementStatus } from '@/lib/idl/open_parametric';
 
 const getState = () => useProtocolStore.getState();
 const { setState } = useProtocolStore;
@@ -459,7 +459,7 @@ describe('syncMasterFromChain', () => {
     });
 
     getState().syncMasterFromChain({
-      status: MasterPolicyStatus.Draft,
+      status: MasterAgreementStatus.Draft,
       leaderShareBps: 5000,
       cededRatioBps: 0,
       reinsCommissionBps: 0,
@@ -489,7 +489,7 @@ describe('syncMasterFromChain', () => {
     });
 
     getState().syncMasterFromChain({
-      status: MasterPolicyStatus.Draft,
+      status: MasterAgreementStatus.Draft,
       leaderShareBps: 5000,
       cededRatioBps: 0,
       reinsCommissionBps: 0,
@@ -524,7 +524,7 @@ describe('syncMasterFromChain', () => {
     });
 
     useProtocolStore.getState().syncMasterFromChain({
-      status: MasterPolicyStatus.Draft,
+      status: MasterAgreementStatus.Draft,
       leaderShareBps: 5000,
       cededRatioBps: 0,
       reinsCommissionBps: 0,

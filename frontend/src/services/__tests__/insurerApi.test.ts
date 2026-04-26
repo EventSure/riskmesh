@@ -15,7 +15,7 @@ describe('putMasterAgreementDisplayNames', () => {
       reinsurer: { wallet: 'wallet-r', displayName: 'Korean Re' },
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(`${BACKEND_URL}/api/master-policies/master-1/display-names`, {
+    expect(fetchMock).toHaveBeenCalledWith(`${BACKEND_URL}/api/master-agreements/master-1/display-names`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
