@@ -37,6 +37,7 @@ pub fn handler(
     ctx: Context<CreateMasterAgreement>,
     params: CreateMasterAgreementParams,
 ) -> Result<()> {
+    let normalized_name = normalize_master_agreement_name(&params.name)?;
     let master = &mut ctx.accounts.master_agreement;
     let has_reinsurer = params.ceded_ratio_bps > 0;
 
@@ -73,6 +74,7 @@ pub fn handler(
         effective_reinsurer_bps(params.ceded_ratio_bps, params.reins_commission_bps)?;
 
     master.master_id = params.master_id;
+    master.name = normalized_name;
     master.leader = ctx.accounts.leader.key();
     master.operator = ctx.accounts.operator.key();
     master.currency_mint = ctx.accounts.currency_mint.key();
@@ -114,6 +116,16 @@ pub fn handler(
         .collect();
 
     Ok(())
+}
+
+pub(crate) fn normalize_master_agreement_name(
+    name: &str,
+) -> std::result::Result<String, OpenParamError> {
+    let normalized = name.trim();
+    if normalized.is_empty() || normalized.chars().count() > MASTER_AGREEMENT_NAME_MAX_LEN {
+        return Err(OpenParamError::InvalidInput);
+    }
+    Ok(normalized.to_string())
 }
 
 pub(crate) fn validate_create_master_inputs(
