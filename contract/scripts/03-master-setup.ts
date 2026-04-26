@@ -11,8 +11,8 @@
  *   7. activate_master
  *
  * 사전 준비:
- *   - ./scripts/mint-test-token-to-operator.sh
- *   - ./scripts/prefund-parties.sh
+ *   - ./scripts/prefund-parties.sh              (full prefund path)
+ *   - ./scripts/mint-test-token-to-operator.sh  (optional operator-only top-up)
  *
  * 고정 키페어 경로:
  *   Leader    : ~/.config/solana/riskmesh-leader.json
