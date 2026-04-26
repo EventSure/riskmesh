@@ -76,6 +76,7 @@ describe("settle_flight_no_claim", () => {
         payoutDelay3H:   new anchor.BN(0),
         payoutDelay4To5H: new anchor.BN(0),
         payoutDelay6HOrCancelled: new anchor.BN(opts.payoutDelay6H.toString()),
+        collateralClaimCount: 1,
         leaderShareBps: 5_000,
         cededRatioBps:      opts.cededRatioBps,
         reinsCommissionBps: opts.reinsCommissionBps,
@@ -97,6 +98,23 @@ describe("settle_flight_no_claim", () => {
         systemProgram:          SystemProgram.programId,
       })
       .rpc();
+
+    // confirmMaster가 담보 부족분을 actorSourceToken에서 이체하므로,
+    // 빈 deposit 계정을 source로 쓰는 테스트에서 pool을 미리 충전한다.
+    {
+      const total = opts.payoutDelay6H;
+      const reinsurerAmt = total * BigInt(opts.effectiveBps) / 10_000n;
+      const insurerTotal = total - reinsurerAmt;
+      const leaderAmt = insurerTotal * 5_000n / 10_000n;
+      const aAmt       = insurerTotal * 3_000n / 10_000n;
+      const bAmt       = insurerTotal - leaderAmt - aAmt;
+      if (opts.cededRatioBps > 0) {
+        await mintTo(connection, payer, mint, reinsurerPool, payer, reinsurerAmt);
+      }
+      await mintTo(connection, payer, mint, leaderPool, payer, leaderAmt);
+      await mintTo(connection, payer, mint, aPool,      payer, aAmt);
+      await mintTo(connection, payer, mint, bPool,      payer, bAmt);
+    }
 
     for (const [insurer, pool, deposit, signers] of [
       [payer,         leaderPool, leaderDeposit, [] as Keypair[]],
