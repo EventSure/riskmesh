@@ -53,6 +53,10 @@ function getRoleLabel(party: CollateralPartyStatus, t: Translate): string {
 }
 
 function getPartyDisplayName(party: CollateralPartyStatus, t: Translate): string {
+  if (party.label.trim()) {
+    return party.label;
+  }
+
   if (party.role === 'leader') return t('pool.healthRoleLeader');
   if (party.role === 'reinsurer') return t('pool.healthRoleReinsurer');
 

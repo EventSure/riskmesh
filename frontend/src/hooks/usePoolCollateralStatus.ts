@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { PublicKey } from '@solana/web3.js';
+import { useShallow } from 'zustand/react/shallow';
 import type { MasterAgreementAccount } from '@/lib/idl/open_parametric';
 import { buildCollateralStatus, type CollateralStatus } from '@/lib/collateral';
+import { useProtocolStore } from '@/store/useProtocolStore';
 import { useMasterAgreementAccount } from './useMasterAgreementAccount';
 import { useProgram } from './useProgram';
 
@@ -23,6 +25,16 @@ function participantId(index: number): string {
 
 function rawMicroUsdcToNumber(amount: { toString(): string }): number {
   return Number(amount.toString()) / 1_000_000;
+}
+
+function resolvePartyLabel(
+  wallet: PublicKey | null | undefined,
+  fallbackLabel: string,
+  displayNamesByWallet: Record<string, string>,
+  storedLabel?: string,
+): string {
+  const walletLabel = wallet ? displayNamesByWallet[wallet.toBase58()] : undefined;
+  return walletLabel?.trim() || storedLabel?.trim() || fallbackLabel;
 }
 
 async function readTokenBalance(
@@ -70,6 +82,13 @@ export function usePoolCollateralStatus(
 ): UsePoolCollateralStatusResult {
   const { connection, wallet } = useProgram();
   const { account: masterData } = useMasterAgreementAccount(masterPDA);
+  const { displayNamesByWallet, participants: storedParticipants, reinsurer: storedReinsurer } = useProtocolStore(
+    useShallow((state) => ({
+      displayNamesByWallet: state.displayNamesByWallet,
+      participants: state.participants,
+      reinsurer: state.reinsurer,
+    })),
+  );
   const [balances, setBalances] = useState<PoolCollateralBalances | null>(null);
 
   useEffect(() => {
@@ -137,13 +156,23 @@ export function usePoolCollateralStatus(
         },
         participants: masterData.participants.map((participant, index) => ({
           id: participantId(index),
-          label: `Participant ${index + 1}`,
+          label: resolvePartyLabel(
+            participant.insurer,
+            `Participant ${index + 1}`,
+            displayNamesByWallet,
+            storedParticipants[index]?.name,
+          ),
           shareBps: participant.shareBps,
           confirmed: participant.confirmed,
           balance: safeBalances.participants[index] ?? 0,
         })),
         reinsurer: masterData.reinsurer ? {
-          label: 'Reinsurer',
+          label: resolvePartyLabel(
+            masterData.reinsurer,
+            'Reinsurer',
+            displayNamesByWallet,
+            storedReinsurer.name,
+          ),
           confirmed: masterData.reinsurerConfirmed,
           balance: safeBalances.reinsurer,
         } : undefined,
@@ -151,7 +180,7 @@ export function usePoolCollateralStatus(
     } catch {
       return null;
     }
-  }, [balances, masterData]);
+  }, [balances, displayNamesByWallet, masterData, storedParticipants, storedReinsurer.name]);
 
   return { status, activePartyId, masterData };
 }

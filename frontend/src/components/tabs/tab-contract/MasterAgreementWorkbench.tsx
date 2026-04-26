@@ -5,6 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { Tag } from '@/components/common';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { MasterContractSetup } from './MasterContractSetup';
+import { MasterActivationDashboard } from './MasterActivationDashboard';
 import { MasterAgreementNameEditor } from './MasterAgreementNameEditor';
 import { MasterAgreementReviewPanel, type MasterAgreementReviewStep } from './MasterAgreementReviewPanel';
 import { ParticipantConfirm } from './ParticipantConfirm';
@@ -227,6 +228,10 @@ function StepContent({
 }) {
   if (step === 'basic') {
     return <MasterContractSetup onTermsSet={onTermsSet} />;
+  }
+
+  if (step === 'activate') {
+    return <MasterActivationDashboard />;
   }
 
   return <ParticipantConfirm onActivated={onActivated} />;
