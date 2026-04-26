@@ -6,7 +6,7 @@
 
 | # | 파일 | 변경 내용 |
 |---|------|-----------|
-| 1 | `src/lib/constants.ts` (line 5) | `PROGRAM_ID` → 새로 배포한 프로그램 주소 |
+| 1 | `frontend/.env` and `frontend/.env.example` | Set `VITE_PROGRAM_STAGE`, `VITE_PROGRAM_ID`, and `VITE_STAGING_PROGRAM_ID` |
 | 2 | `src/lib/constants.ts` (line 7) | `CURRENCY_MINT` → 본인이 만든 SPL 토큰 mint 주소 |
 | 3 | `src/lib/idl/open_parametric.json` | **빌드 결과 IDL로 전체 교체** |
 
@@ -32,19 +32,22 @@ IDL(Interface Definition Language)은 컨트랙트의 instruction 시그니처, 
 
 `anchor build` 시 생성되는 `target/idl/open_parametric.json`이 배포된 프로그램과 정확히 일치하는 유일한 IDL입니다.
 
-## 2. PROGRAM_ID 업데이트
+## Program ID selection
 
-```typescript
-// src/lib/constants.ts
-export const PROGRAM_ID = new PublicKey('<새 프로그램 주소>');
+The frontend selects one active program id from environment variables:
+
+```env
+VITE_PROGRAM_STAGE=stable
+VITE_PROGRAM_ID=ETEEEssGKAAQEGwz3ggDcy9vzPAPtBjtb2KocdyLBMjh
+VITE_STAGING_PROGRAM_ID=
 ```
 
-프로그램 주소 확인:
-```bash
-anchor keys list
-# 또는
-solana address -k contract/target/deploy/open_parametric-keypair.json
-```
+Use `VITE_PROGRAM_STAGE=staging` only after the shared devnet staging program
+has been deployed and `VITE_STAGING_PROGRAM_ID` has been filled.
+
+Do not edit `src/lib/constants.ts` to switch programs. PDA derivation and
+Anchor calls must use the same active program id, and the env resolver keeps
+that selection in one place.
 
 ### 왜 별도로 설정하는가?
 
@@ -53,7 +56,7 @@ solana address -k contract/target/deploy/open_parametric-keypair.json
 | 위치 | 용도 |
 |------|------|
 | `idl/open_parametric.json` → `address` 필드 | `new Program(idl, provider)` — Anchor Program 인스턴스 생성 |
-| `constants.ts` → `PROGRAM_ID` | `PublicKey.findProgramAddressSync(seeds, programId)` — PDA 파생 |
+| Active program id resolver | `PublicKey.findProgramAddressSync(seeds, programId)` — PDA 파생 |
 
 **두 값이 다르면:**
 - Program 인스턴스는 프로그램 A를 호출하는데
@@ -126,20 +129,23 @@ cd contract
 anchor build
 anchor deploy --provider.cluster devnet
 
-# 2. 프로그램 주소 확인
-anchor keys list
-# → 출력된 주소를 PROGRAM_ID에 사용
-
-# 3. IDL 복사
+# 2. IDL 복사
 cp target/idl/open_parametric.json ../frontend/src/lib/idl/open_parametric.json
 
+# 3. 프론트엔드 env 설정
+cd ../frontend
+cp .env.example .env
+# VITE_PROGRAM_STAGE=stable
+# VITE_PROGRAM_ID=<배포된 stable 프로그램 주소>
+# VITE_STAGING_PROGRAM_ID=<staging 프로그램 배포 후 설정>
+
 # 4. SPL 토큰 생성 (최초 1회)
+cd ../contract
 spl-token create-token --decimals 6
 spl-token create-account <MINT_ADDRESS>
 spl-token mint <MINT_ADDRESS> 1000
 
 # 5. constants.ts 수정
-#    PROGRAM_ID = '<anchor keys list 출력값>'
 #    CURRENCY_MINT = '<spl-token create-token 출력값>'
 
 # 6. 프론트엔드 실행

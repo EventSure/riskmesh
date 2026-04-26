@@ -57,3 +57,21 @@ The activation check is the final safety gate. It prevents activation if any req
 A separate `fund_pool` instruction may be used for supplemental collateral funding before or after confirmation. It must only allow an actor to fund its own expected pool and must validate the pool wallet, mint, owner, and amount.
 
 Direct SPL transfers can still increase a pool balance, but product flows should use program instructions so role, target, and UX state remain explicit.
+
+## Program Staging Policy
+
+`ETEEEssGKAAQEGwz3ggDcy9vzPAPtBjtb2KocdyLBMjh` is the stable devnet program.
+Layout-changing contract work, including changes to `MasterAgreement`, must be
+validated against the shared devnet staging program before upgrading the stable
+program.
+
+Program id selection must be environment-driven:
+
+- Frontend: `VITE_PROGRAM_STAGE`, `VITE_PROGRAM_ID`, `VITE_STAGING_PROGRAM_ID`
+- Backend: active `PROGRAM_ID`, with `STAGING_PROGRAM_ID` documented as the staging reference
+- Contract scripts: active `PROGRAM_ID`, with `STAGING_PROGRAM_ID` documented as the staging reference
+
+When a program-id env variable is added or renamed, update the matching `.env`
+and `.env.example` files together. Local `target/deploy/*-keypair.json` files
+and `anchor keys list` are not authoritative because ignored build artifacts can
+differ across worktrees.
