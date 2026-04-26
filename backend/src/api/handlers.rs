@@ -65,10 +65,17 @@ pub(super) async fn get_master_agreement_display_names(
     State(state): State<AppState>,
     Path(master_policy_pubkey): Path<String>,
 ) -> Result<Json<MasterAgreementDisplayNamesResponse>, ApiError> {
-    service::get_master_agreement_display_names(&*state.repository, &master_policy_pubkey)
-        .await
-        .map(Json)
-        .map_err(ApiError)
+    let master_policy_pubkey = master_policy_pubkey
+        .parse::<Pubkey>()
+        .map_err(|e| ApiError(anyhow::anyhow!("master_policy_pubkey 주소 파싱 실패: {e}")))?;
+
+    service::get_master_agreement_display_names(
+        &*state.repository,
+        &master_policy_pubkey.to_string(),
+    )
+    .await
+    .map(Json)
+    .map_err(ApiError)
 }
 
 pub(super) async fn put_master_agreement_display_names(
@@ -76,10 +83,18 @@ pub(super) async fn put_master_agreement_display_names(
     Path(master_policy_pubkey): Path<String>,
     Json(req): Json<PutMasterAgreementDisplayNamesRequest>,
 ) -> Result<Json<MasterAgreementDisplayNamesResponse>, ApiError> {
-    service::put_master_agreement_display_names(&*state.repository, &master_policy_pubkey, req)
-        .await
-        .map(Json)
-        .map_err(ApiError)
+    let master_policy_pubkey = master_policy_pubkey
+        .parse::<Pubkey>()
+        .map_err(|e| ApiError(anyhow::anyhow!("master_policy_pubkey 주소 파싱 실패: {e}")))?;
+
+    service::put_master_agreement_display_names(
+        &*state.repository,
+        &master_policy_pubkey.to_string(),
+        req,
+    )
+    .await
+    .map(Json)
+    .map_err(ApiError)
 }
 
 pub(super) async fn post_db_test(

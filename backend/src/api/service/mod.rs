@@ -129,6 +129,8 @@ pub(super) async fn get_master_agreement_display_names(
     repository: &dyn InsuranceRepository,
     master_policy_pubkey: &str,
 ) -> Result<MasterAgreementDisplayNamesResponse> {
+    ensure_master_agreement_exists(repository, master_policy_pubkey).await?;
+
     let payload = repository
         .get_master_agreement_display_names(master_policy_pubkey)
         .await?
@@ -146,6 +148,8 @@ pub(super) async fn put_master_agreement_display_names(
     master_policy_pubkey: &str,
     payload: PutMasterAgreementDisplayNamesRequest,
 ) -> Result<MasterAgreementDisplayNamesResponse> {
+    ensure_master_agreement_exists(repository, master_policy_pubkey).await?;
+
     let stored_payload = MasterAgreementDisplayNames {
         master_policy_pubkey: master_policy_pubkey.to_string(),
         participants: payload
@@ -415,10 +419,22 @@ fn display_names_response(
 fn validated_display_name(display_name: String) -> Result<String> {
     let trimmed = display_name.trim();
     if trimmed.is_empty() {
-        anyhow::bail!("display_name cannot be empty");
+        anyhow::bail!("validation error: display_name cannot be empty");
     }
 
     Ok(trimmed.to_string())
+}
+
+async fn ensure_master_agreement_exists(
+    repository: &dyn InsuranceRepository,
+    master_policy_pubkey: &str,
+) -> Result<()> {
+    repository
+        .get_master_agreement(master_policy_pubkey)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("account not found"))?;
+
+    Ok(())
 }
 
 #[cfg(test)]
