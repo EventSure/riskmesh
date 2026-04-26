@@ -95,12 +95,14 @@ cd contract
 yarn demo:1-setup
 
 # 2. approved mint 테스트 자금 준비
-./scripts/mint-test-token-to-operator.sh
+#    prefund-parties.sh가 operator mint + leader/participants/reinsurer 분배를 함께 처리
+#    현재 Solana CLI 지갑/민트 authority가 예상 stable/devnet 운영 환경과 다르면 스크립트가 즉시 실패
 ./scripts/prefund-parties.sh
 
 # 3. MasterAgreement 생성 및 활성화
 #    oracle_feed = PublicKey.default (Track A 전용)
 #    stable/devnet master mint는 고정 approved mint A6ty... 만 허용
+#    escrow pool 계정은 빈 상태로 생성되고, confirm_master가 각 ATA에서 collateral을 이체
 #    이미 MASTER_ID=1 계정이 있으면: MASTER_ID=2 yarn demo:3-master-setup
 yarn demo:3-master-setup
 
@@ -129,12 +131,14 @@ yarn demo:1-setup
 AVIATIONSTACK_API_KEY=<키> FLIGHT_NO=KE017 yarn demo:2-feed-create
 
 # 3. approved mint 테스트 자금 준비
-./scripts/mint-test-token-to-operator.sh
+#    prefund-parties.sh가 operator mint + leader/participants/reinsurer 분배를 함께 처리
+#    현재 Solana CLI 지갑/민트 authority가 예상 stable/devnet 운영 환경과 다르면 스크립트가 즉시 실패
 ./scripts/prefund-parties.sh
 
 # 4. MasterAgreement 생성 및 활성화
 #    oracle_feed = state.json의 feedPubkey (자동으로 읽어 등록)
 #    stable/devnet master mint는 고정 approved mint A6ty... 만 허용
+#    escrow pool 계정은 빈 상태로 생성되고, confirm_master가 각 ATA에서 collateral을 이체
 #    이미 MASTER_ID=1 계정이 있으면: MASTER_ID=2 yarn demo:3-master-setup
 yarn demo:3-master-setup
 
@@ -203,13 +207,13 @@ solana-keygen new --outfile ~/.config/solana/riskmesh-reinsurer.json --no-passph
   "masterId": 1,                         // 3-master-setup이 저장
   "masterPda": "...",                    // 3-master-setup이 저장
   "leaderAta": "...",                    // 3-master-setup이 저장 (Leader ATA)
-  "leaderDepositWallet": "...",          // 3-master-setup이 저장 (PDA 소유)
+  "leaderDepositWallet": "...",          // 3-master-setup이 저장 (Leader ATA)
   "reinsurerPoolWallet": "...",          // 3-master-setup이 저장 (PDA 소유)
   "reinsurerDepositWallet": "...",       // 3-master-setup이 저장 (PDA 소유)
-  "leaderPoolWallet": "...",             // 3-master-setup이 저장 (PDA 소유, 3 USDC 적립)
-  "participantAPoolWallet": "...",       // 3-master-setup이 저장 (PDA 소유, 1.8 USDC 적립)
+  "leaderPoolWallet": "...",             // 3-master-setup이 저장 (PDA 소유, 초기엔 빈 escrow)
+  "participantAPoolWallet": "...",       // 3-master-setup이 저장 (PDA 소유, 초기엔 빈 escrow)
   "participantADepositWallet": "...",    // 3-master-setup이 저장 (Participant A ATA)
-  "participantBPoolWallet": "...",       // 3-master-setup이 저장 (PDA 소유, 1.2 USDC 적립)
+  "participantBPoolWallet": "...",       // 3-master-setup이 저장 (PDA 소유, 초기엔 빈 escrow)
   "participantBDepositWallet": "...",    // 3-master-setup이 저장 (Participant B ATA)
   "flightPolicies": [                    // 4-flight-create가 추가
     {

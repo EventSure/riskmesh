@@ -35,13 +35,18 @@ Before running `yarn demo:3-master-setup`, prefund the fixed mint flow from
 `contract/`:
 
 ```bash
-./scripts/mint-test-token-to-operator.sh
 ./scripts/prefund-parties.sh
 ./scripts/apply-test-token-metadata.sh
 ```
 
-The helper scripts validate the expected operator, mint authority, and approved
-mint address before they mint or transfer test tokens.
+Use `./scripts/prefund-parties.sh` as the full prefund path for
+leader/participants/reinsurer. `./scripts/mint-test-token-to-operator.sh` is an
+optional operator-only top-up helper when the operator ATA needs more approved
+mint without redistributing to the other parties.
+
+These helpers are environment-specific: they hard-fail unless the active Solana
+CLI wallet, mint authority keypair, and on-chain mint authority match the
+expected stable/devnet operator setup.
 
 ## Build/Test
 - `anchor build`

@@ -81,11 +81,12 @@ premium/payout 경로가 `InvalidInput`으로 실패합니다.
 ```bash
 cd contract
 
-# operator ATA에 approved mint 추가 발행
-./scripts/mint-test-token-to-operator.sh
-
-# leader / participants / reinsurer에 approved mint 분배
+# full prefund path: operator mint + leader / participants / reinsurer 분배
+# 현재 Solana CLI 지갑/민트 authority가 예상 stable/devnet 운영 환경과 다르면 스크립트가 즉시 실패
 ./scripts/prefund-parties.sh
+
+# 선택 사항: operator ATA만 추가 충전
+./scripts/mint-test-token-to-operator.sh
 
 # 선택 사항: 지갑/익스플로러에서 토큰 이름 표시
 ./scripts/apply-test-token-metadata.sh
@@ -111,6 +112,8 @@ mint 주소가 실제 컨트랙트에 등록된 것과 다르면:
 
 `03-master-setup`도 같은 fixed mint를 직접 사용하므로, frontend/contract가 같은
 mint 주소를 공유해야 새 agreement 생성 경로가 일관되게 동작합니다.
+생성되는 escrow pool 계정은 처음엔 비어 있으며, `confirm_master`가 prefunded
+ATA들에서 필요한 collateral을 이체합니다.
 
 ## 4. 지갑 사전 준비
 
@@ -149,8 +152,11 @@ cd ../frontend
 
 # 4. approved mint 테스트 자금 준비
 cd ../contract
-./scripts/mint-test-token-to-operator.sh
+# full prefund path
 ./scripts/prefund-parties.sh
+
+# 필요하면 operator ATA만 추가 충전
+# ./scripts/mint-test-token-to-operator.sh
 
 # 5. constants.ts 수정
 #    CURRENCY_MINT = 'A6ty3ZmdzFW9JS92QCc5n7XPUM2cfwKzdnPmyXP2hY8w'
