@@ -141,8 +141,12 @@ export function MasterActivationDashboard() {
     selectedMasterAgreementName?.trim() ||
     masterData?.name?.trim() ||
     t('master.noNameFallback');
-  const readinessTag = snapshot?.aggregateReady ? t('pool.healthAggregateReady') : t('pool.healthAggregateActionNeeded');
-  const readinessVariant = snapshot?.aggregateReady ? 'accent' : 'warning';
+  const readinessTag = loading
+    ? t('master.loading')
+    : snapshot?.aggregateReady
+      ? t('pool.healthAggregateReady')
+      : t('pool.healthAggregateActionNeeded');
+  const readinessVariant = loading ? 'subtle' : snapshot?.aggregateReady ? 'accent' : 'warning';
   const emptyMessage = loading ? t('master.loading') : error || t('master.step3.empty');
   const moneyMessage = policyStatus === 'loading' ? t('master.loading') : policyStatus === 'error' ? error || t('master.step3.empty') : emptyMessage;
   const showMoneySnapshot = policyStatus === 'ready' && !!snapshot;
@@ -179,7 +183,7 @@ export function MasterActivationDashboard() {
             </KpiCard>
           </KpiGrid>
 
-          {snapshot?.blockerLabels.length ? (
+          {snapshot && !loading && snapshot.blockerLabels.length ? (
             <BlockerNote>
               {t('pool.healthAggregateActionNeeded')}: {snapshot.blockerLabels.join(', ')}
             </BlockerNote>

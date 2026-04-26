@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
 import { PublicKey } from '@solana/web3.js';
+import { useShallow } from 'zustand/react/shallow';
 import type { CollateralStatus } from '@/lib/collateral';
 import type { MasterAgreementAccount } from '@/lib/idl/open_parametric';
+import { useProtocolStore } from '@/store/useProtocolStore';
 import { useFlightPolicies, type FlightPolicyWithKey } from './useFlightPolicies';
 import { useMasterAgreementAccount } from './useMasterAgreementAccount';
 import { usePoolCollateralStatus } from './usePoolCollateralStatus';
@@ -67,15 +69,70 @@ export function buildMasterAgreementSnapshot(
   };
 }
 
+export function buildSimulationMasterAgreementSnapshot({
+  agreementName,
+  totalPremiumInflow,
+  totalClaimOutflow,
+  collateralStatus,
+}: {
+  agreementName: string;
+  totalPremiumInflow: number;
+  totalClaimOutflow: number;
+  collateralStatus: CollateralStatus | null;
+}): MasterAgreementSnapshot | null {
+  if (!collateralStatus) {
+    return null;
+  }
+
+  const blockers = collateralStatus.parties
+    .filter((party) => party.state !== 'ready')
+    .map((party) => party.id);
+  const blockerLabels = collateralStatus.parties
+    .filter((party) => party.state !== 'ready')
+    .map((party) => party.label);
+
+  return {
+    agreementName,
+    totalPremiumInflow,
+    totalClaimOutflow,
+    netBalance: totalPremiumInflow - totalClaimOutflow,
+    totalRequired: collateralStatus.totalRequired,
+    totalFunded: collateralStatus.totalFunded,
+    totalDeficit: collateralStatus.totalDeficit,
+    readinessPct: collateralStatus.totalHealthPct,
+    blockers,
+    blockerLabels,
+    aggregateReady: collateralStatus.aggregateReady,
+  };
+}
+
 export function useMasterAgreementSnapshot(masterPda: PublicKey | null) {
+  const { mode, selectedMasterAgreementName, totalPremium, totalClaim } = useProtocolStore(
+    useShallow((state) => ({
+      mode: state.mode,
+      selectedMasterAgreementName: state.selectedMasterAgreementName,
+      totalPremium: state.totalPremium,
+      totalClaim: state.totalClaim,
+    })),
+  );
   const { account: masterData, loading: masterLoading, error: masterError } = useMasterAgreementAccount(masterPda);
-  const { status, activePartyId } = usePoolCollateralStatus(masterPda);
+  const { status, activePartyId, loading: collateralLoading, error: collateralError } = usePoolCollateralStatus(masterPda);
   const { policies, loading: policiesLoading, error: policiesError } = useFlightPolicies(masterPda);
-  const policyStatus: MasterAgreementPolicyStatus = policiesLoading ? 'loading' : policiesError ? 'error' : 'ready';
+  const policyStatus: MasterAgreementPolicyStatus =
+    mode === 'simulation' ? 'ready' : policiesLoading ? 'loading' : policiesError ? 'error' : 'ready';
 
   const snapshot = useMemo(
-    () => buildMasterAgreementSnapshot(masterData, policies, status),
-    [masterData, policies, status],
+    () => (
+      mode === 'simulation'
+        ? buildSimulationMasterAgreementSnapshot({
+          agreementName: selectedMasterAgreementName?.trim() || '',
+          totalPremiumInflow: totalPremium,
+          totalClaimOutflow: totalClaim,
+          collateralStatus: status,
+        })
+        : buildMasterAgreementSnapshot(masterData, policies, status)
+    ),
+    [masterData, mode, policies, selectedMasterAgreementName, status, totalClaim, totalPremium],
   );
 
   return {
@@ -83,8 +140,8 @@ export function useMasterAgreementSnapshot(masterPda: PublicKey | null) {
     status,
     activePartyId,
     masterData,
-    loading: masterLoading || policiesLoading,
-    error: masterError ?? policiesError,
+    loading: mode === 'simulation' ? false : masterLoading || collateralLoading || policiesLoading,
+    error: mode === 'simulation' ? null : masterError ?? collateralError ?? policiesError,
     policyStatus,
   };
 }

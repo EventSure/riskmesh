@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { BN } from '@coral-xyz/anchor';
 import type { CollateralStatus } from '@/lib/collateral';
 import type { FlightPolicyAccount, MasterAgreementAccount } from '@/lib/idl/open_parametric';
+import { useProtocolStore } from '@/store/useProtocolStore';
 import { resolveLeaderLabel, resolvePartyLabel } from '../usePoolCollateralStatus';
 import type { FlightPolicyWithKey } from '../useFlightPolicies';
 import { buildMasterAgreementSnapshot, useMasterAgreementSnapshot } from '../useMasterAgreementSnapshot';
@@ -120,6 +121,10 @@ function makeCollateralStatus(): CollateralStatus {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  useProtocolStore.getState().resetAll();
+  useProtocolStore.setState({
+    mode: 'onchain',
+  });
   mockUseMasterAgreementAccount.mockReturnValue({
     account: makeMasterAgreement(),
     loading: false,
@@ -129,6 +134,8 @@ beforeEach(() => {
     status: makeCollateralStatus(),
     activePartyId: 'leader',
     masterData: makeMasterAgreement(),
+    loading: false,
+    error: null,
   });
   mockUseFlightPolicies.mockReturnValue({
     policies: [],
@@ -187,5 +194,61 @@ describe('buildMasterAgreementSnapshot', () => {
 
     const readyResult = renderHook(() => useMasterAgreementSnapshot(PublicKey.default));
     expect(readyResult.result.current.policyStatus).toBe('ready');
+  });
+
+  test('builds a simulation snapshot from local store state without requiring an on-chain account', () => {
+    useProtocolStore.setState({
+      mode: 'simulation',
+      selectedMasterAgreementName: 'Simulation Facility',
+      totalPremium: 24,
+      totalClaim: 5,
+    });
+    mockUseMasterAgreementAccount.mockReturnValueOnce({
+      account: null,
+      loading: false,
+      error: null,
+    });
+    mockUsePoolCollateralStatus.mockReturnValueOnce({
+      status: makeCollateralStatus(),
+      activePartyId: 'leader',
+      masterData: null,
+      loading: false,
+      error: null,
+    });
+    mockUseFlightPolicies.mockReturnValueOnce({
+      policies: [],
+      loading: false,
+      error: null,
+    });
+
+    const result = renderHook(() => useMasterAgreementSnapshot(null));
+
+    expect(result.result.current.snapshot).toMatchObject({
+      agreementName: 'Simulation Facility',
+      totalPremiumInflow: 24,
+      totalClaimOutflow: 5,
+      netBalance: 19,
+      totalRequired: 15,
+      totalFunded: 10,
+      totalDeficit: 5,
+    });
+    expect(result.result.current.policyStatus).toBe('ready');
+    expect(result.result.current.loading).toBe(false);
+  });
+
+  test('keeps the snapshot unresolved while collateral balances are still loading', () => {
+    mockUsePoolCollateralStatus.mockReturnValueOnce({
+      status: null,
+      activePartyId: 'leader',
+      masterData: makeMasterAgreement(),
+      loading: true,
+      error: null,
+    });
+
+    const result = renderHook(() => useMasterAgreementSnapshot(PublicKey.default));
+
+    expect(result.result.current.snapshot).toBeNull();
+    expect(result.result.current.loading).toBe(true);
+    expect(result.result.current.error).toBeNull();
   });
 });

@@ -152,4 +152,22 @@ describe('MasterActivationDashboard', () => {
     expect(screen.getAllByText('policy fetch failed')).toHaveLength(2);
     expect(screen.queryByText('0.00 USDC')).not.toBeInTheDocument();
   });
+
+  test('shows a loading state instead of false deficits while collateral balances are unresolved', () => {
+    mockUseMasterAgreementSnapshot.mockReturnValue({
+      snapshot: null,
+      status: null,
+      activePartyId: 'leader',
+      masterData: { name: 'Master 2026' },
+      loading: true,
+      error: null,
+      policyStatus: 'ready',
+    });
+
+    renderSubject();
+
+    expect(screen.getAllByText('master.loading').length).toBeGreaterThan(0);
+    expect(screen.queryByText('pool.healthAggregateActionNeeded')).not.toBeInTheDocument();
+    expect(screen.queryByText('5.00 USDC')).not.toBeInTheDocument();
+  });
 });
