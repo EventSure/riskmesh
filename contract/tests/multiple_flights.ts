@@ -111,6 +111,7 @@ describe("multiple_flights", () => {
         payoutDelay3H:            new anchor.BN(PAYOUT_3H.toString()),
         payoutDelay4To5H:         new anchor.BN(4_000_000),
         payoutDelay6HOrCancelled: new anchor.BN(PAYOUT_MAX.toString()),
+        collateralClaimCount: 1,
         leaderShareBps:     5_000,
         cededRatioBps:      5_000,
         reinsCommissionBps: 1_000,

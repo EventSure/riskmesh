@@ -83,6 +83,7 @@ describe("error_cases", () => {
         payoutDelay3H: new anchor.BN(0),
         payoutDelay4To5H: new anchor.BN(0),
         payoutDelay6HOrCancelled: new anchor.BN(5_000_000),
+        collateralClaimCount: 1,
         leaderShareBps: 5_000,
         cededRatioBps: 0,
         reinsCommissionBps: 0,
@@ -96,6 +97,11 @@ describe("error_cases", () => {
         reinsurerDepositWallet: reinsurerDeposit, systemProgram: SystemProgram.programId,
       })
       .rpc();
+
+    // pool을 미리 충전해 confirmMaster가 빈 deposit에서 이체를 시도하지 않도록 한다.
+    // collateralClaimCount=1, payout=5 USDC, ceded=0: leader=2.5 USDC, participant=2.5 USDC
+    await mintTo(connection, payer, mint, leaderPool,      payer, 2_500_000);
+    await mintTo(connection, payer, mint, participantPool, payer, 2_500_000);
 
     await program.methods
       .registerParticipantWallets()
@@ -155,6 +161,7 @@ describe("error_cases", () => {
             premiumPerPolicy: new anchor.BN(1_000_000),
             payoutDelay2H: new anchor.BN(0), payoutDelay3H: new anchor.BN(0),
             payoutDelay4To5H: new anchor.BN(0), payoutDelay6HOrCancelled: new anchor.BN(0),
+            collateralClaimCount: 1,
             leaderShareBps: 5_000,
             cededRatioBps: 0, reinsCommissionBps: 0,
             // 합계 = 9000 (≠ 10000)
@@ -192,6 +199,7 @@ describe("error_cases", () => {
             premiumPerPolicy: new anchor.BN(1_000_000),
             payoutDelay2H: new anchor.BN(0), payoutDelay3H: new anchor.BN(0),
             payoutDelay4To5H: new anchor.BN(0), payoutDelay6HOrCancelled: new anchor.BN(0),
+            collateralClaimCount: 1,
             leaderShareBps: 10_000,
             cededRatioBps: 0, reinsCommissionBps: 0,
             participants: [],
@@ -226,6 +234,7 @@ describe("error_cases", () => {
             premiumPerPolicy: new anchor.BN(1_000_000),
             payoutDelay2H: new anchor.BN(0), payoutDelay3H: new anchor.BN(0),
             payoutDelay4To5H: new anchor.BN(0), payoutDelay6HOrCancelled: new anchor.BN(0),
+            collateralClaimCount: 1,
             leaderShareBps: 4_000,
             cededRatioBps: 0, reinsCommissionBps: 0,
             participants: Array.from({ length: 6 }, () => ({
@@ -264,6 +273,7 @@ describe("error_cases", () => {
             premiumPerPolicy: new anchor.BN(1_000_000),
             payoutDelay2H: new anchor.BN(0), payoutDelay3H: new anchor.BN(0),
             payoutDelay4To5H: new anchor.BN(0), payoutDelay6HOrCancelled: new anchor.BN(0),
+            collateralClaimCount: 1,
             leaderShareBps: 5_000,
             cededRatioBps: 0, reinsCommissionBps: 0,
             participants: [
@@ -311,6 +321,7 @@ describe("error_cases", () => {
           premiumPerPolicy: new anchor.BN(1_000_000),
           payoutDelay2H: new anchor.BN(0), payoutDelay3H: new anchor.BN(0),
           payoutDelay4To5H: new anchor.BN(0), payoutDelay6HOrCancelled: new anchor.BN(5_000_000),
+          collateralClaimCount: 1,
           leaderShareBps: 5_000,
           cededRatioBps: 0, reinsCommissionBps: 0,
           participants: [{ insurer: reinsurer.publicKey, shareBps: 5_000 }],
@@ -408,6 +419,7 @@ describe("error_cases", () => {
           premiumPerPolicy: new anchor.BN(1_000_000),
           payoutDelay2H: new anchor.BN(0), payoutDelay3H: new anchor.BN(0),
           payoutDelay4To5H: new anchor.BN(0), payoutDelay6HOrCancelled: new anchor.BN(5_000_000),
+          collateralClaimCount: 1,
           leaderShareBps: 5_000,
           cededRatioBps: 0, reinsCommissionBps: 0,
           participants: [{ insurer: participantA.publicKey, shareBps: 5_000 }],
@@ -420,6 +432,9 @@ describe("error_cases", () => {
           reinsurerDepositWallet: reinsurerDeposit, systemProgram: SystemProgram.programId,
         })
         .rpc();
+
+      // leader pool 선충전: collateralClaimCount=1, payout=5 USDC, ceded=0 → leader=2.5 USDC
+      await mintTo(connection, payer, mint, leaderPool, payer, 2_500_000);
 
       // leader만 등록/승인, participantA는 미승인 상태로 남겨 activation 실패를 확인한다.
       await program.methods
@@ -642,6 +657,7 @@ describe("error_cases", () => {
             premiumPerPolicy: new anchor.BN(1_000_000),
             payoutDelay2H: new anchor.BN(0), payoutDelay3H: new anchor.BN(0),
             payoutDelay4To5H: new anchor.BN(0), payoutDelay6HOrCancelled: new anchor.BN(0),
+            collateralClaimCount: 1,
             leaderShareBps: 5_000, cededRatioBps: 0, reinsCommissionBps: 0,
             participants: [{ insurer: Keypair.generate().publicKey, shareBps: 5_000 }],
             oracleFeed: PublicKey.default,
@@ -672,6 +688,7 @@ describe("error_cases", () => {
             premiumPerPolicy: new anchor.BN(0),          // 0은 무효
             payoutDelay2H: new anchor.BN(0), payoutDelay3H: new anchor.BN(0),
             payoutDelay4To5H: new anchor.BN(0), payoutDelay6HOrCancelled: new anchor.BN(0),
+            collateralClaimCount: 1,
             leaderShareBps: 5_000, cededRatioBps: 0, reinsCommissionBps: 0,
             participants: [{ insurer: Keypair.generate().publicKey, shareBps: 5_000 }],
             oracleFeed: PublicKey.default,
@@ -792,6 +809,7 @@ describe("error_cases", () => {
           premiumPerPolicy: new anchor.BN(1_000_000),
           payoutDelay2H: new anchor.BN(0), payoutDelay3H: new anchor.BN(0),
           payoutDelay4To5H: new anchor.BN(0), payoutDelay6HOrCancelled: new anchor.BN(5_000_000),
+          collateralClaimCount: 1,
           leaderShareBps: 5_000, cededRatioBps: 0, reinsCommissionBps: 0,
           participants: [{ insurer: Keypair.generate().publicKey, shareBps: 5_000 }],
           oracleFeed: PublicKey.default,
@@ -867,6 +885,7 @@ describe("error_cases", () => {
           premiumPerPolicy: new anchor.BN(1_000_000),
           payoutDelay2H: new anchor.BN(0), payoutDelay3H: new anchor.BN(0),
           payoutDelay4To5H: new anchor.BN(0), payoutDelay6HOrCancelled: new anchor.BN(5_000_000),
+          collateralClaimCount: 1,
           leaderShareBps: 5_000, cededRatioBps: 0, reinsCommissionBps: 0,
           participants: [{ insurer: Keypair.generate().publicKey, shareBps: 5_000 }],
           oracleFeed: PublicKey.default,

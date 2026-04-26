@@ -167,6 +167,7 @@ async function main() {
       payoutDelay3H:       new BN(3_000_000),
       payoutDelay4To5H:    new BN(4_000_000),
       payoutDelay6HOrCancelled: new BN(6_000_000),
+      collateralClaimCount: 10,
       leaderShareBps:      5_000,
       cededRatioBps:       0,
       reinsCommissionBps:  0,

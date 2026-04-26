@@ -96,6 +96,7 @@ describe("payout_tiers", () => {
         payoutDelay3H:            new anchor.BN(PAYOUT_3H.toString()),
         payoutDelay4To5H:         new anchor.BN(PAYOUT_4TO5H.toString()),
         payoutDelay6HOrCancelled: new anchor.BN(PAYOUT_6H.toString()),
+        collateralClaimCount: 6,
         leaderShareBps:      5_000,
         cededRatioBps:      0,
         reinsCommissionBps: 0,

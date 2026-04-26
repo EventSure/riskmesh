@@ -94,6 +94,7 @@ describe("settle_flight_claim", () => {
         payoutDelay3H: new anchor.BN(0),
         payoutDelay4To5H: new anchor.BN(0),
         payoutDelay6HOrCancelled: new anchor.BN(payoutAmount.toString()),
+        collateralClaimCount: 1,
         leaderShareBps: 5_000,
         cededRatioBps: 5_000,
         reinsCommissionBps: 1_000,
