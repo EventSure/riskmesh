@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useProtocolStore } from '../useProtocolStore';
 import type { Participant } from '../useProtocolStore';
+import i18n from '@/i18n';
+import { MasterPolicyStatus } from '@/lib/idl/open_parametric';
 
 const getState = () => useProtocolStore.getState();
 const { setState } = useProtocolStore;
@@ -417,5 +419,131 @@ describe('clearContracts', () => {
     expect(getState().totalPremium).toBe(0);
     expect(getState().totalClaim).toBe(0);
     expect(getState().poolBalance).toBe(10000);
+  });
+});
+
+describe('captureKpiSnapshot', () => {
+  it('sets snapshot from current store values on first call', () => {
+    getState().resetAll();
+    useProtocolStore.setState({ poolBalance: 5000, claimCount: 2 });
+    getState().captureKpiSnapshot();
+    const { kpiSnapshot } = getState();
+    expect(kpiSnapshot).not.toBeNull();
+    expect(kpiSnapshot!.poolBalance).toBe(5000);
+    expect(kpiSnapshot!.claimCount).toBe(2);
+    expect(kpiSnapshot!.flightPolicyCount).toBe(0);
+  });
+
+  it('does not overwrite snapshot on subsequent calls', () => {
+    getState().resetAll();
+    useProtocolStore.setState({ poolBalance: 5000, claimCount: 2 });
+    getState().captureKpiSnapshot();
+    useProtocolStore.setState({ poolBalance: 9000, claimCount: 10 });
+    getState().captureKpiSnapshot();
+    expect(getState().kpiSnapshot!.poolBalance).toBe(5000);
+  });
+
+  it('resetAll clears snapshot', () => {
+    getState().resetAll();
+    useProtocolStore.setState({ poolBalance: 1000, claimCount: 1 });
+    getState().captureKpiSnapshot();
+    getState().resetAll();
+    expect(getState().kpiSnapshot).toBeNull();
+  });
+});
+
+describe('syncMasterFromChain', () => {
+  it('preserves entered participant name even when address matching misses', () => {
+    setState({
+      participants: [{ id: 'p1', name: '삼성생명', share: 50, address: '', confirmed: false }],
+    });
+
+    getState().syncMasterFromChain({
+      status: MasterPolicyStatus.Draft,
+      leaderShareBps: 5000,
+      cededRatioBps: 0,
+      reinsCommissionBps: 0,
+      reinsurerConfirmed: false,
+      participants: [{
+        insurer: { toBase58: () => 'ParticipantWallet1111111111111111111111111111111' },
+        shareBps: 5000,
+        confirmed: false,
+      }],
+      premiumPerPolicy: { toNumber: () => 3_000_000 },
+      payoutDelay2H: { toNumber: () => 5_000_000 },
+      payoutDelay3H: { toNumber: () => 8_000_000 },
+      payoutDelay4To5H: { toNumber: () => 12_000_000 },
+      payoutDelay6HOrCancelled: { toNumber: () => 15_000_000 },
+      coverageStartTs: { toNumber: () => 1767225600 },
+      coverageEndTs: { toNumber: () => 1798761600 },
+      reinsurer: undefined,
+    } as never);
+
+    expect(getState().participants[0]?.name).toBe('삼성생명');
+  });
+
+  it('uses localized participant fallback names', async () => {
+    await i18n.changeLanguage('en');
+    setState({
+      participants: [{ id: 'p1', name: '', share: 50, address: '', confirmed: false }],
+    });
+
+    getState().syncMasterFromChain({
+      status: MasterPolicyStatus.Draft,
+      leaderShareBps: 5000,
+      cededRatioBps: 0,
+      reinsCommissionBps: 0,
+      reinsurerConfirmed: false,
+      participants: [{
+        insurer: { toBase58: () => 'ParticipantWallet1111111111111111111111111111111' },
+        shareBps: 5000,
+        confirmed: false,
+      }],
+      premiumPerPolicy: { toNumber: () => 3_000_000 },
+      payoutDelay2H: { toNumber: () => 5_000_000 },
+      payoutDelay3H: { toNumber: () => 8_000_000 },
+      payoutDelay4To5H: { toNumber: () => 12_000_000 },
+      payoutDelay6HOrCancelled: { toNumber: () => 15_000_000 },
+      coverageStartTs: { toNumber: () => 1767225600 },
+      coverageEndTs: { toNumber: () => 1798761600 },
+      reinsurer: undefined,
+    } as never);
+
+    expect(getState().participants[0]?.name).toBe('Participant 1');
+  });
+
+  it('hydrates participant names from backend display-name metadata', async () => {
+    await i18n.changeLanguage('en');
+    useProtocolStore.setState({
+      participants: [{ id: 'p1', name: '', share: 50, address: '', confirmed: false }],
+    });
+
+    useProtocolStore.getState().applyMasterAgreementDisplayNames({
+      participants: [{ wallet: 'wallet-1', displayName: 'Samsung Life' }],
+      reinsurer: null,
+    });
+
+    useProtocolStore.getState().syncMasterFromChain({
+      status: MasterPolicyStatus.Draft,
+      leaderShareBps: 5000,
+      cededRatioBps: 0,
+      reinsCommissionBps: 0,
+      reinsurerConfirmed: false,
+      participants: [{
+        insurer: { toBase58: () => 'wallet-1' },
+        shareBps: 5000,
+        confirmed: false,
+      }],
+      premiumPerPolicy: { toNumber: () => 3_000_000 },
+      payoutDelay2H: { toNumber: () => 5_000_000 },
+      payoutDelay3H: { toNumber: () => 8_000_000 },
+      payoutDelay4To5H: { toNumber: () => 12_000_000 },
+      payoutDelay6HOrCancelled: { toNumber: () => 15_000_000 },
+      coverageStartTs: { toNumber: () => 1767225600 },
+      coverageEndTs: { toNumber: () => 1798761600 },
+      reinsurer: undefined,
+    } as never);
+
+    expect(useProtocolStore.getState().participants[0]?.name).toBe('Samsung Life');
   });
 });

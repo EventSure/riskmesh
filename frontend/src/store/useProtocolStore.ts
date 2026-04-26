@@ -17,8 +17,20 @@ export interface Participant {
 
 export interface ReinsurerConfig {
   enabled: boolean;
+  name?: string;
   address: string;
   confirmed: boolean;
+}
+
+interface MasterAgreementDisplayNames {
+  participants: Array<{
+    wallet: string;
+    displayName: string;
+  }>;
+  reinsurer: {
+    wallet: string;
+    displayName: string;
+  } | null;
 }
 
 export interface Contract {
@@ -184,6 +196,7 @@ const makeInitialAcc = (n: number): Acc => ({
 });
 
 const DEFAULT_PARTICIPANT: Participant = { id: 'p1', name: '', share: 50, address: '', confirmed: false };
+const participantFallbackName = (index: number) => `${i18n.t('confirm.participant')} ${index + 1}`;
 
 /* ── Store ── */
 interface ProtocolState {
@@ -224,6 +237,8 @@ interface ProtocolState {
   lastTxSignature: string | null;
   masterAgreements: MasterAgreementSummary[];
   lastDaemonActivityTs: number | null;
+  kpiSnapshot: { poolBalance: number; claimCount: number; flightPolicyCount: number } | null;
+  displayNamesByWallet: Record<string, string>;
 
   // Actions
   setMode: (m: ProtocolMode) => void;
@@ -245,6 +260,7 @@ interface ProtocolState {
   approveClaims: () => number;
   settleClaims: () => number;
   addLog: (msg: string, color: string, instruction: string, detail?: string, txSignature?: string) => void;
+  applyMasterAgreementDisplayNames: (payload: MasterAgreementDisplayNames) => void;
   setMasterAgreementPDA: (pda: string | null) => void;
   setMasterAgreements: (list: MasterAgreementSummary[]) => void;
   selectMasterAgreement: (pda: string | null) => void;
@@ -265,6 +281,7 @@ interface ProtocolState {
   onChainSettle: (contractId: number, txSignature: string) => void;
   refreshPool: () => void;
   setPoolBalance: (balance: number) => void;
+  captureKpiSnapshot: () => void;
   resetAll: () => void;
   syncMasterFromChain: (data: MasterPolicyAccount) => void;
   syncFlightPoliciesFromChain: (policies: FlightPolicyWithKey[]) => void;
@@ -288,6 +305,8 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
   claims: [],
   contractCount: 0,
   claimCount: 0,
+  kpiSnapshot: null,
+  displayNamesByWallet: {},
   acc: makeInitialAcc(1),
   logs: [],
   logIdCounter: 0,
@@ -580,6 +599,25 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     }));
   },
 
+  applyMasterAgreementDisplayNames: (payload) => {
+    const displayNamesByWallet = Object.fromEntries([
+      ...payload.participants.map(({ wallet, displayName }) => [wallet, displayName]),
+      ...(payload.reinsurer ? [[payload.reinsurer.wallet, payload.reinsurer.displayName] as const] : []),
+    ]);
+
+    set(st => ({
+      displayNamesByWallet,
+      participants: st.participants.map((participant, index) => ({
+        ...participant,
+        name: displayNamesByWallet[participant.address] || participant.name || participantFallbackName(index),
+      })),
+      reinsurer: {
+        ...st.reinsurer,
+        name: st.reinsurer.address ? displayNamesByWallet[st.reinsurer.address] || st.reinsurer.name : st.reinsurer.name,
+      },
+    }));
+  },
+
   setMasterAgreementPDA: (pda) => set({ masterAgreementPDA: pda }),
 
   setMasterAgreements: (list) => set({ masterAgreements: list }),
@@ -598,10 +636,10 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       claimCount: 0,
     };
     if (pda === null) {
-      set({ masterAgreementPDA: null, ...resetMirror });
+      set({ masterAgreementPDA: null, displayNamesByWallet: {}, ...resetMirror });
       get().addLog('새 마스터계약 생성 모드', '#94A3B8', 'select_master');
     } else {
-      set({ masterAgreementPDA: pda, ...resetMirror });
+      set({ masterAgreementPDA: pda, displayNamesByWallet: {}, ...resetMirror });
       get().addLog(`마스터계약 전환: ${pda.slice(0, 8)}...`, '#9945FF', 'select_master', '체인에서 상태 조회 중...');
     }
   },
@@ -662,7 +700,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       const st = get();
       const p = st.participants.find(p => p.id === target);
       const idx = st.participants.findIndex(p => p.id === target);
-      const label = p?.name || `참여사 ${idx + 1}`;
+      const label = p?.name || participantFallbackName(Math.max(idx, 0));
       get().addLog(
         i18n.t('store.confirmDone', { role: label }),
         PARTICIPANT_COLORS[idx] || '#14F195', 'confirm_master',
@@ -791,6 +829,15 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
   refreshPool: () => set(st => ({ poolRefreshKey: st.poolRefreshKey + 1 })),
   setPoolBalance: (balance) => set({ poolBalance: balance }),
 
+  captureKpiSnapshot: () =>
+    set(st => ({
+      kpiSnapshot: st.kpiSnapshot ?? {
+        poolBalance: st.poolBalance,
+        claimCount: st.claimCount,
+        flightPolicyCount: 0,
+      },
+    })),
+
   resetAll: () => {
     participantIdCounter = 1;
     set({
@@ -807,6 +854,8 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       premHist: [], poolHist: [{ t: 'init', v: 10000 }],
       logs: [], logIdCounter: 0,
       masterAgreementPDA: null, lastTxSignature: null,
+      kpiSnapshot: null,
+      displayNamesByWallet: {},
     });
     get().addLog(i18n.t('store.resetMsg'), '#9945FF', 'system_init');
   },
@@ -819,12 +868,15 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     // prevents user-edited names from being overwritten on every poll and keeps
     // ids stable so addParticipant-generated ids never collide.
     const prevParticipants = get().participants;
+    const displayNamesByWallet = get().displayNamesByWallet;
     const participants: Participant[] = data.participants.map((p, i) => {
       const address = p?.insurer?.toBase58() ?? '';
       const existing = address ? prevParticipants.find(x => x.address === address) : undefined;
+      const fallbackExisting = prevParticipants[i];
+      const backendDisplayName = address ? displayNamesByWallet[address] : undefined;
       return {
-        id: existing?.id ?? `p${i + 1}`,
-        name: existing?.name ?? `참여사 ${i + 1}`,
+        id: existing?.id ?? fallbackExisting?.id ?? `p${i + 1}`,
+        name: backendDisplayName || existing?.name || fallbackExisting?.name || participantFallbackName(i),
         share: Math.round((p?.shareBps ?? 0) / 100),
         address,
         confirmed: p?.confirmed ?? false,
@@ -840,9 +892,12 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
 
     const reinConfirmed = data.reinsurerConfirmed;
     const hasReinsurer = data.cededRatioBps > 0;
+    const prevReinsurer = get().reinsurer;
+    const reinsurerAddress = hasReinsurer ? (data.reinsurer?.toBase58() ?? '') : '';
     const reinsurer: ReinsurerConfig = {
       enabled: hasReinsurer,
-      address: hasReinsurer ? (data.reinsurer?.toBase58() ?? '') : '',
+      name: reinsurerAddress ? displayNamesByWallet[reinsurerAddress] || prevReinsurer.name : undefined,
+      address: reinsurerAddress,
       confirmed: hasReinsurer && reinConfirmed,
     };
 

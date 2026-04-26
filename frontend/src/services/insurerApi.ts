@@ -44,7 +44,7 @@ export interface MasterAgreementDisplayNamesPayload {
   reinsurer: DisplayNamePayload | null;
 }
 
-interface MasterAgreementDisplayNamesResponse {
+export interface MasterAgreementDisplayNamesResponse {
   master_policy_pubkey: string;
   participants: Array<{
     wallet: string;
@@ -54,6 +54,12 @@ interface MasterAgreementDisplayNamesResponse {
     wallet: string;
     display_name: string;
   } | null;
+}
+
+export async function fetchMasterAgreementDisplayNames(masterPolicyPubkey: string): Promise<MasterAgreementDisplayNamesResponse> {
+  const res = await fetch(`${BACKEND_URL}/api/master-policies/${masterPolicyPubkey}/display-names`);
+  if (!res.ok) throw new Error(await res.text() || 'api_error');
+  return await res.json() as MasterAgreementDisplayNamesResponse;
 }
 
 export async function fetchActiveMasterPolicies(): Promise<MasterPolicyInfo[]> {
