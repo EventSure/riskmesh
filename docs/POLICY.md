@@ -68,8 +68,8 @@ program.
 Program id selection must be environment-driven:
 
 - Frontend: `VITE_PROGRAM_STAGE`, `VITE_PROGRAM_ID`, `VITE_STAGING_PROGRAM_ID`
-- Backend: active `PROGRAM_ID`, with `STAGING_PROGRAM_ID` documented as the staging reference
-- Contract scripts: active `PROGRAM_ID`, with `STAGING_PROGRAM_ID` documented as the staging reference
+- Backend: active `PROGRAM_ID`; `STAGING_PROGRAM_ID` may be kept as a local reference, but backend targets staging only when `PROGRAM_ID` is explicitly set to the staging id
+- Contract scripts: active `PROGRAM_ID`; `STAGING_PROGRAM_ID` may be kept as a local reference, but scripts target staging only when `PROGRAM_ID` is explicitly set/exported to the staging id
 
 When a program-id env variable is added or renamed, update the matching `.env`
 and `.env.example` files together. Local `target/deploy/*-keypair.json` files

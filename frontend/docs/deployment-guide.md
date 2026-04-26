@@ -134,10 +134,13 @@ cp target/idl/open_parametric.json ../frontend/src/lib/idl/open_parametric.json
 
 # 3. 프론트엔드 env 설정
 cd ../frontend
-cp .env.example .env
-# VITE_PROGRAM_STAGE=stable
-# VITE_PROGRAM_ID=<배포된 stable 프로그램 주소>
-# VITE_STAGING_PROGRAM_ID=<staging 프로그램 배포 후 설정>
+# .env가 없으면 .env.example을 참고해 생성하고, 있으면 기존 .env를 수정
+# Layout-changing 검증 배포:
+#   VITE_PROGRAM_STAGE=staging
+#   VITE_STAGING_PROGRAM_ID=<shared devnet staging program id>
+# Stable 업그레이드를 의도한 경우에만:
+#   VITE_PROGRAM_STAGE=stable
+#   VITE_PROGRAM_ID=<stable devnet program id>
 
 # 4. SPL 토큰 생성 (최초 1회)
 cd ../contract
@@ -152,6 +155,10 @@ spl-token mint <MINT_ADDRESS> 1000
 cd ../frontend
 npm run dev
 ```
+
+`npm run dev`만 현재 제공됩니다. `dev:stage` 같은 별도 실행 스크립트는 아직
+추가되지 않았으므로, staging 검증도 동일한 개발 서버 명령으로 실행하고 env 값만
+명시적으로 전환해야 합니다.
 
 ## 트러블슈팅
 
