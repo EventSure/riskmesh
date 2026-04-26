@@ -5,6 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { Tag } from '@/components/common';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { MasterContractSetup } from './MasterContractSetup';
+import { MasterAgreementNameEditor } from './MasterAgreementNameEditor';
 import { MasterAgreementReviewPanel, type MasterAgreementReviewStep } from './MasterAgreementReviewPanel';
 import { ParticipantConfirm } from './ParticipantConfirm';
 
@@ -179,6 +180,10 @@ const WorkArea = styled.div`
   min-height: 0;
 `;
 
+const EditorWrap = styled.div`
+  margin-bottom: 16px;
+`;
+
 function getRecommendedStep(processStep: number, masterActive: boolean): MasterAgreementReviewStep {
   if (masterActive || processStep >= 4) {
     return 'activate';
@@ -229,13 +234,16 @@ function StepContent({
 
 export function MasterAgreementWorkbench() {
   const { t } = useTranslation();
-  const { processStep, masterActive } = useProtocolStore(useShallow(state => ({
+  const { processStep, masterActive, role, masterAgreementPDA } = useProtocolStore(useShallow(state => ({
     processStep: state.processStep,
     masterActive: state.masterActive,
+    role: state.role,
+    masterAgreementPDA: state.masterAgreementPDA,
   })));
   const [activeStep, setActiveStep] = useState<MasterAgreementReviewStep>(() => getRecommendedStep(processStep, masterActive));
   const handleTermsSet = () => setActiveStep('participants');
   const handleActivated = () => setActiveStep('activate');
+  const canEditName = !!masterAgreementPDA && (role === 'leader' || role === 'operator');
 
   useEffect(() => {
     setActiveStep(getRecommendedStep(processStep, masterActive));
@@ -286,6 +294,11 @@ export function MasterAgreementWorkbench() {
 
       <Body>
         <MainColumn>
+          {canEditName && (
+            <EditorWrap>
+              <MasterAgreementNameEditor />
+            </EditorWrap>
+          )}
           <WorkArea>
             <StepContent step={activeStep} onTermsSet={handleTermsSet} onActivated={handleActivated} />
           </WorkArea>

@@ -86,7 +86,7 @@ export function MasterAgreementDropdown() {
       )}
       {policies.map(p => (
         <option key={p.pda} value={p.pda}>
-          {p.pda.slice(0, 8)}... · {statusLabel(p.status)} · {p.myRole ? ROLE_LABEL[p.myRole] : ''} · {formatDate(p.coverageEndTs)}
+          {(p.name?.trim() || `${p.pda.slice(0, 8)}...`)} · {(p.statusLabel || statusLabel(p.status))} · {p.myRole ? ROLE_LABEL[p.myRole] : ''} · {formatDate(p.coverageEndTs)}
         </option>
       ))}
       {masterAgreementPDA && !policies.some(p => p.pda === masterAgreementPDA) && (

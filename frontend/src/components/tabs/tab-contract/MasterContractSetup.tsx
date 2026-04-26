@@ -11,7 +11,7 @@ import { useProgram } from '@/hooks/useProgram';
 import { getMasterAgreementPDA } from '@/lib/pda';
 import { CURRENCY_MINT } from '@/lib/constants';
 import { setPoolWallet } from '@/lib/demo-keypairs';
-import { ConfirmRole } from '@/lib/idl/open_parametric';
+import { ConfirmRole, type CreateMasterAgreementParams } from '@/lib/idl/open_parametric';
 import { putMasterAgreementDisplayNames } from '@/services/insurerApi';
 import { ParticipationStructure } from './ParticipationStructure';
 
@@ -111,6 +111,7 @@ export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
 
   const [coverageStart, setCoverageStart] = useState(store.coverageStart);
   const [coverageEnd, setCoverageEnd] = useState(store.coverageEnd);
+  const [masterAgreementName, setMasterAgreementName] = useState('');
   const [premium, setPremium] = useState(store.premiumPerPolicy);
   const [payout2h, setPayout2h] = useState(store.payoutTiers.delay2h);
   const [payout3h, setPayout3h] = useState(store.payoutTiers.delay3h);
@@ -143,6 +144,11 @@ export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
     // On-chain mode
     if (!connected || !wallet || !program || !provider) {
       toast('Please connect your wallet first', 'd');
+      return;
+    }
+    const normalizedName = masterAgreementName.trim();
+    if (!normalizedName) {
+      toast(t('master.nameRequired'), 'd');
       return;
     }
     const total = leaderShare + participants.reduce((s, p) => s + p.share, 0);
@@ -231,6 +237,23 @@ export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
         insurer: participantPubkeys[i]!,
         shareBps: p.share * 100,
       }));
+      const createParams: CreateMasterAgreementParams = {
+        masterId: masterIdBN,
+        name: normalizedName,
+        coverageStartTs: new BN(Math.floor(new Date(coverageStart).getTime() / 1000)),
+        coverageEndTs: new BN(Math.floor(new Date(coverageEnd).getTime() / 1000)),
+        premiumPerPolicy: new BN(premium * 1_000_000),
+        payoutDelay2H: new BN(payout2h * 1_000_000),
+        payoutDelay3H: new BN(payout3h * 1_000_000),
+        payoutDelay4To5H: new BN(payout4to5h * 1_000_000),
+        payoutDelay6HOrCancelled: new BN(payout6h * 1_000_000),
+        collateralClaimCount: localCollateralClaimCount,
+        leaderShareBps: leaderShare * 100,
+        cededRatioBps: reinsurer.enabled ? 5000 : 0,
+        reinsCommissionBps: reinsurer.enabled ? 1000 : 0,
+        participants: instructionParticipants,
+        oracleFeed: PublicKey.default,
+      };
 
       const reinsurerKey = reinsurerPubkey ?? leaderKey; // fallback if no reinsurer
       const reinsurerDepositWallet = reinsurerPubkey
@@ -238,21 +261,7 @@ export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
         : leaderATA;
 
       const createMasterIx = await prog.methods
-        .createMasterAgreement({
-          masterId: masterIdBN,
-          coverageStartTs: new BN(Math.floor(new Date(coverageStart).getTime() / 1000)),
-          coverageEndTs: new BN(Math.floor(new Date(coverageEnd).getTime() / 1000)),
-          premiumPerPolicy: new BN(premium * 1_000_000),
-          payoutDelay2H: new BN(payout2h * 1_000_000),
-          payoutDelay3H: new BN(payout3h * 1_000_000),
-          payoutDelay4To5H: new BN(payout4to5h * 1_000_000),
-          payoutDelay6HOrCancelled: new BN(payout6h * 1_000_000),
-          collateralClaimCount: localCollateralClaimCount,
-          leaderShareBps: leaderShare * 100,
-          cededRatioBps: reinsurer.enabled ? 5000 : 0,
-          reinsCommissionBps: reinsurer.enabled ? 1000 : 0,
-          participants: instructionParticipants,
-        })
+        .createMasterAgreement(createParams)
         .accounts({
           leader: leaderKey,
           operator: operatorKey,
@@ -369,6 +378,17 @@ export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
         <Tag variant={masterActive ? 'accent' : 'subtle'}>{masterActive ? t('common.active') : t('common.inactive')}</Tag>
       </CardHeader>
       <CardBody>
+        <FormGroup>
+          <FormLabel>{t('master.name')}</FormLabel>
+          <FormInput
+            value={masterAgreementName}
+            onChange={e => setMasterAgreementName(e.target.value)}
+            placeholder={t('master.namePlaceholder')}
+            readOnly={locked}
+            required={mode === 'onchain'}
+            style={{ opacity: locked ? 0.6 : 1 }}
+          />
+        </FormGroup>
         <FormGroup>
           <FormLabel>{t('master.coverageStart')}</FormLabel>
           <FormInput

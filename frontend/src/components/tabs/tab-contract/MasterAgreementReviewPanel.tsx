@@ -1,7 +1,10 @@
 import styled from '@emotion/styled';
+import { useMemo } from 'react';
+import { PublicKey } from '@solana/web3.js';
 import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import { Card, CardBody, CardHeader, CardTitle, Tag } from '@/components/common';
+import { useMasterAgreementAccount } from '@/hooks/useMasterAgreementAccount';
 import { formatNum, useProtocolStore } from '@/store/useProtocolStore';
 
 export type MasterAgreementReviewStep = 'basic' | 'participants' | 'activate';
@@ -122,6 +125,11 @@ export function MasterAgreementReviewPanel({ selectedStep }: { selectedStep: Mas
     reinsurerConfirmed: reinsurer.confirmed,
     masterActive,
   });
+  const masterAgreementKey = useMemo(
+    () => (masterAgreementPDA ? new PublicKey(masterAgreementPDA) : null),
+    [masterAgreementPDA],
+  );
+  const { account } = useMasterAgreementAccount(masterAgreementKey);
 
   return (
     <Card data-testid="master-agreement-review-panel">
@@ -133,6 +141,11 @@ export function MasterAgreementReviewPanel({ selectedStep }: { selectedStep: Mas
       </CardHeader>
       <CardBody>
         <SummaryStack>
+          <SummaryRow>
+            <SummaryLabel>{t('master.review.name')}</SummaryLabel>
+            <SummaryValue>{account?.name?.trim() || t('master.noNameFallback')}</SummaryValue>
+          </SummaryRow>
+
           <SummaryRow>
             <SummaryLabel>{t('master.review.coverage')}</SummaryLabel>
             <SummaryValue>{`${coverageStart} - ${coverageEnd}`}</SummaryValue>

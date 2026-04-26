@@ -1,0 +1,87 @@
+import styled from '@emotion/styled';
+import { useEffect, useMemo, useState } from 'react';
+import { PublicKey } from '@solana/web3.js';
+import { useTranslation } from 'react-i18next';
+import { Card, CardBody, CardHeader, CardTitle, Button, FormGroup, FormInput, FormLabel, useToast } from '@/components/common';
+import { useMasterAgreementAccount } from '@/hooks/useMasterAgreementAccount';
+import { useMasterAgreements } from '@/hooks/useMasterAgreements';
+import { useUpdateMasterAgreementName } from '@/hooks/useUpdateMasterAgreementName';
+import { useProtocolStore } from '@/store/useProtocolStore';
+
+const Actions = styled.div`
+  display: flex;
+  justify-content: flex-end;
+`;
+
+export function MasterAgreementNameEditor() {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const masterAgreementPDA = useProtocolStore(s => s.masterAgreementPDA);
+  const masterAgreementKey = useMemo(
+    () => (masterAgreementPDA ? new PublicKey(masterAgreementPDA) : null),
+    [masterAgreementPDA],
+  );
+  const { account, refetch: refetchAccount } = useMasterAgreementAccount(masterAgreementKey);
+  const { refetch: refetchPolicies } = useMasterAgreements();
+  const { updateMasterAgreementName, loading } = useUpdateMasterAgreementName();
+  const [draftName, setDraftName] = useState('');
+
+  useEffect(() => {
+    setDraftName(account?.name ?? '');
+  }, [account?.name]);
+
+  if (!masterAgreementKey) {
+    return null;
+  }
+
+  const normalizedCurrentName = account?.name?.trim() ?? '';
+  const normalizedDraftName = draftName.trim();
+
+  const handleSave = async () => {
+    if (!normalizedDraftName) {
+      toast(t('master.nameRequired'), 'd');
+      return;
+    }
+
+    const result = await updateMasterAgreementName({
+      masterAgreement: masterAgreementKey,
+      name: normalizedDraftName,
+    });
+
+    if (!result.success) {
+      toast(result.error || 'Failed to update master agreement name', 'd');
+      return;
+    }
+
+    await Promise.allSettled([refetchAccount(), refetchPolicies()]);
+    toast(t('master.nameSaved'), 's');
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t('master.name')}</CardTitle>
+      </CardHeader>
+      <CardBody>
+        <FormGroup>
+          <FormLabel>{t('master.name')}</FormLabel>
+          <FormInput
+            value={draftName}
+            onChange={e => setDraftName(e.target.value)}
+            placeholder={t('master.namePlaceholder')}
+          />
+        </FormGroup>
+        <Actions>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleSave}
+            disabled={loading || !normalizedDraftName || normalizedDraftName === normalizedCurrentName}
+          >
+            {loading ? t('master.loading') : t('master.nameSave')}
+          </Button>
+        </Actions>
+      </CardBody>
+    </Card>
+  );
+}
