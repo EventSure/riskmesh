@@ -65,7 +65,7 @@ describe("settle_flight_claim", () => {
     // leaderDeposit은 리더(payer) 소유 ATA 역할의 계정(정산 목적지), 풀 지갑은 PDA 소유.
     const leaderDeposit = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
     const reinsurerPool = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
-    const reinsurerDeposit = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
+    const reinsurerDeposit = await createAccount(connection, payer, mint, reinsurer.publicKey, Keypair.generate());
 
     const leaderPool = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
     const aPool = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
@@ -74,7 +74,7 @@ describe("settle_flight_claim", () => {
     const aDeposit = await createAccount(connection, payer, mint, participantA.publicKey);
     const bDeposit = await createAccount(connection, payer, mint, participantB.publicKey);
 
-    const payerToken = await createAccount(connection, payer, mint, payer.publicKey);
+    const payerToken = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
     await mintTo(connection, payer, mint, payerToken, payer, premiumAmount);
 
     await mintTo(connection, payer, mint, reinsurerPool, payer, reinsurerAmount);

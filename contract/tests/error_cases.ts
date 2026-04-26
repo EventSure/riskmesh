@@ -66,7 +66,7 @@ describe("error_cases", () => {
     await airdrop(participant.publicKey);
     const pda = masterPda(masterId);
 
-    const leaderDeposit    = await createAccount(connection, payer, mint, pda, Keypair.generate());
+    const leaderDeposit    = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
     const reinsurerPool    = await createAccount(connection, payer, mint, pda, Keypair.generate());
     const reinsurerDeposit = await createAccount(connection, payer, mint, pda, Keypair.generate());
     const leaderPool       = await createAccount(connection, payer, mint, pda, Keypair.generate());
@@ -186,7 +186,7 @@ describe("error_cases", () => {
 
     it("rejects when no participants are provided (leader-only)", async () => {
       const pda = masterPda(new anchor.BN(202));
-      const leaderDeposit    = await createAccount(connection, payer, mint, pda, Keypair.generate());
+      const leaderDeposit    = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
       const reinsurerPool    = await createAccount(connection, payer, mint, pda, Keypair.generate());
       const reinsurerDeposit = await createAccount(connection, payer, mint, pda, Keypair.generate());
       const now = Math.floor(Date.now() / 1000);
@@ -265,7 +265,7 @@ describe("error_cases", () => {
 
     it("rejects when participant count exceeds MAX_MASTER_PARTICIPANTS (6명)", async () => {
       const pda = masterPda(new anchor.BN(203));
-      const leaderDeposit    = await createAccount(connection, payer, mint, pda, Keypair.generate());
+      const leaderDeposit    = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
       const reinsurerPool    = await createAccount(connection, payer, mint, pda, Keypair.generate());
       const reinsurerDeposit = await createAccount(connection, payer, mint, pda, Keypair.generate());
       const now = Math.floor(Date.now() / 1000);
@@ -303,7 +303,7 @@ describe("error_cases", () => {
 
     it("rejects when leader is included in the participants list", async () => {
       const pda = masterPda(new anchor.BN(201));
-      const leaderDeposit    = await createAccount(connection, payer, mint, pda, Keypair.generate());
+      const leaderDeposit    = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
       const reinsurerPool    = await createAccount(connection, payer, mint, pda, Keypair.generate());
       const reinsurerDeposit = await createAccount(connection, payer, mint, pda, Keypair.generate());
       const stranger = Keypair.generate();
@@ -448,7 +448,7 @@ describe("error_cases", () => {
       await airdrop(participantA.publicKey);
       const masterId = new anchor.BN(220);
       const pda      = masterPda(masterId);
-      const leaderDeposit    = await createAccount(connection, payer, mint, pda, Keypair.generate());
+      const leaderDeposit    = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
       const reinsurerPool    = await createAccount(connection, payer, mint, pda, Keypair.generate());
       const reinsurerDeposit = await createAccount(connection, payer, mint, pda, Keypair.generate());
       const leaderPool       = await createAccount(connection, payer, mint, pda, Keypair.generate());

@@ -77,7 +77,7 @@ describe("multiple_flights", () => {
 
     leaderDeposit    = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
     reinsurerPool    = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
-    reinsurerDeposit = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
+    reinsurerDeposit = await createAccount(connection, payer, mint, reinsurer.publicKey, Keypair.generate());
     leaderPool       = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
     aPool            = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
     aDeposit         = await createAccount(connection, payer, mint, participantA.publicKey);
