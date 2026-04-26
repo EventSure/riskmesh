@@ -11,7 +11,16 @@
     "demo:6-settle": "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/06-settle.ts",
     "demo:manual-list": "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/manual-list.ts",
     "demo:manual-create-flight": "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/manual-create-flight.ts",
-    "demo:manual-settle": "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/manual-settle.ts"
+    "demo:manual-settle": "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com ts-node -P tsconfig.json scripts/manual-settle.ts",
+    "demo:stage": "./run-staging.sh",
+    "demo:3-master-setup:stage": "./run-staging.sh demo:3-master-setup",
+    "demo:4-flight-create:stage": "./run-staging.sh demo:4-flight-create",
+    "demo:5a-resolve:stage": "./run-staging.sh demo:5a-resolve",
+    "demo:5b-claim:stage": "./run-staging.sh demo:5b-claim",
+    "demo:6-settle:stage": "./run-staging.sh demo:6-settle",
+    "demo:manual-list:stage": "./run-staging.sh demo:manual-list",
+    "demo:manual-create-flight:stage": "./run-staging.sh demo:manual-create-flight",
+    "demo:manual-settle:stage": "./run-staging.sh demo:manual-settle"
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.32.1",
