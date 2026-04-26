@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { ThemeProvider } from '@emotion/react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { darkTheme } from '@/styles/theme';
 import { useProtocolStore } from '@/store/useProtocolStore';
@@ -64,5 +64,30 @@ describe('MasterAgreementReviewPanel', () => {
 
     expect(screen.getByText('Fresh Optimistic Agreement Name')).toBeInTheDocument();
     expect(screen.queryByText('Stale Backend Agreement Name')).not.toBeInTheDocument();
+  });
+
+  it('resyncs to a newer authoritative account name after the backend refreshes', async () => {
+    let authoritativeName = 'Stale Backend Agreement Name';
+    mockUseMasterAgreementAccount.mockImplementation(() => ({
+      account: {
+        name: authoritativeName,
+      },
+    }));
+
+    const view = renderSubject();
+
+    expect(screen.getByText('Fresh Optimistic Agreement Name')).toBeInTheDocument();
+
+    authoritativeName = 'Authoritative Backend Agreement Name';
+    view.rerender(
+      <ThemeProvider theme={darkTheme}>
+        <MasterAgreementReviewPanel selectedStep="basic" />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Authoritative Backend Agreement Name')).toBeInTheDocument();
+    });
+    expect(useProtocolStore.getState().selectedMasterAgreementName).toBe('Authoritative Backend Agreement Name');
   });
 });

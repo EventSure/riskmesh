@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import { Card, CardBody, CardHeader, CardTitle, Tag } from '@/components/common';
 import { useMasterAgreementAccount } from '@/hooks/useMasterAgreementAccount';
+import { useSyncedSelectedMasterAgreementName } from '@/hooks/useSyncedSelectedMasterAgreementName';
 import { formatNum, useProtocolStore } from '@/store/useProtocolStore';
 
 export type MasterAgreementReviewStep = 'basic' | 'participants' | 'activate';
@@ -132,6 +133,8 @@ export function MasterAgreementReviewPanel({ selectedStep }: { selectedStep: Mas
     [masterAgreementPDA],
   );
   const { account } = useMasterAgreementAccount(masterAgreementKey);
+
+  useSyncedSelectedMasterAgreementName(account?.name);
 
   return (
     <Card data-testid="master-agreement-review-panel">

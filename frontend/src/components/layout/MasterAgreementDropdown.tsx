@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { useMasterAgreements } from '@/hooks/useMasterAgreements';
 import { useProgram } from '@/hooks/useProgram';
+import { useSyncedSelectedMasterAgreementName } from '@/hooks/useSyncedSelectedMasterAgreementName';
 import { MasterAgreementStatus } from '@/lib/idl/open_parametric';
 
 const SelectBase = styled.select`
@@ -54,16 +55,18 @@ export function MasterAgreementDropdown() {
   const { t } = useTranslation();
   const { connected } = useProgram();
   const { policies, loading, refetch } = useMasterAgreements();
+  const selectedPolicy = masterAgreementPDA
+    ? policies.find((policy) => policy.pda === masterAgreementPDA)
+    : undefined;
+
+  useSyncedSelectedMasterAgreementName(selectedPolicy?.name);
 
   // Sync detected role to store when selected policy changes or list updates
   useEffect(() => {
-    if (!masterAgreementPDA) return;
-    const found = policies.find(p => p.pda === masterAgreementPDA);
-    if (found?.myRole) setRole(found.myRole);
-    if (found?.name?.trim() && !selectedMasterAgreementName?.trim()) {
-      setSelectedMasterAgreementName(found.name.trim());
+    if (selectedPolicy?.myRole) {
+      setRole(selectedPolicy.myRole);
     }
-  }, [masterAgreementPDA, policies, selectedMasterAgreementName]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedPolicy, setRole]);
 
   // Refetch when a newly created policy isn't in the list yet
   useEffect(() => {

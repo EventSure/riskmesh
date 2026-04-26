@@ -98,4 +98,33 @@ describe('MasterAgreementNameEditor', () => {
       expect(mockToast).toHaveBeenCalledWith('master.nameSavedLocalWarning', 'w');
     });
   });
+
+  it('resyncs the optimistic selected name when the fetched account publishes a newer authoritative rename', async () => {
+    let authoritativeName = 'Old Agreement Name';
+    useProtocolStore.setState({
+      selectedMasterAgreementName: 'Optimistic Rename',
+    });
+    mockUseMasterAgreementAccount.mockImplementation(() => ({
+      account: {
+        name: authoritativeName,
+      },
+      refetch: mockRefetchAccount,
+    }));
+
+    const view = renderSubject();
+
+    expect(screen.getByDisplayValue('Optimistic Rename')).toBeInTheDocument();
+
+    authoritativeName = 'Authoritative Synced Rename';
+    view.rerender(
+      <ThemeProvider theme={darkTheme}>
+        <MasterAgreementNameEditor />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Authoritative Synced Rename')).toBeInTheDocument();
+    });
+    expect(useProtocolStore.getState().selectedMasterAgreementName).toBe('Authoritative Synced Rename');
+  });
 });

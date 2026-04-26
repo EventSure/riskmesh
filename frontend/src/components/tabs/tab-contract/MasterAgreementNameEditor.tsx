@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Card, CardBody, CardHeader, CardTitle, Button, FormGroup, FormInput, FormLabel, useToast } from '@/components/common';
 import { useMasterAgreementAccount } from '@/hooks/useMasterAgreementAccount';
 import { useMasterAgreements } from '@/hooks/useMasterAgreements';
+import { useSyncedSelectedMasterAgreementName } from '@/hooks/useSyncedSelectedMasterAgreementName';
 import { useUpdateMasterAgreementName } from '@/hooks/useUpdateMasterAgreementName';
 import { useProtocolStore } from '@/store/useProtocolStore';
 
@@ -27,6 +28,8 @@ export function MasterAgreementNameEditor() {
   const { refetch: refetchPolicies } = useMasterAgreements();
   const { updateMasterAgreementName, loading } = useUpdateMasterAgreementName();
   const [draftName, setDraftName] = useState('');
+
+  useSyncedSelectedMasterAgreementName(account?.name);
 
   useEffect(() => {
     setDraftName(selectedMasterAgreementName ?? account?.name ?? '');

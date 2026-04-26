@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { ThemeProvider } from '@emotion/react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { darkTheme } from '@/styles/theme';
 import { useProtocolStore } from '@/store/useProtocolStore';
@@ -71,6 +71,43 @@ describe('MasterAgreementDropdown', () => {
     renderSubject();
 
     expect(await screen.findByRole('option', { name: /즉시 반영된 신규 공동계약명/ })).toBeInTheDocument();
+  });
+
+  it('resyncs the selected agreement name when the backend list publishes a newer authoritative rename', async () => {
+    const syncedPolicy = {
+      pda: '8Fj2kP9aFake',
+      name: '초기 체인 공동계약명',
+      masterId: '1710000000',
+      status: 2,
+      statusLabel: 'Active',
+      coverageEndTs: 1770000000,
+      myRole: 'leader' as const,
+    };
+    useProtocolStore.setState({
+      masterAgreementPDA: syncedPolicy.pda,
+      selectedMasterAgreementName: '로컬 낙관적 이름',
+    });
+    mockUseMasterAgreements.mockReturnValue({
+      loading: false,
+      refetch: vi.fn(),
+      policies: [syncedPolicy],
+    });
+
+    const view = renderSubject();
+
+    expect(await screen.findByRole('option', { name: /로컬 낙관적 이름/ })).toBeInTheDocument();
+
+    syncedPolicy.name = '백엔드 확정 공동계약명';
+    view.rerender(
+      <ThemeProvider theme={darkTheme}>
+        <MasterAgreementDropdown />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: /백엔드 확정 공동계약명/ })).toBeInTheDocument();
+    });
+    expect(useProtocolStore.getState().selectedMasterAgreementName).toBe('백엔드 확정 공동계약명');
   });
 
   it('syncs the selected operator role into the protocol store', () => {
