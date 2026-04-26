@@ -329,7 +329,9 @@ export function usePoolCollateralStatus(
     status,
     activePartyId,
     masterData,
-    loading: mode === 'simulation' ? false : masterLoading || balancesLoading,
+    loading: mode === 'simulation'
+      ? false
+      : masterLoading || balancesLoading || (!!masterData && !balances && !balancesError),
     error: mode === 'simulation' ? null : masterError ?? balancesError,
   };
 }

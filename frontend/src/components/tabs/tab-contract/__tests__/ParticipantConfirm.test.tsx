@@ -1,6 +1,6 @@
 import { ThemeProvider } from '@emotion/react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { Keypair, PublicKey } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ParticipantConfirm } from '../ParticipantConfirm';
 import { darkTheme } from '@/styles/theme';
@@ -8,7 +8,6 @@ import { useProtocolStore } from '@/store/useProtocolStore';
 
 const mockToast = vi.fn();
 const mockActivateMasterOnChain = vi.fn();
-const mockUseMasterAgreementAccount = vi.fn();
 
 vi.mock('react-i18next', async () => {
   const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next');
@@ -35,19 +34,10 @@ vi.mock('@/hooks/useActivateMaster', () => ({
   }),
 }));
 
-vi.mock('@/hooks/useMasterAgreementAccount', () => ({
-  useMasterAgreementAccount: (...args: unknown[]) => mockUseMasterAgreementAccount(...args),
-}));
-
-const masterAgreement = Keypair.generate().publicKey;
-const leaderPoolWallet = Keypair.generate().publicKey;
-const reinsurerPoolWallet = Keypair.generate().publicKey;
-const participantPoolWallets = [Keypair.generate().publicKey, Keypair.generate().publicKey];
-
-function renderParticipantConfirm() {
+function renderParticipantConfirm(onActivated = vi.fn()) {
   return render(
     <ThemeProvider theme={darkTheme}>
-      <ParticipantConfirm />
+      <ParticipantConfirm onActivated={onActivated} />
     </ThemeProvider>,
   );
 }
@@ -58,81 +48,51 @@ beforeEach(() => {
   useProtocolStore.setState({
     mode: 'onchain',
     role: 'leader',
-    masterAgreementPDA: masterAgreement.toBase58(),
     masterActive: false,
     participants: [
-      { id: 'p1', name: 'Participant 1', share: 30, address: participantPoolWallets[0].toBase58(), confirmed: true },
-      { id: 'p2', name: 'Participant 2', share: 20, address: participantPoolWallets[1].toBase58(), confirmed: true },
+      { id: 'p1', name: 'Participant 1', share: 30, address: 'wallet-1', confirmed: true },
+      { id: 'p2', name: 'Participant 2', share: 20, address: 'wallet-2', confirmed: true },
     ],
     reinsurer: { enabled: true, address: PublicKey.default.toBase58(), confirmed: true },
-  });
-  mockUseMasterAgreementAccount.mockReturnValue({
-    account: {
-      leaderPoolWallet,
-      reinsurerPoolWallet,
-      participants: participantPoolWallets.map((poolWallet, index) => ({
-        insurer: Keypair.generate().publicKey,
-        shareBps: index === 0 ? 3000 : 2000,
-        confirmed: true,
-        poolWallet,
-        depositWallet: Keypair.generate().publicKey,
-      })),
-    },
-    loading: false,
-    error: null,
-    refetch: vi.fn(),
   });
   mockActivateMasterOnChain.mockResolvedValue({ success: true, signature: 'activate-sig' });
 });
 
 describe('ParticipantConfirm', () => {
-  it('passes leader, reinsurer, and participant pool accounts to on-chain activation', async () => {
-    renderParticipantConfirm();
+  it('advances to the Step 3 dashboard when all confirmations are ready without activating on-chain', async () => {
+    const onActivated = vi.fn();
 
-    fireEvent.click(screen.getByRole('button', { name: 'confirm.activateBtn' }));
+    renderParticipantConfirm(onActivated);
+
+    const transitionButton = screen.getByRole('button', { name: 'master.step.activate' });
+    expect(transitionButton).toBeEnabled();
+    expect(transitionButton).not.toHaveAttribute('data-guide', 'activate-btn');
+
+    fireEvent.click(transitionButton);
 
     await waitFor(() => {
-      expect(mockActivateMasterOnChain).toHaveBeenCalledWith({
-        masterAgreement,
-        leaderPoolToken: leaderPoolWallet,
-        reinsurerPoolToken: reinsurerPoolWallet,
-        participantPoolTokens: participantPoolWallets,
-      });
+      expect(onActivated).toHaveBeenCalledTimes(1);
     });
+    expect(mockActivateMasterOnChain).not.toHaveBeenCalled();
   });
 
-  it('uses leader pool as placeholder when the master has no reinsurer pool', async () => {
+  it('keeps Step 3 unavailable until every confirmation is complete', () => {
     useProtocolStore.setState({
-      reinsurer: { enabled: false, address: '', confirmed: true },
+      participants: [
+        { id: 'p1', name: 'Participant 1', share: 30, address: 'wallet-1', confirmed: true },
+        { id: 'p2', name: 'Participant 2', share: 20, address: 'wallet-2', confirmed: false },
+      ],
     });
-    mockUseMasterAgreementAccount.mockReturnValue({
-      account: {
-        leaderPoolWallet,
-        reinsurerPoolWallet: null,
-        participants: participantPoolWallets.map((poolWallet, index) => ({
-          insurer: Keypair.generate().publicKey,
-          shareBps: index === 0 ? 3000 : 2000,
-          confirmed: true,
-          poolWallet,
-          depositWallet: Keypair.generate().publicKey,
-        })),
-      },
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
+    const onActivated = vi.fn();
 
-    renderParticipantConfirm();
+    renderParticipantConfirm(onActivated);
 
-    fireEvent.click(screen.getByRole('button', { name: 'confirm.activateBtn' }));
+    const transitionButton = screen.getByRole('button', { name: 'master.step.activate' });
+    expect(transitionButton).toBeDisabled();
 
-    await waitFor(() => {
-      expect(mockActivateMasterOnChain).toHaveBeenCalledWith({
-        masterAgreement,
-        leaderPoolToken: leaderPoolWallet,
-        reinsurerPoolToken: leaderPoolWallet,
-        participantPoolTokens: participantPoolWallets,
-      });
-    });
+    fireEvent.click(transitionButton);
+
+    expect(onActivated).not.toHaveBeenCalled();
+    expect(mockActivateMasterOnChain).not.toHaveBeenCalled();
   });
 });

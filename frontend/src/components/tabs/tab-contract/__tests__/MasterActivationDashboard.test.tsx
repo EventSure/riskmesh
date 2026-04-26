@@ -139,6 +139,7 @@ describe('MasterActivationDashboard', () => {
 
     const activateButton = screen.getByRole('button', { name: 'confirm.activateBtn' });
     expect(activateButton).toBeEnabled();
+    expect(activateButton).toHaveAttribute('data-guide', 'activate-btn');
 
     fireEvent.click(activateButton);
 
@@ -202,6 +203,24 @@ describe('MasterActivationDashboard', () => {
     expect(screen.getAllByText('master.loading').length).toBeGreaterThan(0);
     expect(screen.queryByText('pool.healthAggregateActionNeeded')).not.toBeInTheDocument();
     expect(screen.queryByText('5.00 USDC')).not.toBeInTheDocument();
+  });
+
+  test('keeps the dashboard in a loading state during the live-balance handoff before the snapshot resolves', () => {
+    mockUseMasterAgreementSnapshot.mockReturnValue({
+      snapshot: null,
+      status: null,
+      activePartyId: 'leader',
+      masterData: { name: 'Master 2026' },
+      loading: false,
+      error: null,
+      policyStatus: 'ready',
+      policyError: null,
+    });
+
+    renderSubject();
+
+    expect(screen.getAllByText('master.loading').length).toBeGreaterThan(0);
+    expect(screen.queryByText('master.step3.empty')).not.toBeInTheDocument();
   });
 
   test('shows an unresolved state instead of synthetic deficits when balance reads fail', () => {

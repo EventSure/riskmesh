@@ -4,7 +4,6 @@ import { useProtocolStore, PARTICIPANT_COLORS, REINSURER_COLOR } from '@/store/u
 import { useShallow } from 'zustand/shallow';
 import { useToast } from '@/components/common';
 import { useTranslation } from 'react-i18next';
-import { useMasterAgreementActivation } from '@/hooks/useMasterAgreementActivation';
 
 const ParticipantRow = styled.div<{ confirmed?: boolean }>`
   background: var(--card2);
@@ -50,7 +49,6 @@ export function ParticipantConfirm({ onActivated }: ParticipantConfirmProps) {
   );
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { activateLoading, canActivate, handleActivate } = useMasterAgreementActivation({ onActivated });
 
   const allParticipantsConfirmed = participants.every((p) => p.confirmed);
   const reinOk = !reinsurer.enabled || reinsurer.confirmed;
@@ -119,16 +117,17 @@ export function ParticipantConfirm({ onActivated }: ParticipantConfirmProps) {
             )}
           </ParticipantRow>
         )}
-        <Button
-          variant="accent"
-          fullWidth
-          onClick={() => void handleActivate()}
-          disabled={!canActivate || activateLoading}
-          style={{ marginTop: 4 }}
-          data-guide="activate-btn"
-        >
-          {activateLoading ? 'Sending TX...' : t('confirm.activateBtn')}
-        </Button>
+        {onActivated && (
+          <Button
+            variant="accent"
+            fullWidth
+            onClick={onActivated}
+            disabled={!allConfirmed}
+            style={{ marginTop: 4 }}
+          >
+            {t('master.step.activate')}
+          </Button>
+        )}
       </CardBody>
     </Card>
   );

@@ -135,21 +135,22 @@ export function MasterActivationDashboard() {
   );
   const { snapshot, status, activePartyId, masterData, loading, error, policyStatus, policyError } = useMasterAgreementSnapshot(masterAgreementKey);
   const { activateLoading, canActivate, handleActivate } = useMasterAgreementActivation();
+  const readinessLoading = loading || (!!masterData && !snapshot && !error);
 
   const agreementName =
     snapshot?.agreementName ||
     selectedMasterAgreementName?.trim() ||
     masterData?.name?.trim() ||
     t('master.noNameFallback');
-  const readinessTag = loading
+  const readinessTag = readinessLoading
     ? t('master.loading')
     : !snapshot
       ? t('master.step3.empty')
     : snapshot?.aggregateReady
       ? t('pool.healthAggregateReady')
       : t('pool.healthAggregateActionNeeded');
-  const readinessVariant = loading || !snapshot ? 'subtle' : snapshot.aggregateReady ? 'accent' : 'warning';
-  const emptyMessage = loading ? t('master.loading') : error || t('master.step3.empty');
+  const readinessVariant = readinessLoading || !snapshot ? 'subtle' : snapshot.aggregateReady ? 'accent' : 'warning';
+  const emptyMessage = readinessLoading ? t('master.loading') : error || t('master.step3.empty');
   const moneyMessage = policyStatus === 'loading'
     ? t('master.loading')
     : policyStatus === 'error'
@@ -189,7 +190,7 @@ export function MasterActivationDashboard() {
             </KpiCard>
           </KpiGrid>
 
-          {snapshot && !loading && snapshot.blockerLabels.length ? (
+          {snapshot && !readinessLoading && snapshot.blockerLabels.length ? (
             <BlockerNote>
               {t('pool.healthAggregateActionNeeded')}: {snapshot.blockerLabels.join(', ')}
             </BlockerNote>
@@ -205,6 +206,7 @@ export function MasterActivationDashboard() {
                 onClick={() => void handleActivate()}
                 disabled={!canActivate || activateLoading}
                 data-testid="master-activation-cta"
+                data-guide="activate-btn"
               >
                 {activateLoading ? 'Sending TX...' : t('confirm.activateBtn')}
               </Button>
