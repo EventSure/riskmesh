@@ -5,6 +5,7 @@ pub mod confirm_master;
 pub mod create_flight_policy_from_master;
 pub mod create_master_agreement;
 pub mod fund_pool;
+pub(crate) mod master_agreement_name;
 pub mod register_participant_wallets;
 pub mod resolve_flight_delay;
 pub mod settle_flight_claim;

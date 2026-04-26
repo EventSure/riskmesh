@@ -4,8 +4,9 @@ use crate::constants::MAX_MASTER_PARTICIPANTS;
 use crate::errors::OpenParamError;
 use crate::state::MasterParticipantInit;
 
-use super::create_master_agreement::{
-    normalize_master_agreement_name, validate_create_master_inputs, validate_master_participants,
+use super::{
+    create_master_agreement::{validate_create_master_inputs, validate_master_participants},
+    master_agreement_name::normalize_master_agreement_name,
 };
 
 #[test]

@@ -22,6 +22,7 @@ interface CurrentPayoutDelayFields {
 
 export interface CreateMasterAgreementInput extends LegacyPayoutDelayFields, CurrentPayoutDelayFields {
   masterId: number;
+  name: string;
   coverageStartTs: number; // unix seconds
   coverageEndTs: number;
   premiumPerPolicy: number; // in token base units
@@ -80,6 +81,7 @@ export function useCreateMasterAgreement() {
 
         const params: CreateMasterAgreementParams = {
           masterId: masterIdBN,
+          name: input.name,
           coverageStartTs: new BN(input.coverageStartTs),
           coverageEndTs: new BN(input.coverageEndTs),
           premiumPerPolicy: new BN(input.premiumPerPolicy),

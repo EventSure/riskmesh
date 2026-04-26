@@ -140,6 +140,7 @@ export interface MasterParticipantInit {
 
 export interface CreateMasterAgreementParams {
   masterId: BN;
+  name: string;
   coverageStartTs: BN;
   coverageEndTs: BN;
   premiumPerPolicy: BN;

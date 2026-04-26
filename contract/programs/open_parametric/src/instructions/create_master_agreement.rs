@@ -6,6 +6,8 @@ use crate::errors::OpenParamError;
 use crate::math::effective_reinsurer_bps;
 use crate::state::*;
 
+use super::master_agreement_name::normalize_master_agreement_name;
+
 #[derive(Accounts)]
 #[instruction(params: CreateMasterAgreementParams)]
 pub struct CreateMasterAgreement<'info> {
@@ -116,16 +118,6 @@ pub fn handler(
         .collect();
 
     Ok(())
-}
-
-pub(crate) fn normalize_master_agreement_name(
-    name: &str,
-) -> std::result::Result<String, OpenParamError> {
-    let normalized = name.trim();
-    if normalized.is_empty() || normalized.chars().count() > MASTER_AGREEMENT_NAME_MAX_LEN {
-        return Err(OpenParamError::InvalidInput);
-    }
-    Ok(normalized.to_string())
 }
 
 pub(crate) fn validate_create_master_inputs(
