@@ -23,8 +23,10 @@ use super::{
         CreateFlightPolicyParamsWire, CreateFlightPolicyRequest, CreateFlightPolicyResponse,
         EventsQuery, FlightPoliciesQuery, FlightPoliciesResponse, HealthResponse,
         MasterAgreementAccountTree, MasterAgreementAccountsResponse,
-        MasterAgreementFlightPoliciesResponse, MasterAgreementsQuery, MasterAgreementsResponse,
-        MasterAgreementsTreeResponse,
+        MasterAgreementDisplayNamesResponse, MasterAgreementFlightPoliciesResponse,
+        MasterAgreementsQuery, MasterAgreementsResponse, MasterAgreementsTreeResponse,
+        ParticipantDisplayNamePayload, PutMasterAgreementDisplayNamesRequest,
+        ReinsurerDisplayNamePayload,
     },
 };
 
@@ -126,15 +128,54 @@ pub(super) async fn get_master_agreement(
 pub(super) async fn get_master_agreement_display_names(
     repository: &dyn InsuranceRepository,
     master_policy_pubkey: &str,
-) -> Result<MasterAgreementDisplayNames> {
-    Ok(repository
+) -> Result<MasterAgreementDisplayNamesResponse> {
+    let payload = repository
         .get_master_agreement_display_names(master_policy_pubkey)
         .await?
         .unwrap_or_else(|| MasterAgreementDisplayNames {
             master_policy_pubkey: master_policy_pubkey.to_string(),
             participants: Vec::new(),
             reinsurer: None,
-        }))
+        });
+
+    Ok(display_names_response(payload))
+}
+
+pub(super) async fn put_master_agreement_display_names(
+    repository: &dyn InsuranceRepository,
+    master_policy_pubkey: &str,
+    payload: PutMasterAgreementDisplayNamesRequest,
+) -> Result<MasterAgreementDisplayNamesResponse> {
+    let stored_payload = MasterAgreementDisplayNames {
+        master_policy_pubkey: master_policy_pubkey.to_string(),
+        participants: payload
+            .participants
+            .into_iter()
+            .map(|participant| {
+                Ok(
+                    crate::api::repository::display_names::ParticipantDisplayName {
+                        wallet: participant.wallet,
+                        display_name: validated_display_name(participant.display_name)?,
+                    },
+                )
+            })
+            .collect::<Result<Vec<_>>>()?,
+        reinsurer: match payload.reinsurer {
+            Some(reinsurer) => Some(
+                crate::api::repository::display_names::ReinsurerDisplayName {
+                    wallet: reinsurer.wallet,
+                    display_name: validated_display_name(reinsurer.display_name)?,
+                },
+            ),
+            None => None,
+        },
+    };
+
+    repository
+        .put_master_agreement_display_names(&stored_payload)
+        .await?;
+
+    Ok(display_names_response(stored_payload))
 }
 
 pub(super) async fn create_db_test_document(
@@ -347,6 +388,37 @@ fn message_matches_filter(message: &SseMessage, master_filter: Option<&str>) -> 
             .unwrap_or(false),
         _ => true,
     }
+}
+
+fn display_names_response(
+    payload: MasterAgreementDisplayNames,
+) -> MasterAgreementDisplayNamesResponse {
+    MasterAgreementDisplayNamesResponse {
+        master_policy_pubkey: payload.master_policy_pubkey,
+        participants: payload
+            .participants
+            .into_iter()
+            .map(|participant| ParticipantDisplayNamePayload {
+                wallet: participant.wallet,
+                display_name: participant.display_name,
+            })
+            .collect(),
+        reinsurer: payload
+            .reinsurer
+            .map(|reinsurer| ReinsurerDisplayNamePayload {
+                wallet: reinsurer.wallet,
+                display_name: reinsurer.display_name,
+            }),
+    }
+}
+
+fn validated_display_name(display_name: String) -> Result<String> {
+    let trimmed = display_name.trim();
+    if trimmed.is_empty() {
+        anyhow::bail!("display_name cannot be empty");
+    }
+
+    Ok(trimmed.to_string())
 }
 
 #[cfg(test)]

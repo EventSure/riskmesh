@@ -12,12 +12,13 @@ use crate::{
 use anyhow::Result;
 use async_trait::async_trait;
 use solana_sdk::{pubkey::Pubkey, system_program};
-use std::str::FromStr;
+use std::{str::FromStr, sync::Mutex};
 
 struct MockRepository {
     master_agreements: Vec<MasterAgreementInfo>,
     flight_policies: Vec<FlightPolicyInfo>,
     display_names: Option<MasterAgreementDisplayNames>,
+    stored_display_names: Mutex<Option<MasterAgreementDisplayNames>>,
 }
 
 #[async_trait]
@@ -68,9 +69,10 @@ impl InsuranceRepository for MockRepository {
 
     async fn put_master_agreement_display_names(
         &self,
-        _payload: &MasterAgreementDisplayNames,
+        payload: &MasterAgreementDisplayNames,
     ) -> Result<()> {
-        unreachable!("put_master_agreement_display_names is not used in api::service unit tests")
+        *self.stored_display_names.lock().unwrap() = Some(payload.clone());
+        Ok(())
     }
 }
 
@@ -177,6 +179,7 @@ fn mock_repository() -> MockRepository {
             flight_policy("flight-b1", &agreement_b.pubkey, 2, 1),
         ],
         display_names: None,
+        stored_display_names: Mutex::new(None),
     }
 }
 
@@ -305,16 +308,83 @@ async fn get_display_names_returns_repository_payload_when_present() {
     assert_eq!(response.master_policy_pubkey, "master-1");
     assert_eq!(
         response.participants,
-        vec![ParticipantDisplayName {
+        vec![ParticipantDisplayNamePayload {
             wallet: "participant-1".to_string(),
             display_name: "Participant One".to_string(),
         }]
     );
     assert_eq!(
         response.reinsurer,
-        Some(ReinsurerDisplayName {
+        Some(ReinsurerDisplayNamePayload {
             wallet: "reinsurer-1".to_string(),
             display_name: "Reinsurer One".to_string(),
+        })
+    );
+}
+
+#[tokio::test]
+async fn put_display_names_rejects_empty_display_name() {
+    let repository = mock_repository();
+    let payload = PutMasterAgreementDisplayNamesRequest {
+        participants: vec![ParticipantDisplayNamePayload {
+            wallet: "wallet-1".to_string(),
+            display_name: "".to_string(),
+        }],
+        reinsurer: None,
+    };
+
+    let error = put_master_agreement_display_names(&repository, "master-1", payload)
+        .await
+        .unwrap_err();
+
+    assert!(error.to_string().contains("display_name"));
+}
+
+#[tokio::test]
+async fn put_display_names_returns_trimmed_repository_payload() {
+    let repository = mock_repository();
+    let payload = PutMasterAgreementDisplayNamesRequest {
+        participants: vec![ParticipantDisplayNamePayload {
+            wallet: "wallet-1".to_string(),
+            display_name: "  Participant One  ".to_string(),
+        }],
+        reinsurer: Some(ReinsurerDisplayNamePayload {
+            wallet: "wallet-2".to_string(),
+            display_name: "  Reinsurer One  ".to_string(),
+        }),
+    };
+
+    let response = put_master_agreement_display_names(&repository, "master-1", payload)
+        .await
+        .unwrap();
+
+    assert_eq!(response.master_policy_pubkey, "master-1");
+    assert_eq!(
+        response.participants,
+        vec![ParticipantDisplayNamePayload {
+            wallet: "wallet-1".to_string(),
+            display_name: "Participant One".to_string(),
+        }]
+    );
+    assert_eq!(
+        response.reinsurer,
+        Some(ReinsurerDisplayNamePayload {
+            wallet: "wallet-2".to_string(),
+            display_name: "Reinsurer One".to_string(),
+        })
+    );
+    assert_eq!(
+        repository.stored_display_names.lock().unwrap().clone(),
+        Some(MasterAgreementDisplayNames {
+            master_policy_pubkey: "master-1".to_string(),
+            participants: vec![ParticipantDisplayName {
+                wallet: "wallet-1".to_string(),
+                display_name: "Participant One".to_string(),
+            }],
+            reinsurer: Some(ReinsurerDisplayName {
+                wallet: "wallet-2".to_string(),
+                display_name: "Reinsurer One".to_string(),
+            }),
         })
     );
 }
