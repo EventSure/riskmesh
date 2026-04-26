@@ -13,6 +13,7 @@ interface BackendMasterAgreement {
   pubkey: string;
   master_id: number;
   status: number;
+  collateral_claim_count?: number;
   participants: Array<{
     insurer: string;
     share_bps: number;
@@ -85,6 +86,7 @@ function toMasterAgreementAccount(data: BackendMasterAgreement): MasterAgreement
     status: data.status,
     createdAt: fakeBN(data.created_at) as unknown as import('@coral-xyz/anchor').BN,
     bump: 0,
+    collateralClaimCount: data.collateral_claim_count ?? 10,
   } as unknown as MasterAgreementAccount;
 }
 

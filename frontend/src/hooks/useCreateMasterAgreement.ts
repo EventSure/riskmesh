@@ -6,15 +6,26 @@ import { getMasterAgreementPDA } from '@/lib/pda';
 import { sendTx, type TxResult } from '@/lib/tx';
 import type { CreateMasterAgreementParams, MasterParticipantInit } from '@/lib/idl/open_parametric';
 
-export interface CreateMasterAgreementInput {
+interface LegacyPayoutDelayFields {
+  payoutDelay2H?: number;
+  payoutDelay3H?: number;
+  payoutDelay4To5H?: number;
+  payoutDelay6HOrCancelled?: number;
+}
+
+interface CurrentPayoutDelayFields {
+  payoutDelay2h?: number;
+  payoutDelay3h?: number;
+  payoutDelay4to5h?: number;
+  payoutDelay6hOrCancelled?: number;
+}
+
+export interface CreateMasterAgreementInput extends LegacyPayoutDelayFields, CurrentPayoutDelayFields {
   masterId: number;
   coverageStartTs: number; // unix seconds
   coverageEndTs: number;
   premiumPerPolicy: number; // in token base units
-  payoutDelay2H: number;
-  payoutDelay3H: number;
-  payoutDelay4To5H: number;
-  payoutDelay6HOrCancelled: number;
+  collateralClaimCount: number;
   leaderShareBps: number;
   cededRatioBps: number;
   reinsCommissionBps: number;
@@ -26,6 +37,29 @@ export interface CreateMasterAgreementInput {
   reinsurerDepositWallet: PublicKey;
   participants: { insurer: PublicKey; shareBps: number }[];
 }
+
+const normalizePayoutDelays = (input: CreateMasterAgreementInput) => {
+  const payoutDelay2h = input.payoutDelay2h ?? input.payoutDelay2H;
+  const payoutDelay3h = input.payoutDelay3h ?? input.payoutDelay3H;
+  const payoutDelay4to5h = input.payoutDelay4to5h ?? input.payoutDelay4To5H;
+  const payoutDelay6hOrCancelled = input.payoutDelay6hOrCancelled ?? input.payoutDelay6HOrCancelled;
+
+  if (
+    payoutDelay2h == null ||
+    payoutDelay3h == null ||
+    payoutDelay4to5h == null ||
+    payoutDelay6hOrCancelled == null
+  ) {
+    throw new Error('Missing payout delay tiers');
+  }
+
+  return {
+    payoutDelay2h,
+    payoutDelay3h,
+    payoutDelay4to5h,
+    payoutDelay6hOrCancelled,
+  };
+};
 
 export function useCreateMasterAgreement() {
   const { program, provider, wallet } = useProgram();
@@ -39,6 +73,7 @@ export function useCreateMasterAgreement() {
 
       setLoading(true);
       try {
+        const payoutDelays = normalizePayoutDelays(input);
         const masterIdBN = new BN(input.masterId);
         const leader = wallet.publicKey;
         const [masterAgreementPDA] = getMasterAgreementPDA(leader, masterIdBN);
@@ -48,10 +83,11 @@ export function useCreateMasterAgreement() {
           coverageStartTs: new BN(input.coverageStartTs),
           coverageEndTs: new BN(input.coverageEndTs),
           premiumPerPolicy: new BN(input.premiumPerPolicy),
-          payoutDelay2H: new BN(input.payoutDelay2H),
-          payoutDelay3H: new BN(input.payoutDelay3H),
-          payoutDelay4To5H: new BN(input.payoutDelay4To5H),
-          payoutDelay6HOrCancelled: new BN(input.payoutDelay6HOrCancelled),
+          payoutDelay2H: new BN(payoutDelays.payoutDelay2h),
+          payoutDelay3H: new BN(payoutDelays.payoutDelay3h),
+          payoutDelay4To5H: new BN(payoutDelays.payoutDelay4to5h),
+          payoutDelay6HOrCancelled: new BN(payoutDelays.payoutDelay6hOrCancelled),
+          collateralClaimCount: input.collateralClaimCount,
           leaderShareBps: input.leaderShareBps,
           cededRatioBps: input.cededRatioBps,
           reinsCommissionBps: input.reinsCommissionBps,

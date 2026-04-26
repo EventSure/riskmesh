@@ -4,6 +4,7 @@ pub mod check_oracle_and_resolve_flight;
 pub mod confirm_master;
 pub mod create_flight_policy_from_master;
 pub mod create_master_agreement;
+pub mod fund_pool;
 pub mod register_participant_wallets;
 pub mod resolve_flight_delay;
 pub mod settle_flight_claim;
@@ -20,6 +21,8 @@ mod confirm_master_test;
 mod create_flight_policy_test;
 #[cfg(test)]
 mod create_master_agreement_test;
+#[cfg(test)]
+mod fund_pool_test;
 #[cfg(test)]
 mod register_participant_wallets_test;
 #[cfg(test)]
@@ -39,6 +42,8 @@ pub use confirm_master::*;
 pub use create_flight_policy_from_master::*;
 #[allow(ambiguous_glob_reexports)]
 pub use create_master_agreement::*;
+#[allow(ambiguous_glob_reexports)]
+pub use fund_pool::*;
 #[allow(ambiguous_glob_reexports)]
 pub use register_participant_wallets::*;
 #[allow(ambiguous_glob_reexports)]

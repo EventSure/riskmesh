@@ -90,6 +90,25 @@ fn accepts_leader_confirm_when_pool_wallet_registered() {
 }
 
 #[test]
+fn leader_confirm_requires_leader_collateral() {
+    let leader = Pubkey::new_unique();
+    let participants = vec![make_participant(false, true)];
+
+    let effect = apply_confirm(
+        pending(),
+        participant_role(),
+        leader,
+        leader,
+        &participants,
+        None,
+        Pubkey::new_unique(),
+    )
+    .unwrap();
+
+    assert!(matches!(effect, ConfirmEffect::Leader));
+}
+
+#[test]
 fn accepts_participant_confirm_and_returns_correct_idx() {
     let leader = Pubkey::new_unique();
     let p = make_participant(false, true);
@@ -105,6 +124,26 @@ fn accepts_participant_confirm_and_returns_correct_idx() {
         Pubkey::new_unique(),
     )
     .unwrap();
+    assert!(matches!(effect, ConfirmEffect::Participant { idx: 0 }));
+}
+
+#[test]
+fn participant_confirm_returns_participant_index_for_collateral() {
+    let leader = Pubkey::new_unique();
+    let p = make_participant(false, true);
+    let actor = p.insurer;
+
+    let effect = apply_confirm(
+        pending(),
+        participant_role(),
+        actor,
+        leader,
+        &[p],
+        None,
+        Pubkey::new_unique(),
+    )
+    .unwrap();
+
     assert!(matches!(effect, ConfirmEffect::Participant { idx: 0 }));
 }
 

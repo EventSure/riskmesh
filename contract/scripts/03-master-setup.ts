@@ -167,6 +167,7 @@ async function main() {
       payoutDelay3H:       new BN(3_000_000),
       payoutDelay4To5H:    new BN(4_000_000),
       payoutDelay6HOrCancelled: new BN(6_000_000),
+      collateralClaimCount: 10,
       leaderShareBps:      5_000,
       cededRatioBps:       0,
       reinsCommissionBps:  0,
@@ -213,14 +214,19 @@ async function main() {
 
   // ── confirm_master ───────────────────────────────────────────────────────────
   console.log("\nconfirm_master(0) — 참여사 전원 승인 중...");
-  for (const [actor, signers] of [
-    [leader, [leader]],
-    [partyA, [partyA]],
-    [partyB, [partyB]],
+  for (const [actor, poolWallet, depositWallet, signers] of [
+    [leader, leaderPoolKp.publicKey, leaderAta.address, [leader]],
+    [partyA, aPoolKp.publicKey,      aAta.address,      [partyA]],
+    [partyB, bPoolKp.publicKey,      bAta.address,      [partyB]],
   ] as const) {
     await pg.methods
       .confirmMaster(0)
-      .accountsPartial({ actor: actor.publicKey, masterAgreement: masterPda })
+      .accountsPartial({
+        actor: actor.publicKey,
+        masterAgreement: masterPda,
+        actorSourceToken: depositWallet,
+        actorPoolToken: poolWallet,
+      })
       .signers([...signers])
       .rpc();
     console.log(`  ${actor.publicKey.toBase58().slice(0, 8)}... 완료`);
@@ -230,7 +236,16 @@ async function main() {
   console.log("\nactivate_master 호출 중...");
   const txAct = await pg.methods
     .activateMaster()
-    .accountsPartial({ operator: leader.publicKey, masterAgreement: masterPda })
+    .accountsPartial({
+      operator: leader.publicKey,
+      masterAgreement: masterPda,
+      leaderPoolToken: leaderPoolKp.publicKey,
+      reinsurerPoolToken: reinsurerPoolKp.publicKey,
+    })
+    .remainingAccounts([
+      { pubkey: aPoolKp.publicKey, isSigner: false, isWritable: false },
+      { pubkey: bPoolKp.publicKey, isSigner: false, isWritable: false },
+    ])
     .signers([leader])
     .rpc();
   console.log("  Tx:", txAct);

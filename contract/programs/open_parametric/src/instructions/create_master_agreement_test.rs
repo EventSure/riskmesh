@@ -4,7 +4,7 @@ use crate::constants::MAX_MASTER_PARTICIPANTS;
 use crate::errors::OpenParamError;
 use crate::state::MasterParticipantInit;
 
-use super::create_master_agreement::validate_master_participants;
+use super::create_master_agreement::{validate_create_master_inputs, validate_master_participants};
 
 #[test]
 fn master_participants_require_10000_bps_with_separate_leader_share() {
@@ -144,4 +144,38 @@ fn master_participants_accept_leader_zero_share_if_total_is_10000() {
         share_bps: 10_000,
     }];
     assert!(validate_master_participants(0, &participants, leader).is_ok());
+}
+
+fn participant(insurer: Pubkey, share_bps: u16) -> MasterParticipantInit {
+    MasterParticipantInit { insurer, share_bps }
+}
+
+#[test]
+fn rejects_zero_collateral_claim_count() {
+    let leader = Pubkey::new_unique();
+    let participants = vec![participant(Pubkey::new_unique(), 5_000)];
+
+    let result = validate_create_master_inputs(5_000, &participants, leader, 0);
+
+    assert!(matches!(result, Err(OpenParamError::InvalidInput)));
+}
+
+#[test]
+fn rejects_collateral_claim_count_above_100() {
+    let leader = Pubkey::new_unique();
+    let participants = vec![participant(Pubkey::new_unique(), 5_000)];
+
+    let result = validate_create_master_inputs(5_000, &participants, leader, 101);
+
+    assert!(matches!(result, Err(OpenParamError::InvalidInput)));
+}
+
+#[test]
+fn accepts_collateral_claim_count_between_1_and_100() {
+    let leader = Pubkey::new_unique();
+    let participants = vec![participant(Pubkey::new_unique(), 5_000)];
+
+    let result = validate_create_master_inputs(5_000, &participants, leader, 10);
+
+    assert!(result.is_ok());
 }

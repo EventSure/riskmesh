@@ -1,10 +1,15 @@
 import { PublicKey } from '@solana/web3.js';
+import { resolveProgramConfig, type ProgramEnv } from './programEnv';
 
 export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:3000';
 
 export const RPC_ENDPOINT = 'https://api.devnet.solana.com';
 
-export const PROGRAM_ID = new PublicKey('ETEEEssGKAAQEGwz3ggDcy9vzPAPtBjtb2KocdyLBMjh');
+const programConfig = resolveProgramConfig(import.meta.env as ProgramEnv);
+
+export const PROGRAM_STAGE = programConfig.stage;
+export const PROGRAM_ID_SELECTED_KEY = programConfig.selectedKey;
+export const PROGRAM_ID = programConfig.programId;
 
 export const CURRENCY_MINT = new PublicKey('5YsAiRYU3tTFc5B8aaGwVL1oC9DVxBEddnXCaHcQQg2k');
 

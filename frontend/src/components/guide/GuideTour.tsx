@@ -212,7 +212,7 @@ function getTooltipStyle(rect: DOMRect, position: string): React.CSSProperties {
 }
 
 /* Steps that need a manual "Next" button (auto-advance not reliable) */
-const MANUAL_STEPS = new Set([10, 14]);
+const MANUAL_STEPS = new Set([11, 13]);
 
 /* ── Component ── */
 
@@ -265,7 +265,7 @@ export function GuideTour({ activeTab }: Props) {
     };
   }, [currentStep, updateRect]);
 
-  /* ── Auto-skip when target not found (e.g. Fund Pool in sim mode) ── */
+  /* ── Auto-skip when target not found ── */
 
   useEffect(() => {
     if (currentStep === null || targetRect) return;
@@ -300,12 +300,11 @@ export function GuideTour({ activeTab }: Props) {
       case 7: ok = !reinsurer.enabled || reinsurer.confirmed; break;
       case 8: ok = role === 'leader'; break;
       case 9: ok = masterActive; break;
-      case 11: ok = activeTab === 'tab-feed'; break;
-      case 12: ok = contracts.length > contractsAtStart.current; break;
-      case 13: ok = activeTab === 'tab-oracle'; break;
-      case 15: ok = claims.length > claimsAtStart.current; break;
-      case 16: ok = claims.some(c => c.status === 'settled'); break;
-      case 17: ok = activeTab === 'tab-settlement'; break;
+      case 10: ok = activeTab === 'tab-feed'; break;
+      case 12: ok = activeTab === 'tab-oracle'; break;
+      case 14: ok = claims.length > claimsAtStart.current; break;
+      case 15: ok = claims.some(c => c.status === 'settled'); break;
+      case 16: ok = activeTab === 'tab-settlement'; break;
     }
     if (ok) {
       const timer = setTimeout(nextStep, 350);
@@ -313,10 +312,10 @@ export function GuideTour({ activeTab }: Props) {
     }
   }, [currentStep, processStep, role, participants, reinsurer, masterActive, activeTab, contracts.length, claims, nextStep]);
 
-  /* ── Step 14: DOM event listener for select change ── */
+  /* ── Step 13: DOM event listener for select change ── */
 
   useEffect(() => {
-    if (currentStep === null || GUIDE_STEPS[currentStep]!.step !== 14) return;
+    if (currentStep === null || GUIDE_STEPS[currentStep]!.step !== 13) return;
     const el = document.querySelector('[data-guide="select-contract"]') as HTMLSelectElement;
     if (!el) return;
     const handler = () => {
