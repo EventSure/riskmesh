@@ -27,6 +27,7 @@ fn build_master_agreement_bytes() -> (Pubkey, Vec<u8>, Vec<Pubkey>) {
 
     let mut data = anchor_account_discriminator("MasterAgreement").to_vec();
     data.extend_from_slice(&7u64.to_le_bytes());
+    push_string(&mut data, "대한-뉴욕 2026 리더 공동계약");
     push_pubkey(&mut data, &leader);
     push_pubkey(&mut data, &operator);
     push_pubkey(&mut data, &currency_mint);
@@ -115,6 +116,7 @@ fn parse_master_agreement_parses_full_account_data() {
 
     assert_eq!(agreement.pubkey, pubkey.to_string());
     assert_eq!(agreement.master_id, 7);
+    assert_eq!(agreement.name, "대한-뉴욕 2026 리더 공동계약");
     assert_eq!(agreement.leader, keys[0].to_string());
     assert_eq!(agreement.operator, keys[1].to_string());
     assert_eq!(agreement.currency_mint, keys[2].to_string());

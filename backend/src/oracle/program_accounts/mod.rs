@@ -23,6 +23,7 @@ pub struct MasterAgreementParticipantInfo {
 pub struct MasterAgreementInfo {
     pub pubkey: String,
     pub master_id: u64,
+    pub name: String,
     pub leader: String,
     pub operator: String,
     pub currency_mint: String,
@@ -135,6 +136,7 @@ fn parse_master_agreement(pubkey: &Pubkey, data: &[u8]) -> Result<MasterAgreemen
     let mut offset = 8usize;
 
     let master_id = read_u64(data, &mut offset)?;
+    let name = read_string(data, &mut offset)?;
     let leader = read_pubkey(data, &mut offset)?;
     let operator = read_pubkey(data, &mut offset)?;
     let currency_mint = read_pubkey(data, &mut offset)?;
@@ -164,6 +166,7 @@ fn parse_master_agreement(pubkey: &Pubkey, data: &[u8]) -> Result<MasterAgreemen
     Ok(MasterAgreementInfo {
         pubkey: pubkey.to_string(),
         master_id,
+        name,
         leader: leader.to_string(),
         operator: operator.to_string(),
         currency_mint: currency_mint.to_string(),

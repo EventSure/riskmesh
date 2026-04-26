@@ -12,6 +12,7 @@ const fakeBN = (n: number) => ({
 interface BackendMasterAgreement {
   pubkey: string;
   master_id: number;
+  name: string;
   status: number;
   collateral_claim_count?: number;
   participants: Array<{
@@ -54,6 +55,7 @@ function toMasterAgreementAccount(data: BackendMasterAgreement): MasterAgreement
 
   return {
     masterId: fakeBN(data.master_id) as unknown as import('@coral-xyz/anchor').BN,
+    name: data.name,
     leader: safePubkey(data.leader),
     operator: safePubkey(data.operator),
     currencyMint: safePubkey(data.currency_mint),

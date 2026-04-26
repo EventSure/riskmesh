@@ -88,6 +88,7 @@ export type ProtocolMode = 'simulation' | 'onchain';
 export interface MasterAgreementSummary {
   pda: string;
   masterId: string;
+  name: string;
   status: number;
   statusLabel: string;
   coverageEndTs: number;

@@ -6,6 +6,7 @@ import { BACKEND_URL } from '@/lib/constants';
 interface BackendMasterAgreementItem {
   pubkey: string;
   master_id: number;
+  name: string;
   leader: string;
   reinsurer: string;
   status: number;
@@ -44,6 +45,7 @@ export function useMasterAgreements() {
       const mapped: MasterAgreementSummary[] = json.master_agreements.map((m) => ({
         pda: m.pubkey,
         masterId: String(m.master_id),
+        name: m.name,
         status: m.status,
         statusLabel: m.status_label,
         coverageEndTs: m.coverage_end_ts,

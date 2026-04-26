@@ -78,6 +78,7 @@ fn master_agreement(pubkey: &str, premium_per_policy: u64) -> MasterAgreementInf
     MasterAgreementInfo {
         pubkey: pubkey.to_string(),
         master_id: 1,
+        name: "test master agreement".to_string(),
         leader: "leader-1".to_string(),
         operator: "leader-1".to_string(),
         currency_mint: Pubkey::new_unique().to_string(),
