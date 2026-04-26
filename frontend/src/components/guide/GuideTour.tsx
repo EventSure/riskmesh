@@ -299,7 +299,6 @@ export function GuideTour({ activeTab }: Props) {
       case 6: ok = !reinsurer.enabled || role === 'rein'; break;
       case 7: ok = !reinsurer.enabled || reinsurer.confirmed; break;
       case 8: ok = role === 'leader'; break;
-      case 9: ok = masterActive; break;
       case 10: ok = masterActive; break;
       case 11: ok = activeTab === 'tab-feed'; break;
       case 13: ok = activeTab === 'tab-oracle'; break;

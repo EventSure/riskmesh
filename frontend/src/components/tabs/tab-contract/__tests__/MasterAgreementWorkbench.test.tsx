@@ -116,7 +116,7 @@ describe('MasterAgreementWorkbench', () => {
     expect(screen.getByTestId('selected-step')).toHaveTextContent('activate');
   }, 15000);
 
-  test('opens the activation dashboard directly once confirmations reach process step 4', () => {
+  test('keeps the participant step selected until the Step 3 transition is used', () => {
     useProtocolStore.setState({
       processStep: 4,
       masterActive: false,
@@ -124,7 +124,12 @@ describe('MasterAgreementWorkbench', () => {
 
     renderSubject();
 
-    expect(screen.queryByText('Mock participant step')).not.toBeInTheDocument();
+    expect(screen.getByText('Mock participant step')).toBeInTheDocument();
+    expect(screen.queryByText('Mock activation dashboard')).not.toBeInTheDocument();
+    expect(screen.getByTestId('selected-step')).toHaveTextContent('participants');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mock activate' }));
+
     expect(screen.getByText('Mock activation dashboard')).toBeInTheDocument();
     expect(screen.getByTestId('selected-step')).toHaveTextContent('activate');
   }, 15000);

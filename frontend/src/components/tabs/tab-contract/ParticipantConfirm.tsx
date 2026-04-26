@@ -4,6 +4,8 @@ import { useProtocolStore, PARTICIPANT_COLORS, REINSURER_COLOR } from '@/store/u
 import { useShallow } from 'zustand/shallow';
 import { useToast } from '@/components/common';
 import { useTranslation } from 'react-i18next';
+import { GUIDE_STEPS } from '@/components/guide/guideSteps';
+import { useGuideTour } from '@/components/guide/useGuideTour';
 
 const ParticipantRow = styled.div<{ confirmed?: boolean }>`
   background: var(--card2);
@@ -49,6 +51,7 @@ export function ParticipantConfirm({ onActivated }: ParticipantConfirmProps) {
   );
   const { toast } = useToast();
   const { t } = useTranslation();
+  const { currentStep, nextStep } = useGuideTour();
 
   const allParticipantsConfirmed = participants.every((p) => p.confirmed);
   const reinOk = !reinsurer.enabled || reinsurer.confirmed;
@@ -64,6 +67,13 @@ export function ParticipantConfirm({ onActivated }: ParticipantConfirmProps) {
   const handleSimConfirmReinsurer = () => {
     confirmReinsurer();
     toast(t('toast.confirmDone', { role: t('role.reinShort') }), 's');
+  };
+
+  const handleActivateTransition = () => {
+    onActivated?.();
+    if (currentStep !== null && GUIDE_STEPS[currentStep]?.target === 'activate-transition-btn') {
+      nextStep();
+    }
   };
 
   return (
@@ -121,7 +131,7 @@ export function ParticipantConfirm({ onActivated }: ParticipantConfirmProps) {
           <Button
             variant="accent"
             fullWidth
-            onClick={onActivated}
+            onClick={handleActivateTransition}
             disabled={!allConfirmed}
             style={{ marginTop: 4 }}
             data-guide="activate-transition-btn"

@@ -9,6 +9,7 @@ import { GUIDE_STEPS } from '@/components/guide/guideSteps';
 
 const mockToast = vi.fn();
 const mockActivateMasterOnChain = vi.fn();
+const mockNextStep = vi.fn();
 
 vi.mock('react-i18next', async () => {
   const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next');
@@ -32,6 +33,13 @@ vi.mock('@/hooks/useActivateMaster', () => ({
   useActivateMaster: () => ({
     activateMaster: mockActivateMasterOnChain,
     loading: false,
+  }),
+}));
+
+vi.mock('@/components/guide/useGuideTour', () => ({
+  useGuideTour: () => ({
+    currentStep: 8,
+    nextStep: mockNextStep,
   }),
 }));
 
@@ -79,6 +87,7 @@ describe('ParticipantConfirm', () => {
     await waitFor(() => {
       expect(onActivated).toHaveBeenCalledTimes(1);
     });
+    expect(mockNextStep).toHaveBeenCalledTimes(1);
     expect(mockActivateMasterOnChain).not.toHaveBeenCalled();
   });
 

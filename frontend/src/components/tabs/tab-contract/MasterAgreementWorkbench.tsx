@@ -186,7 +186,7 @@ const EditorWrap = styled.div`
 `;
 
 function getRecommendedStep(processStep: number, masterActive: boolean): MasterAgreementReviewStep {
-  if (masterActive || processStep >= 4) {
+  if (masterActive || processStep >= 5) {
     return 'activate';
   }
 
