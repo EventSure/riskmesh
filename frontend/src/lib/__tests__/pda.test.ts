@@ -12,8 +12,8 @@ import {
   getRegistryPDA,
 } from '../pda';
 
-// Use the actual deployed program ID (known to work with PDA derivation)
-const TEST_PROGRAM_ID = new PublicKey('3dBd52Do2ZBbaMboLyuVZSJTupAFKGoorEydQ6MkfiPL');
+// Any valid program id works for PDA determinism tests. Use stable to match docs and production defaults.
+const TEST_PROGRAM_ID = new PublicKey('ETEEEssGKAAQEGwz3ggDcy9vzPAPtBjtb2KocdyLBMjh');
 
 // Use deterministic keypairs from fixed seeds for reproducible tests
 const LEADER = Keypair.fromSeed(new Uint8Array(32).fill(1)).publicKey;

@@ -127,8 +127,7 @@ spl-token balance <MINT_ADDRESS>
 ```bash
 # 1. 컨트랙트 빌드 & 배포
 cd contract
-anchor build
-anchor deploy --provider.cluster devnet
+yarn deploy:stable
 
 # 2. IDL 복사
 cp target/idl/open_parametric.json ../frontend/src/lib/idl/open_parametric.json
@@ -152,9 +151,9 @@ spl-token mint <MINT_ADDRESS> 1000
 # 5. constants.ts 수정
 #    CURRENCY_MINT = '<spl-token create-token 출력값>'
 
-# 6. 프론트엔드 실행
+# 6. 프런트엔드 실행
 cd ../frontend
-npm run dev:stage
+npm run dev:stable
 ```
 
 Frontend run scripts:

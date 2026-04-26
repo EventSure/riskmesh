@@ -29,6 +29,7 @@ const mockSystemCreateAccount = vi.fn();
 const mockGetAssociatedTokenAddress = vi.fn();
 const mockCreateAssociatedTokenAccountIdempotentInstruction = vi.fn();
 const mockCreateInitializeAccount3Instruction = vi.fn();
+let consoleLogSpy: ReturnType<typeof vi.spyOn>;
 
 vi.mock('react-i18next', async () => {
   const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next');
@@ -188,6 +189,7 @@ let mockProvider: {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
   const dummyIx = new TransactionInstruction({
     keys: [],
@@ -270,6 +272,24 @@ describe('PortalConfirm', () => {
       expect(confirmArgs.role).toBe(ConfirmRole.Participant);
       expect(confirmArgs.actorSourceToken.equals(actorSourceToken)).toBe(true);
       expect(confirmArgs.actorPoolToken.equals(existingParticipantPool)).toBe(true);
+    });
+  });
+
+  it('logs confirm account context before sending confirm_master', async () => {
+    renderPortalConfirm();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'portal.confirmFundDeficitBtn' }));
+    });
+
+    await waitFor(() => {
+      expect(consoleLogSpy).toHaveBeenCalledWith('[PortalConfirm] confirm_master accounts', {
+        walletPublicKey: walletPublicKey.toBase58(),
+        participantIndex: 0,
+        confirmRole: ConfirmRole.Participant,
+        actorSourceToken: actorSourceToken.toBase58(),
+        actorPoolToken: existingParticipantPool.toBase58(),
+      });
     });
   });
 
