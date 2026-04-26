@@ -27,6 +27,12 @@
         {
           "name": "master_agreement",
           "writable": true
+        },
+        {
+          "name": "leader_pool_token"
+        },
+        {
+          "name": "reinsurer_pool_token"
         }
       ],
       "args": []
@@ -106,6 +112,18 @@
         {
           "name": "master_agreement",
           "writable": true
+        },
+        {
+          "name": "actor_source_token",
+          "writable": true
+        },
+        {
+          "name": "actor_pool_token",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": [
@@ -288,6 +306,50 @@
               "name": "CreateMasterAgreementParams"
             }
           }
+        }
+      ]
+    },
+    {
+      "name": "fund_pool",
+      "discriminator": [
+        36,
+        57,
+        233,
+        176,
+        181,
+        20,
+        87,
+        159
+      ],
+      "accounts": [
+        {
+          "name": "actor",
+          "signer": true
+        },
+        {
+          "name": "master_agreement"
+        },
+        {
+          "name": "actor_source_token",
+          "writable": true
+        },
+        {
+          "name": "actor_pool_token",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "role",
+          "type": "u8"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
         }
       ]
     },
@@ -632,6 +694,10 @@
             "type": "u64"
           },
           {
+            "name": "collateral_claim_count",
+            "type": "u16"
+          },
+          {
             "name": "leader_share_bps",
             "type": "u16"
           },
@@ -852,6 +918,10 @@
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "collateral_claim_count",
+            "type": "u16"
           }
         ]
       }

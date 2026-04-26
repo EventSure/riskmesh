@@ -1,6 +1,9 @@
 .omc
 .omx
+frontend/.env
 frontend/package-lock.json
 .mcp.json
 backend/.env.production
 .omx/
+.worktrees/
+docs/superpowers/

@@ -1,17 +1,22 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import { Card, CardHeader, CardTitle, CardBody, SummaryRow } from '@/components/common';
+import { PoolHealthVisual } from '@/components/tabs/shared/PoolHealthVisual';
 import { useProtocolStore, formatNum } from '@/store/useProtocolStore';
 import { useProgram } from '@/hooks/useProgram';
-import { useMasterAgreementAccount } from '@/hooks/useMasterAgreementAccount';
+import { usePoolCollateralStatus } from '@/hooks/usePoolCollateralStatus';
 import { Chart, registerables } from 'chart.js';
 import { useTranslation } from 'react-i18next';
 
 Chart.register(...registerables);
 
+function rawMicroUsdcToNumber(amount: string): number {
+  return Number(amount) / 1_000_000;
+}
+
 export function PoolStatus() {
   const { mode, masterAgreementPDA, poolBalance, totalClaim, poolHist, poolRefreshKey, setPoolBalance } = useProtocolStore();
-  const { connection } = useProgram();
+  const { connection, wallet } = useProgram();
   const { t, i18n: { language } } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
@@ -21,7 +26,7 @@ export function PoolStatus() {
     () => mode === 'onchain' && masterAgreementPDA ? new PublicKey(masterAgreementPDA) : null,
     [mode, masterAgreementPDA],
   );
-  const { account: masterData } = useMasterAgreementAccount(pdaKey);
+  const { status, activePartyId, masterData } = usePoolCollateralStatus(pdaKey, wallet?.publicKey ?? null);
 
   const fetchOnChainBalance = useCallback(async () => {
     if (mode !== 'onchain' || !masterData || !connection) {
@@ -34,14 +39,14 @@ export function PoolStatus() {
       if (masterData.reinsurerPoolWallet) {
         try {
           const reinBal = await connection.getTokenAccountBalance(masterData.reinsurerPoolWallet);
-          total += Number(reinBal.value.uiAmount ?? 0);
+          total += rawMicroUsdcToNumber(reinBal.value.amount);
         } catch { /* not funded yet */ }
       }
 
       // leader pool 잔액
       try {
         const leaderBal = await connection.getTokenAccountBalance(masterData.leaderPoolWallet);
-        total += Number(leaderBal.value.uiAmount ?? 0);
+        total += rawMicroUsdcToNumber(leaderBal.value.amount);
       } catch { /* not funded yet */ }
 
       // 각 참여사 pool 잔액
@@ -49,7 +54,7 @@ export function PoolStatus() {
         if (!p.poolWallet.equals(PublicKey.default)) {
           try {
             const bal = await connection.getTokenAccountBalance(p.poolWallet);
-            total += Number(bal.value.uiAmount ?? 0);
+            total += rawMicroUsdcToNumber(bal.value.amount);
           } catch { /* not registered yet */ }
         }
       }
@@ -111,29 +116,38 @@ export function PoolStatus() {
   }, [poolHist, language]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t('pool.title')}</CardTitle>
-      </CardHeader>
-      <CardBody>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 7 }}>
-          <SummaryRow style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-            <span style={{ fontSize: 10, color: 'var(--sub)' }}>{t('pool.total')}</span>
-            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{formatNum(displayTotal, 2)} USDC</span>
-          </SummaryRow>
-          <SummaryRow style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-            <span style={{ fontSize: 10, color: 'var(--sub)' }}>{t('pool.available')}</span>
-            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{formatNum(displayBalance, 2)} USDC</span>
-          </SummaryRow>
-          <SummaryRow style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-            <span style={{ fontSize: 10, color: 'var(--sub)' }}>{t('pool.solvency')}</span>
-            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{ratio}%</span>
-          </SummaryRow>
-        </div>
-        <div style={{ height: 100, marginTop: 8 }}>
-          <canvas ref={canvasRef} />
-        </div>
-      </CardBody>
-    </Card>
+    <div style={{ display: 'grid', gap: 10 }}>
+      {status ? (
+        <PoolHealthVisual
+          title={t('pool.healthTitle')}
+          status={status}
+          activePartyId={activePartyId}
+        />
+      ) : null}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('pool.title')}</CardTitle>
+        </CardHeader>
+        <CardBody>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 7 }}>
+            <SummaryRow style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
+              <span style={{ fontSize: 10, color: 'var(--sub)' }}>{t('pool.total')}</span>
+              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{formatNum(displayTotal, 2)} USDC</span>
+            </SummaryRow>
+            <SummaryRow style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
+              <span style={{ fontSize: 10, color: 'var(--sub)' }}>{t('pool.available')}</span>
+              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{formatNum(displayBalance, 2)} USDC</span>
+            </SummaryRow>
+            <SummaryRow style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
+              <span style={{ fontSize: 10, color: 'var(--sub)' }}>{t('pool.solvency')}</span>
+              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, color: 'var(--accent)' }}>{ratio}%</span>
+            </SummaryRow>
+          </div>
+          <div style={{ height: 100, marginTop: 8 }}>
+            <canvas ref={canvasRef} />
+          </div>
+        </CardBody>
+      </Card>
+    </div>
   );
 }

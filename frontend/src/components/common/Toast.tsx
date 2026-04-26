@@ -16,7 +16,7 @@ const ToastWrap = styled.div<{ type: ToastType; visible: boolean }>`
   z-index: 600;
   padding: 10px 14px;
   border-radius: 9px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   box-shadow: 0 8px 26px rgba(0, 0, 0, 0.35);
   animation: ${slideIn} 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);

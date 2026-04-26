@@ -1,33 +1,31 @@
 import styled from '@emotion/styled';
+import { SettlementStepPanel } from './SettlementStepPanel';
 import { PendingClaimsTable } from './PendingClaimsTable';
 import { PremiumSettlementTable } from './PremiumSettlementTable';
 import { ClaimSettlementTable } from './ClaimSettlementTable';
 import { FinalSettlementTable } from './FinalSettlementTable';
 import { SettlementChart } from './SettlementChart';
-import { ComparisonPanel } from './ComparisonPanel';
+import { ContentArea } from '@/components/common/StepPanel';
 
-const Col = styled.div`
-  overflow-y: auto;
-  border-right: 1px solid ${p => p.theme.colors.border};
-  padding: 12px;
-  &:last-child { border-right: none; }
+const SettlementContentArea = styled(ContentArea)`
+  padding-bottom: 64px;
+
+  > * {
+    flex-shrink: 0;
+  }
 `;
-const ColMain = styled(Col)`flex: 1;`;
-const ColSide = styled(Col)`flex: 0 0 272px;`;
 
 export function TabSettlement() {
   return (
     <>
-      <ColMain>
+      <SettlementStepPanel />
+      <SettlementContentArea>
         <PendingClaimsTable />
         <PremiumSettlementTable />
         <ClaimSettlementTable />
         <FinalSettlementTable />
         <SettlementChart />
-      </ColMain>
-      <ColSide>
-        <ComparisonPanel />
-      </ColSide>
+      </SettlementContentArea>
     </>
   );
 }

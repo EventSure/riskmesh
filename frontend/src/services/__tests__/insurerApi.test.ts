@@ -1,0 +1,27 @@
+import { describe, expect, it, vi } from 'vitest';
+import { BACKEND_URL } from '@/lib/constants';
+import { putMasterAgreementDisplayNames } from '../insurerApi';
+
+describe('putMasterAgreementDisplayNames', () => {
+  it('posts participant and reinsurer display names to the backend', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ master_policy_pubkey: 'master-1', participants: [], reinsurer: null }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await putMasterAgreementDisplayNames('master-1', {
+      participants: [{ wallet: 'wallet-1', displayName: 'Samsung Life' }],
+      reinsurer: { wallet: 'wallet-r', displayName: 'Korean Re' },
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(`${BACKEND_URL}/api/master-agreements/master-1/display-names`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        participants: [{ wallet: 'wallet-1', display_name: 'Samsung Life' }],
+        reinsurer: { wallet: 'wallet-r', display_name: 'Korean Re' },
+      }),
+    });
+  });
+});

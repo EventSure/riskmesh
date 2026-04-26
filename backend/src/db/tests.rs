@@ -1,5 +1,8 @@
 use super::*;
 use crate::{
+    api::repository::display_names::{
+        MasterAgreementDisplayNames, ParticipantDisplayName, ReinsurerDisplayName,
+    },
     config::{Config, DbBackend},
     oracle::program_accounts::{
         FlightPolicyInfo, MasterAgreementInfo, MasterAgreementParticipantInfo,
@@ -7,7 +10,45 @@ use crate::{
 };
 use serde_json::Value;
 use solana_sdk::{pubkey::Pubkey, system_program};
-use std::{fs, path::PathBuf, time::{SystemTime, UNIX_EPOCH}};
+use std::{
+    fs,
+    path::PathBuf,
+    time::{SystemTime, UNIX_EPOCH},
+};
+
+mod tempfile {
+    use std::{
+        fs, io,
+        path::{Path, PathBuf},
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    pub struct TempDir {
+        path: PathBuf,
+    }
+
+    impl TempDir {
+        pub fn path(&self) -> &Path {
+            &self.path
+        }
+    }
+
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            fs::remove_dir_all(&self.path).ok();
+        }
+    }
+
+    pub fn tempdir() -> io::Result<TempDir> {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("riskmesh-tempdir-{unique}"));
+        fs::create_dir_all(&path)?;
+        Ok(TempDir { path })
+    }
+}
 
 fn test_config() -> Config {
     Config {
@@ -189,8 +230,47 @@ async fn get_methods_return_none_for_missing_documents() {
     let path = temp_db_path("missing");
     let repository = SqliteRepository::open(path.to_str().unwrap()).unwrap();
 
-    assert!(repository.get_master_agreement("missing").await.unwrap().is_none());
-    assert!(repository.get_flight_policy("missing").await.unwrap().is_none());
+    assert!(repository
+        .get_master_agreement("missing")
+        .await
+        .unwrap()
+        .is_none());
+    assert!(repository
+        .get_flight_policy("missing")
+        .await
+        .unwrap()
+        .is_none());
 
     fs::remove_file(path).ok();
+}
+
+#[tokio::test]
+async fn sqlite_round_trips_master_agreement_display_names() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("names.db");
+    let repository = SqliteRepository::open(path.to_str().unwrap()).unwrap();
+
+    let payload = MasterAgreementDisplayNames {
+        master_policy_pubkey: "master-1".to_string(),
+        participants: vec![ParticipantDisplayName {
+            wallet: "wallet-1".to_string(),
+            display_name: "Samsung Life".to_string(),
+        }],
+        reinsurer: Some(ReinsurerDisplayName {
+            wallet: "wallet-r".to_string(),
+            display_name: "Korean Re".to_string(),
+        }),
+    };
+
+    repository
+        .put_master_agreement_display_names(&payload)
+        .await
+        .unwrap();
+    let loaded = repository
+        .get_master_agreement_display_names("master-1")
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(loaded, payload);
 }

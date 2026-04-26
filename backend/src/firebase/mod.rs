@@ -13,6 +13,7 @@ pub struct FirebaseConfig {
     pub firestore_database: String,
     pub master_agreements_collection: String,
     pub flight_policies_collection: String,
+    pub master_policy_display_names_collection: String,
     pub sync_metadata_collection: String,
     service_account: GoogleServiceAccount,
 }
@@ -34,6 +35,10 @@ impl FirebaseConfig {
             flight_policies_collection: optional_env(
                 "FIREBASE_FLIGHT_POLICIES_COLLECTION",
                 "flight_policies",
+            ),
+            master_policy_display_names_collection: optional_env(
+                "FIREBASE_MASTER_POLICY_DISPLAY_NAMES_COLLECTION",
+                "master_policy_display_names",
             ),
             sync_metadata_collection: optional_env(
                 "FIREBASE_SYNC_METADATA_COLLECTION",
@@ -146,11 +151,7 @@ impl FirebaseClient {
         let status = response.status();
         if !status.is_success() {
             let body = response.text().await.unwrap_or_default();
-            bail!(
-                "Firestore 문서 조회 실패: status={} body={}",
-                status,
-                body
-            );
+            bail!("Firestore 문서 조회 실패: status={} body={}", status, body);
         }
 
         response
@@ -190,11 +191,7 @@ impl FirebaseClient {
             let status = response.status();
             if !status.is_success() {
                 let body = response.text().await.unwrap_or_default();
-                bail!(
-                    "Firestore 목록 조회 실패: status={} body={}",
-                    status,
-                    body
-                );
+                bail!("Firestore 목록 조회 실패: status={} body={}", status, body);
             }
 
             let payload = response
@@ -313,7 +310,9 @@ fn optional_env(key: &str, default: &str) -> String {
 }
 
 fn optional_nonempty_env(key: &str) -> Option<String> {
-    std::env::var(key).ok().filter(|value| !value.trim().is_empty())
+    std::env::var(key)
+        .ok()
+        .filter(|value| !value.trim().is_empty())
 }
 
 fn load_dotenv() {
@@ -323,8 +322,7 @@ fn load_dotenv() {
 
 fn load_service_account() -> Result<GoogleServiceAccount> {
     if let Some(json) = optional_nonempty_env("FIREBASE_SERVICE_ACCOUNT_JSON") {
-        return serde_json::from_str(&json)
-            .context("FIREBASE_SERVICE_ACCOUNT_JSON 파싱 실패");
+        return serde_json::from_str(&json).context("FIREBASE_SERVICE_ACCOUNT_JSON 파싱 실패");
     }
 
     if let Some(path) = optional_nonempty_env("FIREBASE_SERVICE_ACCOUNT_PATH") {
@@ -334,9 +332,7 @@ fn load_service_account() -> Result<GoogleServiceAccount> {
             .with_context(|| format!("service account JSON 파싱 실패: {path}"));
     }
 
-    bail!(
-        "FIREBASE_SERVICE_ACCOUNT_JSON 또는 FIREBASE_SERVICE_ACCOUNT_PATH 환경변수 필요"
-    )
+    bail!("FIREBASE_SERVICE_ACCOUNT_JSON 또는 FIREBASE_SERVICE_ACCOUNT_PATH 환경변수 필요")
 }
 
 fn current_unix_seconds() -> Result<u64> {
@@ -356,7 +352,7 @@ use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 
 use crate::{
-    api::repository::{InsuranceRepository, SyncSummary},
+    api::repository::{InsuranceRepository, MasterAgreementDisplayNames, SyncSummary},
     config::Config,
     oracle::program_accounts::{FlightPolicyInfo, MasterAgreementInfo},
 };
@@ -386,13 +382,14 @@ impl FirebaseRepository {
             .list_documents(&auth.access_token, collection_id)
             .await?;
 
-        documents
-            .into_iter()
-            .map(extract_payload::<T>)
-            .collect()
+        documents.into_iter().map(extract_payload::<T>).collect()
     }
 
-    async fn get_payload_document<T>(&self, collection_id: &str, document_id: &str) -> Result<Option<T>>
+    async fn get_payload_document<T>(
+        &self,
+        collection_id: &str,
+        document_id: &str,
+    ) -> Result<Option<T>>
     where
         T: DeserializeOwned,
     {
@@ -404,6 +401,20 @@ impl FirebaseRepository {
             .await?;
 
         document.map(extract_payload::<T>).transpose()
+    }
+
+    async fn put_payload_document(
+        &self,
+        collection_id: &str,
+        document_id: &str,
+        fields: Value,
+    ) -> Result<()> {
+        let auth = self.client.resolve_auth().await?;
+        let document_path = format!("{collection_id}/{document_id}");
+        self.client
+            .upsert_document(&auth.access_token, &document_path, fields)
+            .await?;
+        Ok(())
     }
 }
 
@@ -433,7 +444,11 @@ impl InsuranceRepository for FirebaseRepository {
 
         for fp in flight_policies {
             let fields = build_flight_policy_fields(config, synced_at, fp)?;
-            let path = format!("{}/{}", self.client.config().flight_policies_collection, fp.pubkey);
+            let path = format!(
+                "{}/{}",
+                self.client.config().flight_policies_collection,
+                fp.pubkey
+            );
             self.client
                 .upsert_document(&auth.access_token, &path, fields)
                 .await
@@ -478,6 +493,39 @@ impl InsuranceRepository for FirebaseRepository {
             .await
             .with_context(|| format!("Firebase FlightPolicy 조회 실패: {pubkey}"))
     }
+
+    async fn get_master_agreement_display_names(
+        &self,
+        master_policy_pubkey: &str,
+    ) -> Result<Option<MasterAgreementDisplayNames>> {
+        self.get_payload_document(
+            &self.client.config().master_policy_display_names_collection,
+            master_policy_pubkey,
+        )
+        .await
+        .with_context(|| {
+            format!("Firebase MasterAgreementDisplayNames 조회 실패: {master_policy_pubkey}")
+        })
+    }
+
+    async fn put_master_agreement_display_names(
+        &self,
+        payload: &MasterAgreementDisplayNames,
+    ) -> Result<()> {
+        let fields = build_master_agreement_display_name_fields(payload)?;
+        self.put_payload_document(
+            &self.client.config().master_policy_display_names_collection,
+            &payload.master_policy_pubkey,
+            fields,
+        )
+        .await
+        .with_context(|| {
+            format!(
+                "Firebase MasterAgreementDisplayNames 저장 실패: {}",
+                payload.master_policy_pubkey
+            )
+        })
+    }
 }
 
 // ── Firestore value 변환 헬퍼 ─────────────────────────────────────────────
@@ -517,7 +565,11 @@ fn build_master_agreement_fields(
     }))
 }
 
-fn build_flight_policy_fields(config: &Config, synced_at: u64, fp: &FlightPolicyInfo) -> Result<Value> {
+fn build_flight_policy_fields(
+    config: &Config,
+    synced_at: u64,
+    fp: &FlightPolicyInfo,
+) -> Result<Value> {
     let payload = serde_json::to_value(fp).context("FlightPolicy JSON 직렬화 실패")?;
     Ok(json!({
         "kind": { "stringValue": "flight_policy" },
@@ -547,6 +599,19 @@ fn build_sync_metadata_fields(
         "master_agreement_count": { "integerValue": master_agreements.len().to_string() },
         "flight_policy_count": { "integerValue": flight_policies.len().to_string() },
     })
+}
+
+fn build_master_agreement_display_name_fields(
+    payload: &MasterAgreementDisplayNames,
+) -> Result<Value> {
+    let master_policy_pubkey = payload.master_policy_pubkey.clone();
+    let payload =
+        serde_json::to_value(payload).context("MasterAgreementDisplayNames JSON 직렬화 실패")?;
+    Ok(json!({
+        "kind": { "stringValue": "master_policy_display_names" },
+        "master_policy_pubkey": { "stringValue": master_policy_pubkey },
+        "payload": firestore_value_from_json(&payload),
+    }))
 }
 
 fn firestore_value_from_json(value: &Value) -> Value {

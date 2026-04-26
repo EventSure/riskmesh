@@ -15,6 +15,10 @@ pub(super) fn build_router(state: AppState) -> Router {
         .route("/api/master-agreements", get(get_master_agreements))
         .route("/api/master-agreements/accounts", get(get_master_agreement_accounts))
         .route("/api/master-agreements/:master_agreement_pubkey", get(get_master_agreement))
+        .route(
+            "/api/master-agreements/:master_agreement_pubkey/display-names",
+            get(get_master_agreement_display_names).put(put_master_agreement_display_names),
+        )
         .route("/api/events", get(get_events))
         .route("/api/flight-policies", get(get_flight_policies))
         .route("/api/flight-policies/:flight_policy_pubkey", get(get_flight_policy))

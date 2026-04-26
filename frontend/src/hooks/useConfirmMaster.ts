@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { PublicKey } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { useProgram } from './useProgram';
 import { sendTx, type TxResult } from '@/lib/tx';
 import { ConfirmRole } from '@/lib/idl/open_parametric';
@@ -7,6 +8,8 @@ import { ConfirmRole } from '@/lib/idl/open_parametric';
 export interface ConfirmMasterInput {
   masterAgreement: PublicKey;
   role: ConfirmRole;
+  actorSourceToken: PublicKey;
+  actorPoolToken: PublicKey;
 }
 
 export function useConfirmMaster() {
@@ -21,6 +24,10 @@ export function useConfirmMaster() {
 
       setLoading(true);
       try {
+        if (!input.actorSourceToken || !input.actorPoolToken) {
+          return { signature: '', success: false, error: 'Missing actor token accounts' };
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const prog = program as any;
         const result = await sendTx(provider, () =>
@@ -29,6 +36,9 @@ export function useConfirmMaster() {
             .accounts({
               actor: wallet.publicKey,
               masterAgreement: input.masterAgreement,
+              actorSourceToken: input.actorSourceToken,
+              actorPoolToken: input.actorPoolToken,
+              tokenProgram: TOKEN_PROGRAM_ID,
             })
             .rpc(),
         );

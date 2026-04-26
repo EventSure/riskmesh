@@ -88,7 +88,7 @@ Switch modes via the **DEVNET / SIM** toggle in the top-right header. SIM mode i
 | File | Description |
 |------|-------------|
 | [`demo_code_refactor.md`](frontend/docs/demo_code_refactor.md) | Demo-only code removal guide for production transition |
-| [`deployment-guide.md`](frontend/docs/deployment-guide.md) | Frontend + contract deployment checklist (IDL, PROGRAM_ID, CURRENCY_MINT) |
+| [`deployment-guide.md`](frontend/docs/deployment-guide.md) | Frontend + contract deployment checklist with env-based program selection and stable/staging run scripts |
 
 ## Oracle Architecture
 

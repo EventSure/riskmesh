@@ -5,6 +5,9 @@ import { sendTx, type TxResult } from '@/lib/tx';
 
 export interface ActivateMasterInput {
   masterAgreement: PublicKey;
+  leaderPoolToken: PublicKey;
+  reinsurerPoolToken: PublicKey;
+  participantPoolTokens: PublicKey[];
 }
 
 export function useActivateMaster() {
@@ -19,6 +22,10 @@ export function useActivateMaster() {
 
       setLoading(true);
       try {
+        if (!input.leaderPoolToken || !input.reinsurerPoolToken || !Array.isArray(input.participantPoolTokens)) {
+          return { signature: '', success: false, error: 'Missing pool token accounts' };
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const prog = program as any;
         const result = await sendTx(provider, () =>
@@ -27,7 +34,16 @@ export function useActivateMaster() {
             .accounts({
               operator: wallet.publicKey,
               masterAgreement: input.masterAgreement,
+              leaderPoolToken: input.leaderPoolToken,
+              reinsurerPoolToken: input.reinsurerPoolToken,
             })
+            .remainingAccounts(
+              input.participantPoolTokens.map((pubkey) => ({
+                pubkey,
+                isSigner: false,
+                isWritable: false,
+              })),
+            )
             .rpc(),
         );
         return result;

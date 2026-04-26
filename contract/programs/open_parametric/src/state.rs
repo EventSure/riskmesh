@@ -53,6 +53,7 @@ pub struct CreateMasterAgreementParams {
     pub payout_delay_3h: u64,
     pub payout_delay_4to5h: u64,
     pub payout_delay_6h_or_cancelled: u64,
+    pub collateral_claim_count: u16,
     pub leader_share_bps: u16,
     pub ceded_ratio_bps: u16,
     pub reins_commission_bps: u16,
@@ -99,6 +100,7 @@ pub struct MasterAgreement {
     pub status: u8,
     pub created_at: i64,
     pub bump: u8,
+    pub collateral_claim_count: u16,
 }
 
 #[account]

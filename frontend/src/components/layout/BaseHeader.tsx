@@ -9,7 +9,7 @@ const blink = keyframes`
 `;
 
 const HeaderWrap = styled.header`
-  background: rgba(11, 17, 32, 0.97);
+  background: ${p => p.theme.colors.card};
   border-bottom: 1px solid ${p => p.theme.colors.border};
   padding: 0 18px;
   position: sticky;
@@ -50,6 +50,7 @@ const LogoMark = styled.div`
 const LogoName = styled.div`
   font-size: 15px;
   font-weight: 700;
+  color: ${p => p.theme.colors.text};
 `;
 
 const LogoSub = styled.div`

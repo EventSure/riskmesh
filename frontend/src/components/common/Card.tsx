@@ -17,7 +17,7 @@ export const CardHeader = styled.div`
 `;
 
 export const CardTitle = styled.span`
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;

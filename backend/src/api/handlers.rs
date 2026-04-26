@@ -14,10 +14,11 @@ use super::{
     service,
     state::AppState,
     types::{
-        CreateFlightPolicyRequest, CreateFlightPolicyResponse, EventsQuery,
-        FlightPoliciesQuery, FlightPoliciesResponse, HealthResponse,
-        MasterAgreementAccountsResponse, MasterAgreementFlightPoliciesResponse,
+        CreateFlightPolicyRequest, CreateFlightPolicyResponse, EventsQuery, FlightPoliciesQuery,
+        FlightPoliciesResponse, HealthResponse, MasterAgreementAccountsResponse,
+        MasterAgreementDisplayNamesResponse, MasterAgreementFlightPoliciesResponse,
         MasterAgreementsQuery, MasterAgreementsResponse, MasterAgreementsTreeResponse,
+        PutMasterAgreementDisplayNamesRequest,
     },
 };
 
@@ -48,14 +49,52 @@ pub(super) async fn get_master_agreement(
     State(state): State<AppState>,
     Path(master_agreement_pubkey): Path<String>,
 ) -> Result<Json<crate::oracle::program_accounts::MasterAgreementInfo>, ApiError> {
-    master_agreement_pubkey
-        .parse::<Pubkey>()
-        .map_err(|e| ApiError(anyhow::anyhow!("master_agreement_pubkey 주소 파싱 실패: {e}")))?;
+    master_agreement_pubkey.parse::<Pubkey>().map_err(|e| {
+        ApiError(anyhow::anyhow!(
+            "master_agreement_pubkey 주소 파싱 실패: {e}"
+        ))
+    })?;
 
     service::get_master_agreement(&*state.repository, &master_agreement_pubkey)
         .await
         .map(Json)
         .map_err(ApiError)
+}
+
+pub(super) async fn get_master_agreement_display_names(
+    State(state): State<AppState>,
+    Path(master_policy_pubkey): Path<String>,
+) -> Result<Json<MasterAgreementDisplayNamesResponse>, ApiError> {
+    let master_policy_pubkey = master_policy_pubkey
+        .parse::<Pubkey>()
+        .map_err(|e| ApiError(anyhow::anyhow!("master_policy_pubkey 주소 파싱 실패: {e}")))?;
+
+    service::get_master_agreement_display_names(
+        &*state.repository,
+        &master_policy_pubkey.to_string(),
+    )
+    .await
+    .map(Json)
+    .map_err(ApiError)
+}
+
+pub(super) async fn put_master_agreement_display_names(
+    State(state): State<AppState>,
+    Path(master_policy_pubkey): Path<String>,
+    Json(req): Json<PutMasterAgreementDisplayNamesRequest>,
+) -> Result<Json<MasterAgreementDisplayNamesResponse>, ApiError> {
+    let master_policy_pubkey = master_policy_pubkey
+        .parse::<Pubkey>()
+        .map_err(|e| ApiError(anyhow::anyhow!("master_policy_pubkey 주소 파싱 실패: {e}")))?;
+
+    service::put_master_agreement_display_names(
+        &*state.repository,
+        &master_policy_pubkey.to_string(),
+        req,
+    )
+    .await
+    .map(Json)
+    .map_err(ApiError)
 }
 
 pub(super) async fn post_db_test(
@@ -111,18 +150,20 @@ pub(super) async fn get_flight_policies_by_master_agreement(
     State(state): State<AppState>,
     Path(master_agreement_pubkey): Path<String>,
 ) -> Result<Json<MasterAgreementFlightPoliciesResponse>, ApiError> {
-    let master_agreement_pubkey = master_agreement_pubkey
-        .parse()
-        .map_err(|e| ApiError(anyhow::anyhow!("master_agreement_pubkey 주소 파싱 실패: {e}")))?;
+    let master_agreement_pubkey = master_agreement_pubkey.parse().map_err(|e| {
+        ApiError(anyhow::anyhow!(
+            "master_agreement_pubkey 주소 파싱 실패: {e}"
+        ))
+    })?;
 
     service::list_flight_policies_by_master_agreement(
         &*state.repository,
         &state.config,
         &master_agreement_pubkey,
     )
-        .await
-        .map(Json)
-        .map_err(ApiError)
+    .await
+    .map(Json)
+    .map_err(ApiError)
 }
 
 pub(super) async fn post_flight_policy(
@@ -131,9 +172,11 @@ pub(super) async fn post_flight_policy(
     Json(req): Json<CreateFlightPolicyRequest>,
 ) -> Result<Json<CreateFlightPolicyResponse>, ApiError> {
     let client = SolanaClient::new(&state.config.rpc_url);
-    let master_agreement_pubkey = master_agreement_pubkey
-        .parse()
-        .map_err(|e| ApiError(anyhow::anyhow!("master_agreement_pubkey 주소 파싱 실패: {e}")))?;
+    let master_agreement_pubkey = master_agreement_pubkey.parse().map_err(|e| {
+        ApiError(anyhow::anyhow!(
+            "master_agreement_pubkey 주소 파싱 실패: {e}"
+        ))
+    })?;
 
     service::create_flight_policy(&client, &state.config, &master_agreement_pubkey, req)
         .map(Json)

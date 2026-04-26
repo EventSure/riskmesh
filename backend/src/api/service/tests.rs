@@ -1,6 +1,9 @@
 use super::*;
 use crate::{
-    api::repository::{InsuranceRepository, SyncSummary},
+    api::repository::{
+        display_names::{ParticipantDisplayName, ReinsurerDisplayName},
+        InsuranceRepository, MasterAgreementDisplayNames, SyncSummary,
+    },
     config::{Config, DbBackend},
     oracle::program_accounts::{
         FlightPolicyInfo, MasterAgreementInfo, MasterAgreementParticipantInfo,
@@ -9,11 +12,16 @@ use crate::{
 use anyhow::Result;
 use async_trait::async_trait;
 use solana_sdk::{pubkey::Pubkey, system_program};
-use std::str::FromStr;
+use std::{str::FromStr, sync::Mutex};
+
+const AGREEMENT_A_PUBKEY: &str = "A1111111111111111111111111111111111111111111";
+const AGREEMENT_B_PUBKEY: &str = "B2222222222222222222222222222222222222222222";
 
 struct MockRepository {
     master_agreements: Vec<MasterAgreementInfo>,
     flight_policies: Vec<FlightPolicyInfo>,
+    display_names: Option<MasterAgreementDisplayNames>,
+    stored_display_names: Mutex<Option<MasterAgreementDisplayNames>>,
 }
 
 #[async_trait]
@@ -49,6 +57,25 @@ impl InsuranceRepository for MockRepository {
             .iter()
             .find(|policy| policy.pubkey == pubkey)
             .cloned())
+    }
+
+    async fn get_master_agreement_display_names(
+        &self,
+        master_policy_pubkey: &str,
+    ) -> Result<Option<MasterAgreementDisplayNames>> {
+        Ok(self
+            .display_names
+            .as_ref()
+            .filter(|payload| payload.master_policy_pubkey == master_policy_pubkey)
+            .cloned())
+    }
+
+    async fn put_master_agreement_display_names(
+        &self,
+        payload: &MasterAgreementDisplayNames,
+    ) -> Result<()> {
+        *self.stored_display_names.lock().unwrap() = Some(payload.clone());
+        Ok(())
     }
 }
 
@@ -111,12 +138,7 @@ fn master_agreement(
     }
 }
 
-fn flight_policy(
-    pubkey: &str,
-    master: &str,
-    status: u8,
-    child_policy_id: u64,
-) -> FlightPolicyInfo {
+fn flight_policy(pubkey: &str, master: &str, status: u8, child_policy_id: u64) -> FlightPolicyInfo {
     FlightPolicyInfo {
         pubkey: pubkey.to_string(),
         child_policy_id,
@@ -140,13 +162,13 @@ fn flight_policy(
 
 fn mock_repository() -> MockRepository {
     let agreement_a = master_agreement(
-        "A1111111111111111111111111111111111111111111",
+        AGREEMENT_A_PUBKEY,
         "leader-a",
         "reinsurer-a",
         "participant-a",
     );
     let agreement_b = master_agreement(
-        "B2222222222222222222222222222222222222222222",
+        AGREEMENT_B_PUBKEY,
         "leader-b",
         "reinsurer-b",
         "participant-b",
@@ -159,6 +181,25 @@ fn mock_repository() -> MockRepository {
             flight_policy("flight-a2", &agreement_a.pubkey, 2, 2),
             flight_policy("flight-b1", &agreement_b.pubkey, 2, 1),
         ],
+        display_names: None,
+        stored_display_names: Mutex::new(None),
+    }
+}
+
+fn mock_repository_with_display_names() -> MockRepository {
+    MockRepository {
+        display_names: Some(MasterAgreementDisplayNames {
+            master_policy_pubkey: AGREEMENT_A_PUBKEY.to_string(),
+            participants: vec![ParticipantDisplayName {
+                wallet: "participant-1".to_string(),
+                display_name: "Participant One".to_string(),
+            }],
+            reinsurer: Some(ReinsurerDisplayName {
+                wallet: "reinsurer-1".to_string(),
+                display_name: "Reinsurer One".to_string(),
+            }),
+        }),
+        ..mock_repository()
     }
 }
 
@@ -239,9 +280,167 @@ async fn list_flight_policies_filters_by_master_and_status() {
 async fn get_master_agreement_returns_not_found_error_when_missing() {
     let repository = mock_repository();
 
-    let error = get_master_agreement(&repository, "missing").await.unwrap_err();
+    let error = get_master_agreement(&repository, "missing")
+        .await
+        .unwrap_err();
 
     assert!(error.to_string().contains("account not found"));
+}
+
+#[tokio::test]
+async fn get_display_names_returns_empty_payload_when_repository_has_no_metadata() {
+    let repository = mock_repository();
+
+    let response = get_master_agreement_display_names(&repository, AGREEMENT_B_PUBKEY)
+        .await
+        .unwrap();
+
+    assert_eq!(response.master_policy_pubkey, AGREEMENT_B_PUBKEY);
+    assert!(response.participants.is_empty());
+    assert!(response.reinsurer.is_none());
+}
+
+#[tokio::test]
+async fn get_display_names_returns_repository_payload_when_present() {
+    let repository = mock_repository_with_display_names();
+
+    let response = get_master_agreement_display_names(&repository, AGREEMENT_A_PUBKEY)
+        .await
+        .unwrap();
+
+    assert_eq!(response.master_policy_pubkey, AGREEMENT_A_PUBKEY);
+    assert_eq!(
+        response.participants,
+        vec![ParticipantDisplayNamePayload {
+            wallet: "participant-1".to_string(),
+            display_name: "Participant One".to_string(),
+        }]
+    );
+    assert_eq!(
+        response.reinsurer,
+        Some(ReinsurerDisplayNamePayload {
+            wallet: "reinsurer-1".to_string(),
+            display_name: "Reinsurer One".to_string(),
+        })
+    );
+}
+
+#[tokio::test]
+async fn get_display_names_returns_not_found_when_master_policy_missing() {
+    let repository = mock_repository();
+
+    let error = get_master_agreement_display_names(&repository, "missing-master")
+        .await
+        .unwrap_err();
+
+    assert!(error.to_string().contains("account not found"));
+}
+
+#[tokio::test]
+async fn put_display_names_rejects_empty_display_name() {
+    let repository = mock_repository();
+    let payload = PutMasterAgreementDisplayNamesRequest {
+        participants: vec![ParticipantDisplayNamePayload {
+            wallet: "wallet-1".to_string(),
+            display_name: "".to_string(),
+        }],
+        reinsurer: None,
+    };
+
+    let error = put_master_agreement_display_names(&repository, AGREEMENT_A_PUBKEY, payload)
+        .await
+        .unwrap_err();
+
+    assert!(error.to_string().contains("display_name"));
+}
+
+#[tokio::test]
+async fn put_display_names_rejects_whitespace_reinsurer_display_name() {
+    let repository = mock_repository();
+    let payload = PutMasterAgreementDisplayNamesRequest {
+        participants: vec![ParticipantDisplayNamePayload {
+            wallet: "wallet-1".to_string(),
+            display_name: "  Participant One  ".to_string(),
+        }],
+        reinsurer: Some(ReinsurerDisplayNamePayload {
+            wallet: "wallet-2".to_string(),
+            display_name: "   ".to_string(),
+        }),
+    };
+
+    let error = put_master_agreement_display_names(&repository, AGREEMENT_A_PUBKEY, payload)
+        .await
+        .unwrap_err();
+
+    assert!(error.to_string().contains("display_name"));
+}
+
+#[tokio::test]
+async fn put_display_names_returns_not_found_when_master_policy_missing() {
+    let repository = mock_repository();
+    let payload = PutMasterAgreementDisplayNamesRequest {
+        participants: vec![ParticipantDisplayNamePayload {
+            wallet: "wallet-1".to_string(),
+            display_name: "Participant One".to_string(),
+        }],
+        reinsurer: None,
+    };
+
+    let error = put_master_agreement_display_names(&repository, "missing-master", payload)
+        .await
+        .unwrap_err();
+
+    assert!(error.to_string().contains("account not found"));
+    assert!(repository.stored_display_names.lock().unwrap().is_none());
+}
+
+#[tokio::test]
+async fn put_display_names_returns_trimmed_repository_payload() {
+    let repository = mock_repository();
+    let payload = PutMasterAgreementDisplayNamesRequest {
+        participants: vec![ParticipantDisplayNamePayload {
+            wallet: "wallet-1".to_string(),
+            display_name: "  Participant One  ".to_string(),
+        }],
+        reinsurer: Some(ReinsurerDisplayNamePayload {
+            wallet: "wallet-2".to_string(),
+            display_name: "  Reinsurer One  ".to_string(),
+        }),
+    };
+
+    let response = put_master_agreement_display_names(&repository, AGREEMENT_A_PUBKEY, payload)
+        .await
+        .unwrap();
+
+    assert_eq!(response.master_policy_pubkey, AGREEMENT_A_PUBKEY);
+    assert_eq!(
+        response.participants,
+        vec![ParticipantDisplayNamePayload {
+            wallet: "wallet-1".to_string(),
+            display_name: "Participant One".to_string(),
+        }]
+    );
+    assert_eq!(
+        response.reinsurer,
+        Some(ReinsurerDisplayNamePayload {
+            wallet: "wallet-2".to_string(),
+            display_name: "Reinsurer One".to_string(),
+        })
+    );
+    assert_eq!(
+        repository.stored_display_names.lock().unwrap().clone(),
+        Some(MasterAgreementDisplayNames {
+            master_policy_pubkey: AGREEMENT_A_PUBKEY.to_string(),
+            participants: vec![ParticipantDisplayName {
+                wallet: "wallet-1".to_string(),
+                display_name: "Participant One".to_string(),
+            }],
+            reinsurer: Some(ReinsurerDisplayName {
+                wallet: "wallet-2".to_string(),
+                display_name: "Reinsurer One".to_string(),
+            }),
+        })
+    );
 }
 
 #[tokio::test]
@@ -250,10 +449,9 @@ async fn list_flight_policies_by_master_agreement_filters_children_only() {
     let config = test_config();
     let master_pubkey = Pubkey::from_str("A1111111111111111111111111111111111111111111").unwrap();
 
-    let response =
-        list_flight_policies_by_master_agreement(&repository, &config, &master_pubkey)
-            .await
-            .unwrap();
+    let response = list_flight_policies_by_master_agreement(&repository, &config, &master_pubkey)
+        .await
+        .unwrap();
 
     assert_eq!(response.program_id, config.program_id.to_string());
     assert_eq!(response.master_agreement_pubkey, master_pubkey.to_string());
@@ -294,7 +492,10 @@ fn message_matches_filter_handles_master_and_flight_events() {
         data: r#"{"pubkey":"master-1"}"#.to_string(),
     };
     assert!(message_matches_filter(&agreement_message, Some("master-1")));
-    assert!(!message_matches_filter(&agreement_message, Some("master-2")));
+    assert!(!message_matches_filter(
+        &agreement_message,
+        Some("master-2")
+    ));
 }
 
 #[test]

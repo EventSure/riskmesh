@@ -17,8 +17,20 @@ export interface Participant {
 
 export interface ReinsurerConfig {
   enabled: boolean;
+  name?: string;
   address: string;
   confirmed: boolean;
+}
+
+interface MasterAgreementDisplayNames {
+  participants: Array<{
+    wallet: string;
+    displayName: string;
+  }>;
+  reinsurer: {
+    wallet: string;
+    displayName: string;
+  } | null;
 }
 
 export interface Contract {
@@ -183,7 +195,30 @@ const makeInitialAcc = (n: number): Acc => ({
   leaderClaim: 0, participantClaims: new Array(n).fill(0), reinClaim: 0,
 });
 
+const clampCollateralClaimCount = (count: number) =>
+  Math.max(1, Math.min(100, Math.round(count)));
+
 const DEFAULT_PARTICIPANT: Participant = { id: 'p1', name: '', share: 50, address: '', confirmed: false };
+const participantFallbackName = (index: number) => `${i18n.t('confirm.participant')} ${index + 1}`;
+const DEFAULT_MASTER_TERMS = {
+  coverageStart: '2026-01-01',
+  coverageEnd: '2026-12-31',
+  premiumPerPolicy: 3,
+  collateralClaimCount: 10,
+  payoutTiers: { delay2h: 5, delay3h: 8, delay4to5h: 12, delay6hOrCancelled: 15 },
+  cededRatioBps: 5000,
+  reinsCommissionBps: 1000,
+} as const;
+
+const getDefaultMasterTerms = () => ({
+  coverageStart: DEFAULT_MASTER_TERMS.coverageStart,
+  coverageEnd: DEFAULT_MASTER_TERMS.coverageEnd,
+  premiumPerPolicy: DEFAULT_MASTER_TERMS.premiumPerPolicy,
+  collateralClaimCount: DEFAULT_MASTER_TERMS.collateralClaimCount,
+  payoutTiers: { ...DEFAULT_MASTER_TERMS.payoutTiers },
+  cededRatioBps: DEFAULT_MASTER_TERMS.cededRatioBps,
+  reinsCommissionBps: DEFAULT_MASTER_TERMS.reinsCommissionBps,
+});
 
 /* ── Store ── */
 interface ProtocolState {
@@ -212,6 +247,7 @@ interface ProtocolState {
   coverageStart: string;
   coverageEnd: string;
   premiumPerPolicy: number;
+  collateralClaimCount: number;
   payoutTiers: { delay2h: number; delay3h: number; delay4to5h: number; delay6hOrCancelled: number };
 
   // Reinsurance ratios (bps, 10000 = 100%)
@@ -224,6 +260,8 @@ interface ProtocolState {
   lastTxSignature: string | null;
   masterAgreements: MasterAgreementSummary[];
   lastDaemonActivityTs: number | null;
+  kpiSnapshot: { poolBalance: number; claimCount: number; flightPolicyCount: number } | null;
+  displayNamesByWallet: Record<string, string>;
 
   // Actions
   setMode: (m: ProtocolMode) => void;
@@ -235,6 +273,7 @@ interface ProtocolState {
   setReinsurer: (patch: Partial<ReinsurerConfig>) => void;
   toggleReinsurer: () => void;
   setCoverage: (c: { start?: string; end?: string }) => void;
+  setCollateralClaimCount: (count: number) => void;
   setTerms: () => { ok: boolean; msg?: string };
   confirmParticipant: (id: string) => void;
   confirmReinsurer: () => void;
@@ -245,6 +284,7 @@ interface ProtocolState {
   approveClaims: () => number;
   settleClaims: () => number;
   addLog: (msg: string, color: string, instruction: string, detail?: string, txSignature?: string) => void;
+  applyMasterAgreementDisplayNames: (payload: MasterAgreementDisplayNames) => void;
   setMasterAgreementPDA: (pda: string | null) => void;
   setMasterAgreements: (list: MasterAgreementSummary[]) => void;
   selectMasterAgreement: (pda: string | null) => void;
@@ -254,6 +294,7 @@ interface ProtocolState {
     premium?: number;
     payoutTiers?: { delay2h: number; delay3h: number; delay4to5h: number; delay6hOrCancelled: number };
     coverageDates?: { start: string; end: string };
+    collateralClaimCount?: number;
     leaderShare?: number;
     participants?: Participant[];
     reinsurer?: ReinsurerConfig;
@@ -265,6 +306,7 @@ interface ProtocolState {
   onChainSettle: (contractId: number, txSignature: string) => void;
   refreshPool: () => void;
   setPoolBalance: (balance: number) => void;
+  captureKpiSnapshot: () => void;
   resetAll: () => void;
   syncMasterFromChain: (data: MasterAgreementAccount) => void;
   syncFlightPoliciesFromChain: (policies: FlightPolicyWithKey[]) => void;
@@ -288,6 +330,8 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
   claims: [],
   contractCount: 0,
   claimCount: 0,
+  kpiSnapshot: null,
+  displayNamesByWallet: {},
   acc: makeInitialAcc(1),
   logs: [],
   logIdCounter: 0,
@@ -295,14 +339,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
   poolHist: [{ t: 'init', v: 10000 }],
 
   // Master policy terms
-  coverageStart: '2026-01-01',
-  coverageEnd: '2026-12-31',
-  premiumPerPolicy: 3,
-  payoutTiers: { delay2h: 5, delay3h: 8, delay4to5h: 12, delay6hOrCancelled: 15 },
-
-  // Reinsurance ratios (bps)
-  cededRatioBps: 5000,       // 50%
-  reinsCommissionBps: 1000,  // 10%
+  ...getDefaultMasterTerms(),
 
   // On-chain state
   poolRefreshKey: 0,
@@ -373,6 +410,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
   })),
 
   setCoverage: (c) => set(st => ({ coverageStart: c.start ?? st.coverageStart, coverageEnd: c.end ?? st.coverageEnd })),
+  setCollateralClaimCount: (count) => set({ collateralClaimCount: clampCollateralClaimCount(count) }),
 
   setTerms: () => {
     const { role, leaderShare, participants } = get();
@@ -580,6 +618,25 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     }));
   },
 
+  applyMasterAgreementDisplayNames: (payload) => {
+    const displayNamesByWallet = Object.fromEntries([
+      ...payload.participants.map(({ wallet, displayName }) => [wallet, displayName]),
+      ...(payload.reinsurer ? [[payload.reinsurer.wallet, payload.reinsurer.displayName] as const] : []),
+    ]);
+
+    set(st => ({
+      displayNamesByWallet,
+      participants: st.participants.map((participant, index) => ({
+        ...participant,
+        name: displayNamesByWallet[participant.address] || participant.name || participantFallbackName(index),
+      })),
+      reinsurer: {
+        ...st.reinsurer,
+        name: st.reinsurer.address ? displayNamesByWallet[st.reinsurer.address] || st.reinsurer.name : st.reinsurer.name,
+      },
+    }));
+  },
+
   setMasterAgreementPDA: (pda) => set({ masterAgreementPDA: pda }),
 
   setMasterAgreements: (list) => set({ masterAgreements: list }),
@@ -596,12 +653,13 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       claims: [] as Claim[],
       contractCount: 0,
       claimCount: 0,
+      ...getDefaultMasterTerms(),
     };
     if (pda === null) {
-      set({ masterAgreementPDA: null, ...resetMirror });
+      set({ masterAgreementPDA: null, displayNamesByWallet: {}, ...resetMirror });
       get().addLog('새 마스터계약 생성 모드', '#94A3B8', 'select_master');
     } else {
-      set({ masterAgreementPDA: pda, ...resetMirror });
+      set({ masterAgreementPDA: pda, displayNamesByWallet: {}, ...resetMirror });
       get().addLog(`마스터계약 전환: ${pda.slice(0, 8)}...`, '#9945FF', 'select_master', '체인에서 상태 조회 중...');
     }
   },
@@ -616,6 +674,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       ...(opts?.cededRatioBps != null && { cededRatioBps: opts.cededRatioBps }),
       ...(opts?.reinsCommissionBps != null && { reinsCommissionBps: opts.reinsCommissionBps }),
       ...(opts?.premium != null && { premiumPerPolicy: opts.premium }),
+      ...(opts?.collateralClaimCount != null && { collateralClaimCount: clampCollateralClaimCount(opts.collateralClaimCount) }),
       ...(opts?.payoutTiers != null && { payoutTiers: opts.payoutTiers }),
       ...(opts?.coverageDates != null && { coverageStart: opts.coverageDates.start, coverageEnd: opts.coverageDates.end }),
       ...(opts?.leaderShare != null && { leaderShare: opts.leaderShare }),
@@ -662,7 +721,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       const st = get();
       const p = st.participants.find(p => p.id === target);
       const idx = st.participants.findIndex(p => p.id === target);
-      const label = p?.name || `참여사 ${idx + 1}`;
+      const label = p?.name || participantFallbackName(Math.max(idx, 0));
       get().addLog(
         i18n.t('store.confirmDone', { role: label }),
         PARTICIPANT_COLORS[idx] || '#14F195', 'confirm_master',
@@ -791,6 +850,15 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
   refreshPool: () => set(st => ({ poolRefreshKey: st.poolRefreshKey + 1 })),
   setPoolBalance: (balance) => set({ poolBalance: balance }),
 
+  captureKpiSnapshot: () =>
+    set(st => ({
+      kpiSnapshot: st.kpiSnapshot ?? {
+        poolBalance: st.poolBalance,
+        claimCount: st.claimCount,
+        flightPolicyCount: 0,
+      },
+    })),
+
   resetAll: () => {
     participantIdCounter = 1;
     set({
@@ -798,15 +866,15 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       leaderShare: 50,
       participants: [{ ...DEFAULT_PARTICIPANT }],
       reinsurer: { enabled: true, address: '', confirmed: false },
-      coverageStart: '2026-01-01', coverageEnd: '2026-12-31',
-      premiumPerPolicy: 3, payoutTiers: { delay2h: 5, delay3h: 8, delay4to5h: 12, delay6hOrCancelled: 15 },
-      cededRatioBps: 5000, reinsCommissionBps: 1000,
+      ...getDefaultMasterTerms(),
       poolBalance: 10000, totalPremium: 0, totalClaim: 0,
       contracts: [], claims: [], contractCount: 0, claimCount: 0,
       acc: makeInitialAcc(1),
       premHist: [], poolHist: [{ t: 'init', v: 10000 }],
       logs: [], logIdCounter: 0,
       masterAgreementPDA: null, lastTxSignature: null,
+      kpiSnapshot: null,
+      displayNamesByWallet: {},
     });
     get().addLog(i18n.t('store.resetMsg'), '#9945FF', 'system_init');
   },
@@ -819,12 +887,15 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     // prevents user-edited names from being overwritten on every poll and keeps
     // ids stable so addParticipant-generated ids never collide.
     const prevParticipants = get().participants;
+    const displayNamesByWallet = get().displayNamesByWallet;
     const participants: Participant[] = data.participants.map((p, i) => {
       const address = p?.insurer?.toBase58() ?? '';
       const existing = address ? prevParticipants.find(x => x.address === address) : undefined;
+      const fallbackExisting = prevParticipants[i];
+      const backendDisplayName = address ? displayNamesByWallet[address] : undefined;
       return {
-        id: existing?.id ?? `p${i + 1}`,
-        name: existing?.name ?? `참여사 ${i + 1}`,
+        id: existing?.id ?? fallbackExisting?.id ?? `p${i + 1}`,
+        name: backendDisplayName || existing?.name || fallbackExisting?.name || participantFallbackName(i),
         share: Math.round((p?.shareBps ?? 0) / 100),
         address,
         confirmed: p?.confirmed ?? false,
@@ -840,9 +911,12 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
 
     const reinConfirmed = data.reinsurerConfirmed;
     const hasReinsurer = data.cededRatioBps > 0;
+    const prevReinsurer = get().reinsurer;
+    const reinsurerAddress = hasReinsurer ? (data.reinsurer?.toBase58() ?? '') : '';
     const reinsurer: ReinsurerConfig = {
       enabled: hasReinsurer,
-      address: hasReinsurer ? (data.reinsurer?.toBase58() ?? '') : '',
+      name: reinsurerAddress ? displayNamesByWallet[reinsurerAddress] || prevReinsurer.name : undefined,
+      address: reinsurerAddress,
       confirmed: hasReinsurer && reinConfirmed,
     };
 
@@ -867,9 +941,10 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       participants,
       reinsurer,
       processStep,
-      cededRatioBps: data.cededRatioBps,
-      reinsCommissionBps: data.reinsCommissionBps,
+      cededRatioBps: data.cededRatioBps ?? DEFAULT_MASTER_TERMS.cededRatioBps,
+      reinsCommissionBps: data.reinsCommissionBps ?? DEFAULT_MASTER_TERMS.reinsCommissionBps,
       ...(data.premiumPerPolicy && { premiumPerPolicy: data.premiumPerPolicy.toNumber() / 1_000_000 }),
+      collateralClaimCount: clampCollateralClaimCount(data.collateralClaimCount ?? DEFAULT_MASTER_TERMS.collateralClaimCount),
       ...(data.payoutDelay2H && {
         payoutTiers: {
           delay2h: data.payoutDelay2H.toNumber() / 1_000_000,
@@ -1023,6 +1098,11 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       leaderShare: state.leaderShare,
       cededRatioBps: state.cededRatioBps,
       reinsCommissionBps: state.reinsCommissionBps,
+      coverageStart: state.coverageStart,
+      coverageEnd: state.coverageEnd,
+      premiumPerPolicy: state.premiumPerPolicy,
+      collateralClaimCount: state.collateralClaimCount,
+      payoutTiers: state.payoutTiers,
     };
     if (state.mode !== 'onchain') {
       return {

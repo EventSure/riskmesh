@@ -111,6 +111,7 @@ describe("multiple_flights", () => {
         payoutDelay3H:            new anchor.BN(PAYOUT_3H.toString()),
         payoutDelay4To5H:         new anchor.BN(4_000_000),
         payoutDelay6HOrCancelled: new anchor.BN(PAYOUT_MAX.toString()),
+        collateralClaimCount: 1,
         leaderShareBps:     5_000,
         cededRatioBps:      5_000,
         reinsCommissionBps: 1_000,
@@ -141,12 +142,31 @@ describe("multiple_flights", () => {
         .rpc();
       await program.methods
         .confirmMaster(0)
-        .accounts({ actor: actor.publicKey, masterAgreement: masterAgreementPda })
+        .accounts({
+          actor: actor.publicKey,
+          masterAgreement: masterAgreementPda,
+          actorSourceToken: deposit,
+          actorPoolToken: pool,
+        })
         .signers([...signers])
         .rpc();
     }
-    await program.methods.confirmMaster(1).accounts({ actor: reinsurer.publicKey, masterAgreement: masterAgreementPda }).signers([reinsurer]).rpc();
-    await program.methods.activateMaster().accounts({ operator: payer.publicKey, masterAgreement: masterAgreementPda }).rpc();
+    await program.methods.confirmMaster(1).accounts({
+      actor: reinsurer.publicKey,
+      masterAgreement: masterAgreementPda,
+      actorSourceToken: reinsurerDeposit,
+      actorPoolToken: reinsurerPool,
+    }).signers([reinsurer]).rpc();
+    await program.methods
+      .activateMaster()
+      .accounts({
+        operator: payer.publicKey,
+        masterAgreement: masterAgreementPda,
+        leaderPoolToken: leaderPool,
+        reinsurerPoolToken: reinsurerPool,
+      })
+      .remainingAccounts([{ pubkey: aPool, isWritable: false, isSigner: false }])
+      .rpc();
 
     // FlightPolicy PDAs
     for (const [n, ref] of [[1, "F1"], [2, "F2"], [3, "F3"]] as const) {
@@ -165,8 +185,7 @@ describe("multiple_flights", () => {
         })
         .accountsPartial({
           creator: payer.publicKey, masterAgreement: masterAgreementPda, flightPolicy: fpPda,
-          payerToken, leaderPoolToken: leaderPool,
-          tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+          payerToken, leaderPoolToken: leaderPool, systemProgram: SystemProgram.programId,
         })
         .rpc();
       if (n === 1) flight1Pda = fpPda;
@@ -224,7 +243,6 @@ describe("multiple_flights", () => {
       .accountsPartial({
         executor: payer.publicKey, masterAgreement: masterAgreementPda, flightPolicy: flight1Pda,
         leaderDepositToken: leaderDeposit, leaderPoolToken: leaderPool, reinsurerPoolToken: reinsurerPool,
-        tokenProgram: TOKEN_PROGRAM_ID,
       })
       .remainingAccounts([
         { pubkey: aPool,      isWritable: true, isSigner: false },
@@ -248,7 +266,6 @@ describe("multiple_flights", () => {
       .accountsPartial({
         executor: payer.publicKey, masterAgreement: masterAgreementPda, flightPolicy: flight2Pda,
         leaderPoolToken: leaderPool, leaderDepositToken: leaderDeposit, reinsurerDepositToken: reinsurerDeposit,
-        tokenProgram: TOKEN_PROGRAM_ID,
       })
       .remainingAccounts([
         { pubkey: aDeposit,      isWritable: true, isSigner: false },
@@ -271,7 +288,6 @@ describe("multiple_flights", () => {
       .accountsPartial({
         executor: payer.publicKey, masterAgreement: masterAgreementPda, flightPolicy: flight3Pda,
         leaderDepositToken: leaderDeposit, leaderPoolToken: leaderPool, reinsurerPoolToken: reinsurerPool,
-        tokenProgram: TOKEN_PROGRAM_ID,
       })
       .remainingAccounts([
         { pubkey: aPool,      isWritable: true, isSigner: false },

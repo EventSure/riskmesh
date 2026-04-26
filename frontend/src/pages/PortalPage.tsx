@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import styled from '@emotion/styled';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { PublicKey } from '@solana/web3.js';
@@ -6,17 +6,15 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { useTranslation } from 'react-i18next';
 import { PageShell } from '@/components/layout/PageShell';
 import { PortalHeader } from '@/components/layout/PortalHeader';
-import { TabBar, type TabDef } from '@/components/layout/TabBar';
-import { Tag, Mono, Card } from '@/components/common';
+import { Tag, Mono } from '@/components/common';
 import { useParticipantRole } from '@/hooks/useParticipantRole';
 import { useMyPolicies, type MyPolicySummary } from '@/hooks/useMyPolicies';
-import { PortalOverview } from '@/components/tabs/tab-portal/PortalOverview';
-import { PortalContracts } from '@/components/tabs/tab-portal/PortalContracts';
-import { PortalConfirm } from '@/components/tabs/tab-portal/PortalConfirm';
-import { PortalRiskDashboard } from '@/components/tabs/tab-portal/PortalRiskDashboard';
-import { PortalSettlement } from '@/components/tabs/tab-portal/PortalSettlement';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { MasterAgreementStatus, POLICY_STATE_LABELS, PolicyState } from '@/lib/idl/open_parametric';
+import { LeaderPortal } from './portal/LeaderPortal';
+import { ParticipantPortal } from './portal/ParticipantPortal';
+import { ReinPortal } from './portal/ReinPortal';
+import { OperatorPortal } from './portal/OperatorPortal';
 
 const CenterBox = styled.div`
   display: flex;
@@ -41,7 +39,6 @@ const ErrorBox = styled.div`
   max-width: 500px;
   text-align: center;
 `;
-
 
 const PolicyListWrap = styled.div`
   max-width: 600px;
@@ -68,35 +65,10 @@ const PolicyCard = styled.div`
   margin-bottom: 8px;
   cursor: pointer;
   transition: all 0.2s;
-
   &:hover {
     border-color: ${p => p.theme.colors.primary};
     background: ${p => p.theme.colors.surface2};
   }
-`;
-
-const PolicyInfo = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-`;
-
-const PolicyMeta = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-`;
-
-const PolicyId = styled.span`
-  font-family: ${p => p.theme.fonts.mono};
-  font-size: 11px;
-  font-weight: 600;
-  color: ${p => p.theme.colors.text};
-`;
-
-const PolicyPda = styled(Mono)`
-  font-size: 9px;
-  color: ${p => p.theme.colors.sub};
 `;
 
 const ROLE_COLORS: Record<string, string> = {
@@ -133,15 +105,8 @@ const TRACK_B_STATUS_COLORS: Record<number, string> = {
   [PolicyState.Expired]: '#475569',
 };
 
-const RoleTagsWrap = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-`;
-
 function PolicyListItem({ policy, onClick }: { policy: MyPolicySummary; onClick: () => void }) {
   const { t } = useTranslation();
-
   const isTrackB = policy.track === 'B';
   const statusColor = isTrackB
     ? (TRACK_B_STATUS_COLORS[policy.status] || '#94A3B8')
@@ -152,29 +117,24 @@ function PolicyListItem({ policy, onClick }: { policy: MyPolicySummary; onClick:
 
   return (
     <PolicyCard onClick={onClick}>
-      <PolicyInfo>
-        <RoleTagsWrap>
-          {policy.roles.map(r => (
-            <Tag key={r.role} variant="subtle" style={{ color: ROLE_COLORS[r.role] || '#94A3B8', fontSize: 9, minWidth: 48, textAlign: 'center' }}>
-              {t(`portal.role.${r.role}`, r.role)}
-            </Tag>
-          ))}
-        </RoleTagsWrap>
-        <PolicyMeta>
-          <PolicyId>{isTrackB ? `Policy #${policy.masterId}` : `Master #${policy.masterId}`}</PolicyId>
-          {isTrackB && policy.flightNo && (
-            <PolicyPda>{policy.flightNo} · {policy.route}</PolicyPda>
-          )}
-          {!isTrackB && (
-            <PolicyPda>{policy.pda.slice(0, 12)}...{policy.pda.slice(-8)}</PolicyPda>
-          )}
-        </PolicyMeta>
-      </PolicyInfo>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Tag variant="subtle" style={{ color: statusColor, fontSize: 8 }}>
-          {statusLabel}
-        </Tag>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {policy.roles.map(r => (
+          <Tag key={r.role} variant="subtle" style={{ color: ROLE_COLORS[r.role] || '#94A3B8', fontSize: 9, minWidth: 48, textAlign: 'center' }}>
+            {t(`portal.role.${r.role}`, r.role)}
+          </Tag>
+        ))}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, fontWeight: 600 }}>
+            {isTrackB ? `Policy #${policy.masterId}` : `Master #${policy.masterId}`}
+          </span>
+          <Mono style={{ fontSize: 9, color: 'var(--sub)' }}>
+            {isTrackB && policy.flightNo
+              ? `${policy.flightNo} · ${policy.route}`
+              : `${policy.pda.slice(0, 12)}...${policy.pda.slice(-8)}`}
+          </Mono>
+        </div>
       </div>
+      <Tag variant="subtle" style={{ color: statusColor, fontSize: 8 }}>{statusLabel}</Tag>
     </PolicyCard>
   );
 }
@@ -187,41 +147,15 @@ export function PortalPage() {
   const { policies, loading: policiesLoading } = useMyPolicies();
 
   const masterParam = searchParams.get('master');
-  const trackBParam = searchParams.get('trackb');
   const masterPDA = useMemo(() => {
     if (!masterParam) return null;
     try { return new PublicKey(masterParam); }
     catch { return null; }
   }, [masterParam]);
-  const trackBPDA = useMemo(() => {
-    if (!trackBParam) return null;
-    try { return new PublicKey(trackBParam); }
-    catch { return null; }
-  }, [trackBParam]);
 
   const { info: participantInfo, roles, loading, error, refresh: refreshRole } = useParticipantRole(masterPDA);
+  const primaryRole = roles[0]?.role ?? null;
 
-  const roleSet = useMemo(() => new Set(roles.map(r => r.role)), [roles]);
-  const primaryRole = participantInfo?.role ?? null;
-
-  const tabs: TabDef[] = useMemo(() => {
-    const common: TabDef[] = [
-      { id: 'overview', label: t('portal.overview') },
-      { id: 'contracts', label: t('portal.contracts') },
-    ];
-    if (roleSet.has('leader') || roleSet.has('participant') || roleSet.has('rein')) {
-      common.push({ id: 'confirm', label: t('portal.confirm') });
-    }
-    if (roleSet.has('leader') || roleSet.has('rein')) {
-      common.push({ id: 'risk', label: t('portal.riskDashboard') });
-    }
-    common.push({ id: 'settlement', label: t('portal.settlement') });
-    return common;
-  }, [roleSet, t]);
-
-  const [activeTab, setActiveTab] = useState('overview');
-
-  // Not connected
   if (!connected || !publicKey) {
     return (
       <PageShell header={<PortalHeader role={null} masterPDA={null} />}>
@@ -234,67 +168,17 @@ export function PortalPage() {
     );
   }
 
-  // Track B policy detail view
-  if (trackBPDA && !masterPDA) {
-    const matchedPolicy = policies.find(p => p.pda === trackBParam && p.track === 'B');
-    return (
-      <PageShell header={<PortalHeader role="leader" masterPDA={trackBParam} />}>
-        <PolicyListWrap>
-          <PolicyListTitle>{t('portal.trackBPolicy')}</PolicyListTitle>
-          {matchedPolicy ? (
-            <Card style={{ padding: 16 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <PolicyId>Policy #{matchedPolicy.masterId}</PolicyId>
-                  <Tag variant="subtle" style={{ color: TRACK_B_STATUS_COLORS[matchedPolicy.status] || '#94A3B8', fontSize: 9 }}>
-                    {POLICY_STATE_LABELS[matchedPolicy.status] || 'Unknown'}
-                  </Tag>
-                </div>
-                {matchedPolicy.flightNo && (
-                  <div style={{ fontSize: 12, color: 'var(--sub)' }}>
-                    {matchedPolicy.flightNo} · {matchedPolicy.route}
-                  </div>
-                )}
-                {matchedPolicy.payoutAmount != null && (
-                  <div style={{ fontSize: 12, color: 'var(--text)' }}>
-                    {t('portal.payout')}: <Mono>{matchedPolicy.payoutAmount.toFixed(2)} USDC</Mono>
-                  </div>
-                )}
-                <PolicyPda>{matchedPolicy.pda}</PolicyPda>
-              </div>
-            </Card>
-          ) : (
-            <CenterBox style={{ minHeight: '20vh' }}>
-              <div>{t('portal.loadingPolicies')}</div>
-            </CenterBox>
-          )}
-          <div style={{ marginTop: 16, textAlign: 'center' }}>
-            <Tag variant="subtle" style={{ cursor: 'pointer', fontSize: 11 }} onClick={() => navigate('/portal')}>
-              {t('portal.myPolicies')}
-            </Tag>
-          </div>
-        </PolicyListWrap>
-      </PageShell>
-    );
-  }
-
-  // No master PDA specified — show my policies list
   if (!masterPDA) {
     return (
       <PageShell header={<PortalHeader role={null} masterPDA={null} />}>
         <PolicyListWrap>
           <PolicyListTitle>{t('portal.myPolicies')}</PolicyListTitle>
           {policiesLoading ? (
-            <CenterBox style={{ minHeight: '30vh' }}>
-              <div>{t('portal.loadingPolicies')}</div>
-            </CenterBox>
+            <CenterBox style={{ minHeight: '30vh' }}><div>{t('portal.loadingPolicies')}</div></CenterBox>
           ) : policies.length === 0 ? (
             <CenterBox style={{ minHeight: '30vh' }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
+              <div style={{ fontSize: 32 }}>📋</div>
               <div>{t('portal.noPolicies')}</div>
-              <div style={{ fontSize: 10, color: 'var(--sub)' }}>
-                {t('portal.noPoliciesHint')}
-              </div>
             </CenterBox>
           ) : (
             policies.map(p => (
@@ -302,9 +186,7 @@ export function PortalPage() {
                 key={p.pda}
                 policy={p}
                 onClick={() => navigate(
-                  p.track === 'B'
-                    ? `/portal?trackb=${p.pda}`
-                    : `/portal?master=${p.pda}`,
+                  p.track === 'B' ? `/portal?trackb=${p.pda}` : `/portal?master=${p.pda}`,
                 )}
               />
             ))
@@ -314,18 +196,14 @@ export function PortalPage() {
     );
   }
 
-  // Loading role detection
   if (loading) {
     return (
       <PageShell header={<PortalHeader role={null} masterPDA={masterParam} />}>
-        <CenterBox>
-          <div>{t('portal.detectingRole')}</div>
-        </CenterBox>
+        <CenterBox><div>{t('portal.detectingRole')}</div></CenterBox>
       </PageShell>
     );
   }
 
-  // Error
   if (error) {
     return (
       <PageShell header={<PortalHeader role={null} masterPDA={masterParam} />}>
@@ -334,40 +212,59 @@ export function PortalPage() {
     );
   }
 
-  // No permission
   if (!participantInfo || roles.length === 0) {
     return (
       <PageShell header={<PortalHeader role={null} masterPDA={masterParam} />}>
         <CenterBox>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>🚫</div>
+          <div style={{ fontSize: 32 }}>🚫</div>
           <div>{t('portal.noPermission')}</div>
         </CenterBox>
       </PageShell>
     );
   }
 
-  // Find role-specific info for each tab
-  const reinInfo = roles.find(r => r.role === 'rein') ?? participantInfo;
-  const participantRoleInfo = roles.find(r => r.role === 'participant' || r.role === 'rein') ?? participantInfo;
+  if (primaryRole === 'leader') {
+    return (
+      <LeaderPortal
+        masterPDA={masterPDA}
+        masterPDAStr={masterParam!}
+        participantInfo={participantInfo}
+        allRoles={roles}
+        onRefresh={refreshRole}
+      />
+    );
+  }
+
+  if (primaryRole === 'rein') {
+    return (
+      <ReinPortal
+        masterPDA={masterPDA}
+        masterPDAStr={masterParam!}
+        participantInfo={participantInfo}
+        allRoles={roles}
+        onRefresh={refreshRole}
+      />
+    );
+  }
+
+  if (primaryRole === 'participant') {
+    return (
+      <ParticipantPortal
+        masterPDA={masterPDA}
+        masterPDAStr={masterParam!}
+        participantInfo={participantInfo}
+        allRoles={roles}
+        onRefresh={refreshRole}
+      />
+    );
+  }
 
   return (
-    <PageShell header={<PortalHeader role={primaryRole} masterPDA={masterParam} roles={roles} />}>
-      <TabBar tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
-      {activeTab === 'overview' && (
-        <PortalOverview participantInfo={participantInfo} allRoles={roles} masterPDA={masterPDA} />
-      )}
-      {activeTab === 'contracts' && (
-        <PortalContracts masterPDA={masterPDA} />
-      )}
-      {activeTab === 'confirm' && (roleSet.has('leader') || roleSet.has('participant') || roleSet.has('rein')) && (
-        <PortalConfirm masterPDA={masterPDA} participantInfo={participantRoleInfo} allRoles={roles} onSuccess={refreshRole} />
-      )}
-      {activeTab === 'risk' && (roleSet.has('leader') || roleSet.has('rein')) && (
-        <PortalRiskDashboard participantInfo={reinInfo} allRoles={roles} />
-      )}
-      {activeTab === 'settlement' && (
-        <PortalSettlement participantInfo={participantInfo} allRoles={roles} />
-      )}
-    </PageShell>
+    <OperatorPortal
+      masterPDA={masterPDA}
+      masterPDAStr={masterParam!}
+      participantInfo={participantInfo}
+      allRoles={roles}
+    />
   );
 }
