@@ -51,7 +51,7 @@ export function resolvePartyLabel(
   return walletLabel?.trim() || storedLabel?.trim() || fallbackLabel;
 }
 
-async function readTokenBalance(
+export async function readTokenBalance(
   connection: ReturnType<typeof useProgram>['connection'],
   tokenAccount: PublicKey | null | undefined,
 ): Promise<number> {
@@ -59,12 +59,8 @@ async function readTokenBalance(
     return 0;
   }
 
-  try {
-    const balance = await connection.getTokenAccountBalance(tokenAccount);
-    return rawMicroUsdcToNumber({ toString: () => balance.value.amount });
-  } catch {
-    return 0;
-  }
+  const balance = await connection.getTokenAccountBalance(tokenAccount);
+  return rawMicroUsdcToNumber({ toString: () => balance.value.amount });
 }
 
 function getActivePartyId(

@@ -5,7 +5,7 @@ import type { BN } from '@coral-xyz/anchor';
 import type { CollateralStatus } from '@/lib/collateral';
 import type { FlightPolicyAccount, MasterAgreementAccount } from '@/lib/idl/open_parametric';
 import { useProtocolStore } from '@/store/useProtocolStore';
-import { resolveLeaderLabel, resolvePartyLabel } from '../usePoolCollateralStatus';
+import { readTokenBalance, resolveLeaderLabel, resolvePartyLabel } from '../usePoolCollateralStatus';
 import type { FlightPolicyWithKey } from '../useFlightPolicies';
 import { buildMasterAgreementSnapshot, useMasterAgreementSnapshot } from '../useMasterAgreementSnapshot';
 
@@ -161,6 +161,14 @@ describe('buildMasterAgreementSnapshot', () => {
     expect(resolvePartyLabel(null, 'Participant 2', {}, '   ')).toBe('Participant 2');
   });
 
+  test('throws on live token balance read failure instead of returning a synthetic zero', async () => {
+    const connection = {
+      getTokenAccountBalance: vi.fn().mockRejectedValue(new Error('rpc unavailable')),
+    } as unknown as Parameters<typeof readTokenBalance>[0];
+
+    await expect(readTokenBalance(connection, Keypair.generate().publicKey)).rejects.toThrow('rpc unavailable');
+  });
+
   test('derives premium inflow, claim outflow, net balance, and blockers', () => {
     const snapshot = buildMasterAgreementSnapshot(
       makeMasterAgreement(),
@@ -183,6 +191,10 @@ describe('buildMasterAgreementSnapshot', () => {
     });
     const loadingResult = renderHook(() => useMasterAgreementSnapshot(PublicKey.default));
     expect(loadingResult.result.current.policyStatus).toBe('loading');
+    expect(loadingResult.result.current.loading).toBe(false);
+    expect(loadingResult.result.current.error).toBeNull();
+    expect(loadingResult.result.current.policyError).toBeNull();
+    expect(loadingResult.result.current.snapshot).not.toBeNull();
 
     mockUseFlightPolicies.mockReturnValueOnce({
       policies: [],
@@ -191,9 +203,13 @@ describe('buildMasterAgreementSnapshot', () => {
     });
     const errorResult = renderHook(() => useMasterAgreementSnapshot(PublicKey.default));
     expect(errorResult.result.current.policyStatus).toBe('error');
+    expect(errorResult.result.current.error).toBeNull();
+    expect(errorResult.result.current.policyError).toBe('policy fetch failed');
+    expect(errorResult.result.current.snapshot).not.toBeNull();
 
     const readyResult = renderHook(() => useMasterAgreementSnapshot(PublicKey.default));
     expect(readyResult.result.current.policyStatus).toBe('ready');
+    expect(readyResult.result.current.policyError).toBeNull();
   });
 
   test('builds a simulation snapshot from local store state without requiring an on-chain account', () => {
@@ -250,5 +266,22 @@ describe('buildMasterAgreementSnapshot', () => {
     expect(result.result.current.snapshot).toBeNull();
     expect(result.result.current.loading).toBe(true);
     expect(result.result.current.error).toBeNull();
+  });
+
+  test('keeps the snapshot unresolved when live balance reads fail so deficits are not synthesized from zeroes', () => {
+    mockUsePoolCollateralStatus.mockReturnValueOnce({
+      status: null,
+      activePartyId: 'leader',
+      masterData: makeMasterAgreement(),
+      loading: false,
+      error: 'balance read failed',
+    });
+
+    const result = renderHook(() => useMasterAgreementSnapshot(PublicKey.default));
+
+    expect(result.result.current.snapshot).toBeNull();
+    expect(result.result.current.loading).toBe(false);
+    expect(result.result.current.error).toBe('balance read failed');
+    expect(result.result.current.policyError).toBeNull();
   });
 });

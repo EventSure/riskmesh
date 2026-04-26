@@ -70,6 +70,32 @@ function makeSnapshot() {
   };
 }
 
+function makeStatus() {
+  return {
+    totalRequired: 15,
+    totalFunded: 10,
+    totalDeficit: 5,
+    totalSurplus: 0,
+    totalHealthPct: 66.7,
+    aggregateReady: false,
+    parties: [
+      {
+        id: 'leader',
+        label: 'Leader',
+        role: 'leader',
+        shareBps: 5000,
+        required: 10,
+        balance: 5,
+        deficit: 5,
+        surplus: 0,
+        fundedPct: 50,
+        confirmed: true,
+        state: 'underfunded',
+      },
+    ],
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   useProtocolStore.getState().resetAll();
@@ -97,12 +123,13 @@ beforeEach(() => {
   });
   mockUseMasterAgreementSnapshot.mockReturnValue({
     snapshot: makeSnapshot(),
-    status: null,
+    status: makeStatus(),
     activePartyId: 'leader',
     masterData: { name: 'Master 2026' },
     loading: false,
     error: null,
     policyStatus: 'ready',
+    policyError: null,
   });
 });
 
@@ -122,34 +149,39 @@ describe('MasterActivationDashboard', () => {
   test('suppresses zero-valued money rows while policy data is still loading', () => {
     mockUseMasterAgreementSnapshot.mockReturnValue({
       snapshot: makeSnapshot(),
-      status: null,
+      status: makeStatus(),
       activePartyId: 'leader',
       masterData: { name: 'Master 2026' },
       loading: false,
       error: null,
       policyStatus: 'loading',
+      policyError: null,
     });
 
     renderSubject();
 
     expect(screen.getByText('master.loading')).toBeInTheDocument();
+    expect(screen.getByText('pool.healthAggregateActionNeeded')).toBeInTheDocument();
+    expect(screen.getByText('15.00 USDC')).toBeInTheDocument();
     expect(screen.queryByText('0.00 USDC')).not.toBeInTheDocument();
   });
 
   test('replaces misleading money rows with the policy error state when policy data is unavailable', () => {
     mockUseMasterAgreementSnapshot.mockReturnValue({
       snapshot: makeSnapshot(),
-      status: null,
+      status: makeStatus(),
       activePartyId: 'leader',
       masterData: { name: 'Master 2026' },
       loading: false,
-      error: 'policy fetch failed',
+      error: null,
       policyStatus: 'error',
+      policyError: 'policy fetch failed',
     });
 
     renderSubject();
 
-    expect(screen.getAllByText('policy fetch failed')).toHaveLength(2);
+    expect(screen.getByText('policy fetch failed')).toBeInTheDocument();
+    expect(screen.getByText('pool.healthAggregateActionNeeded')).toBeInTheDocument();
     expect(screen.queryByText('0.00 USDC')).not.toBeInTheDocument();
   });
 
@@ -162,11 +194,31 @@ describe('MasterActivationDashboard', () => {
       loading: true,
       error: null,
       policyStatus: 'ready',
+      policyError: null,
     });
 
     renderSubject();
 
     expect(screen.getAllByText('master.loading').length).toBeGreaterThan(0);
+    expect(screen.queryByText('pool.healthAggregateActionNeeded')).not.toBeInTheDocument();
+    expect(screen.queryByText('5.00 USDC')).not.toBeInTheDocument();
+  });
+
+  test('shows an unresolved state instead of synthetic deficits when balance reads fail', () => {
+    mockUseMasterAgreementSnapshot.mockReturnValue({
+      snapshot: null,
+      status: null,
+      activePartyId: 'leader',
+      masterData: { name: 'Master 2026' },
+      loading: false,
+      error: 'balance read failed',
+      policyStatus: 'ready',
+      policyError: null,
+    });
+
+    renderSubject();
+
+    expect(screen.getAllByText('balance read failed').length).toBeGreaterThan(0);
     expect(screen.queryByText('pool.healthAggregateActionNeeded')).not.toBeInTheDocument();
     expect(screen.queryByText('5.00 USDC')).not.toBeInTheDocument();
   });

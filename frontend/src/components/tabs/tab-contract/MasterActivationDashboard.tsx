@@ -133,7 +133,7 @@ export function MasterActivationDashboard() {
     () => (masterAgreementPDA ? new PublicKey(masterAgreementPDA) : null),
     [masterAgreementPDA],
   );
-  const { snapshot, status, activePartyId, masterData, loading, error, policyStatus } = useMasterAgreementSnapshot(masterAgreementKey);
+  const { snapshot, status, activePartyId, masterData, loading, error, policyStatus, policyError } = useMasterAgreementSnapshot(masterAgreementKey);
   const { activateLoading, canActivate, handleActivate } = useMasterAgreementActivation();
 
   const agreementName =
@@ -143,12 +143,18 @@ export function MasterActivationDashboard() {
     t('master.noNameFallback');
   const readinessTag = loading
     ? t('master.loading')
+    : !snapshot
+      ? t('master.step3.empty')
     : snapshot?.aggregateReady
       ? t('pool.healthAggregateReady')
       : t('pool.healthAggregateActionNeeded');
-  const readinessVariant = loading ? 'subtle' : snapshot?.aggregateReady ? 'accent' : 'warning';
+  const readinessVariant = loading || !snapshot ? 'subtle' : snapshot.aggregateReady ? 'accent' : 'warning';
   const emptyMessage = loading ? t('master.loading') : error || t('master.step3.empty');
-  const moneyMessage = policyStatus === 'loading' ? t('master.loading') : policyStatus === 'error' ? error || t('master.step3.empty') : emptyMessage;
+  const moneyMessage = policyStatus === 'loading'
+    ? t('master.loading')
+    : policyStatus === 'error'
+      ? policyError || t('master.step3.empty')
+      : emptyMessage;
   const showMoneySnapshot = policyStatus === 'ready' && !!snapshot;
 
   return (

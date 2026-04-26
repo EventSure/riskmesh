@@ -120,6 +120,8 @@ export function useMasterAgreementSnapshot(masterPda: PublicKey | null) {
   const { policies, loading: policiesLoading, error: policiesError } = useFlightPolicies(masterPda);
   const policyStatus: MasterAgreementPolicyStatus =
     mode === 'simulation' ? 'ready' : policiesLoading ? 'loading' : policiesError ? 'error' : 'ready';
+  const readinessLoading = mode === 'simulation' ? false : masterLoading || collateralLoading;
+  const readinessError = mode === 'simulation' ? null : masterError ?? collateralError;
 
   const snapshot = useMemo(
     () => (
@@ -140,8 +142,9 @@ export function useMasterAgreementSnapshot(masterPda: PublicKey | null) {
     status,
     activePartyId,
     masterData,
-    loading: mode === 'simulation' ? false : masterLoading || collateralLoading || policiesLoading,
-    error: mode === 'simulation' ? null : masterError ?? collateralError ?? policiesError,
+    loading: readinessLoading,
+    error: readinessError,
     policyStatus,
+    policyError: mode === 'simulation' ? null : policiesError,
   };
 }
