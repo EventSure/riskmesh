@@ -8,7 +8,7 @@ export const RPC_ENDPOINT = 'https://api.devnet.solana.com';
 const programConfig = resolveProgramConfig(import.meta.env as ProgramEnv);
 
 export const PROGRAM_STAGE = programConfig.stage;
-export const PROGRAM_ID_SOURCE = programConfig.source;
+export const PROGRAM_ID_SELECTED_KEY = programConfig.selectedKey;
 export const PROGRAM_ID = programConfig.programId;
 
 export const CURRENCY_MINT = new PublicKey('5YsAiRYU3tTFc5B8aaGwVL1oC9DVxBEddnXCaHcQQg2k');

@@ -12,7 +12,7 @@ export interface ProgramEnv {
 export interface ProgramConfig {
   readonly stage: ProgramStage;
   readonly programId: PublicKey;
-  readonly source: ProgramEnvSource;
+  readonly selectedKey: ProgramEnvSource;
 }
 
 const DEFAULT_STABLE_PROGRAM_ID = 'ETEEEssGKAAQEGwz3ggDcy9vzPAPtBjtb2KocdyLBMjh';
@@ -24,24 +24,24 @@ export function resolveProgramConfig(env: ProgramEnv): ProgramConfig {
     throw new Error('VITE_PROGRAM_STAGE must be "stable" or "staging"');
   }
 
-  const source: ProgramEnvSource =
+  const selectedKey: ProgramEnvSource =
     stage === 'staging' ? 'VITE_STAGING_PROGRAM_ID' : 'VITE_PROGRAM_ID';
   const rawProgramId =
-    source === 'VITE_STAGING_PROGRAM_ID'
+    selectedKey === 'VITE_STAGING_PROGRAM_ID'
       ? env.VITE_STAGING_PROGRAM_ID
       : env.VITE_PROGRAM_ID ?? DEFAULT_STABLE_PROGRAM_ID;
 
   if (!rawProgramId) {
-    throw new Error(`${source} is required when VITE_PROGRAM_STAGE=${stage}`);
+    throw new Error(`${selectedKey} is required when VITE_PROGRAM_STAGE=${stage}`);
   }
 
   try {
     return {
       stage,
       programId: new PublicKey(rawProgramId),
-      source,
+      selectedKey,
     };
   } catch {
-    throw new Error(`${source} must be a valid Solana public key`);
+    throw new Error(`${selectedKey} must be a valid Solana public key`);
   }
 }

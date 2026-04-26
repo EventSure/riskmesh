@@ -13,7 +13,15 @@ describe('resolveProgramConfig', () => {
 
     expect(config.stage).toBe('stable');
     expect(config.programId.toBase58()).toBe(STABLE_ID);
-    expect(config.source).toBe('VITE_PROGRAM_ID');
+    expect(config.selectedKey).toBe('VITE_PROGRAM_ID');
+  });
+
+  it('falls back to the baked-in stable program id when VITE_PROGRAM_ID is omitted', () => {
+    const config = resolveProgramConfig({});
+
+    expect(config.stage).toBe('stable');
+    expect(config.programId.toBase58()).toBe(STABLE_ID);
+    expect(config.selectedKey).toBe('VITE_PROGRAM_ID');
   });
 
   it('selects VITE_STAGING_PROGRAM_ID when stage is staging', () => {
@@ -25,7 +33,7 @@ describe('resolveProgramConfig', () => {
 
     expect(config.stage).toBe('staging');
     expect(config.programId.toBase58()).toBe(STAGING_ID);
-    expect(config.source).toBe('VITE_STAGING_PROGRAM_ID');
+    expect(config.selectedKey).toBe('VITE_STAGING_PROGRAM_ID');
   });
 
   it('throws a clear error when staging stage lacks a staging id', () => {
