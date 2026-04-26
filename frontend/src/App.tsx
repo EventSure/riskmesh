@@ -20,6 +20,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { useMasterAgreementAccount } from '@/hooks/useMasterAgreementAccount';
 import { useFlightPolicies, type FlightPolicyWithKey } from '@/hooks/useFlightPolicies';
 import { useToast } from '@/components/common';
+import { fetchMasterAgreementDisplayNames } from '@/services/insurerApi';
 
 const STATUS_NAMES: Record<number, string> = {
   0: 'Issued', 1: 'AwaitingOracle', 2: 'Claimable', 3: 'Paid', 4: 'NoClaim', 5: 'Expired',
@@ -35,6 +36,7 @@ function ChainSyncer() {
   const mode = useProtocolStore(s => s.mode);
   const masterAgreementPDA = useProtocolStore(s => s.masterAgreementPDA);
   const syncMasterFromChain = useProtocolStore(s => s.syncMasterFromChain);
+  const applyMasterAgreementDisplayNames = useProtocolStore(s => s.applyMasterAgreementDisplayNames);
   const syncFlightPoliciesFromChain = useProtocolStore(s => s.syncFlightPoliciesFromChain);
   const addLog = useProtocolStore(s => s.addLog);
 
@@ -60,8 +62,42 @@ function ChainSyncer() {
   const { policies } = useFlightPolicies(pdaKey, { onStatusChange: handleStatusChange });
 
   useEffect(() => {
-    if (account) syncMasterFromChain(account);
-  }, [account]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!account) return;
+
+    let cancelled = false;
+
+    const syncAccount = async () => {
+      if (masterAgreementPDA) {
+        try {
+          const response = await fetchMasterAgreementDisplayNames(masterAgreementPDA);
+          if (!cancelled) {
+            applyMasterAgreementDisplayNames({
+              participants: response.participants.map(({ wallet, display_name }) => ({
+                wallet,
+                displayName: display_name,
+              })),
+              reinsurer: response.reinsurer
+                ? {
+                  wallet: response.reinsurer.wallet,
+                  displayName: response.reinsurer.display_name,
+                }
+                : null,
+            });
+          }
+        } catch {
+          // Fall back to local naming when backend metadata is unavailable.
+        }
+      }
+
+      if (!cancelled) syncMasterFromChain(account);
+    };
+
+    void syncAccount();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [account, masterAgreementPDA, applyMasterAgreementDisplayNames, syncMasterFromChain]);
 
   useEffect(() => {
     if (pdaKey) syncFlightPoliciesFromChain(policies);

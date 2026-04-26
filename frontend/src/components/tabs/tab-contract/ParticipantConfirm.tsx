@@ -38,7 +38,11 @@ const PtDot = styled.div`
   border-radius: 50%;
 `;
 
-export function ParticipantConfirm() {
+type ParticipantConfirmProps = {
+  onActivated?: () => void;
+};
+
+export function ParticipantConfirm({ onActivated }: ParticipantConfirmProps) {
   const { mode, role, participants, reinsurer, masterActive, masterAgreementPDA, confirmParticipant, confirmReinsurer, activateMaster, onChainActivate } = useProtocolStore(
     useShallow(s => ({
       mode: s.mode, role: s.role, participants: s.participants, reinsurer: s.reinsurer,
@@ -73,6 +77,7 @@ export function ParticipantConfirm() {
       const result = activateMaster();
       if (!result.ok) { toast(result.msg!, 'd'); return; }
       toast(t('toast.masterActivated'), 's');
+      onActivated?.();
       return;
     }
 
@@ -84,6 +89,7 @@ export function ParticipantConfirm() {
     if (!result.success) { toast(`TX failed: ${result.error}`, 'd'); return; }
     onChainActivate(result.signature, masterAgreementPDA);
     toast(t('toast.masterActivated') + ` TX: ${result.signature.slice(0, 8)}...`, 's');
+    onActivated?.();
   };
 
   return (

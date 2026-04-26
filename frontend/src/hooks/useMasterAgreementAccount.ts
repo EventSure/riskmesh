@@ -109,17 +109,30 @@ export function useMasterAgreementAccount(masterAgreementPDA: PublicKey | null) 
     try {
       const res = await fetch(`${BACKEND_URL}/api/master-agreements/${pda}`);
       if (res.status === 404) {
-        setAccount(null);
+        if (pdaRef.current === pda) {
+          setAccount(null);
+        }
         return;
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: BackendMasterAgreement = await res.json();
-      setAccount(toMasterAgreementAccount(data));
+      if (pdaRef.current === pda) {
+        setAccount(toMasterAgreementAccount(data));
+      }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err));
+      if (pdaRef.current === pda) {
+        setError(err instanceof Error ? err.message : String(err));
+      }
     } finally {
-      setLoading(false);
+      if (pdaRef.current === pda) {
+        setLoading(false);
+      }
     }
+  }, [pdaKey]);
+
+  useEffect(() => {
+    setAccount(null);
+    setError(null);
   }, [pdaKey]);
 
   // Initial fetch

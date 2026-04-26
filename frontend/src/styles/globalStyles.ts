@@ -19,8 +19,8 @@ export const globalStyles = css`
     --gd: rgba(239,68,68,0.25);
   }
   *{box-sizing:border-box;margin:0;padding:0;}
-  html{font-size:14px;}
-  body{font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+  html{font-size:15px;}
+  body{font-family:'Space Grotesk',sans-serif;font-size:15px;line-height:1.45;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
   .sub{color:var(--sub);}
   body::after{content:'';position:fixed;inset:0;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");pointer-events:none;z-index:9999;opacity:.5;}
   ::-webkit-scrollbar{width:5px;height:5px;}

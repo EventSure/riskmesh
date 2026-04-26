@@ -1,9 +1,10 @@
+import styled from '@emotion/styled';
 import { useState } from 'react';
 import BN from 'bn.js';
 import { Transaction, TransactionInstruction, SystemProgram, Keypair, PublicKey } from '@solana/web3.js';
 import { getAssociatedTokenAddress, createInitializeAccount3Instruction, createTransferInstruction, createAssociatedTokenAccountIdempotentInstruction, ACCOUNT_SIZE, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { Card, CardHeader, CardTitle, CardBody, Button, FormGroup, FormLabel, FormInput, Divider, Tag } from '@/components/common';
-import { useProtocolStore, PARTICIPANT_COLORS, REINSURER_COLOR } from '@/store/useProtocolStore';
+import { useProtocolStore } from '@/store/useProtocolStore';
 import { useToast } from '@/components/common';
 import { useTranslation } from 'react-i18next';
 import { useProgram } from '@/hooks/useProgram';
@@ -11,8 +12,82 @@ import { getMasterAgreementPDA } from '@/lib/pda';
 import { CURRENCY_MINT } from '@/lib/constants';
 import { setPoolWallet } from '@/lib/demo-keypairs';
 import { ConfirmRole } from '@/lib/idl/open_parametric';
+import { putMasterAgreementDisplayNames } from '@/services/insurerApi';
+import { ParticipationStructure } from './ParticipationStructure';
 
-export function MasterContractSetup() {
+type MasterContractSetupProps = {
+  onTermsSet?: () => void;
+};
+
+const SectionLabel = styled.div`
+  margin-bottom: 6px;
+  color: ${p => p.theme.colors.sub};
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+`;
+
+const TierGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+
+  @media (max-width: 1199px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 767px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const TierField = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid ${p => p.theme.colors.border};
+  border-radius: 8px;
+  background: ${p => p.theme.colors.card2};
+`;
+
+const TierFieldLabel = styled.span<{ tone: string }>`
+  color: ${({ tone }) => tone};
+  font-size: 10px;
+  font-weight: 700;
+`;
+
+const TierInputRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+`;
+
+const TierAmountInput = styled.input<{ tone: string; $locked: boolean }>`
+  width: 100%;
+  min-width: 0;
+  text-align: right;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: ${({ tone }) => tone};
+  background: ${p => p.theme.colors.card2};
+  border: 1px solid ${p => p.theme.colors.border};
+  border-radius: 5px;
+  padding: 4px 6px;
+  outline: none;
+  opacity: ${({ $locked }) => ($locked ? 0.6 : 1)};
+`;
+
+const TierUnit = styled.span`
+  flex: 0 0 auto;
+  color: ${p => p.theme.colors.sub};
+  font-size: 9px;
+`;
+
+export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
   const store = useProtocolStore();
   const { mode, masterActive, processStep, leaderShare, participants, reinsurer, masterAgreementPDA, setTerms, onChainSetTerms, setMasterAgreementPDA, refreshPool, setCoverage } = store;
   const { toast } = useToast();
@@ -30,13 +105,20 @@ export function MasterContractSetup() {
   const [payout6h, setPayout6h] = useState(store.payoutTiers.delay6hOrCancelled);
   const [loading, setLoading] = useState(false);
   const [fundLoading, setFundLoading] = useState(false);
+  const payoutTiers = [
+    { label: '2h~2h59m', color: '#F59E0B', value: locked ? store.payoutTiers.delay2h : payout2h, set: setPayout2h },
+    { label: '3h~3h59m', color: '#f97316', value: locked ? store.payoutTiers.delay3h : payout3h, set: setPayout3h },
+    { label: '4h~5h59m', color: '#EF4444', value: locked ? store.payoutTiers.delay4to5h : payout4to5h, set: setPayout4to5h },
+    { label: t('master.tier.6h'), color: '#fca5a5', value: locked ? store.payoutTiers.delay6hOrCancelled : payout6h, set: setPayout6h },
+  ] as const;
 
   const handleSetTerms = async () => {
     if (mode === 'simulation') {
       setCoverage({ start: coverageStart, end: coverageEnd });
       const result = setTerms();
       if (!result.ok) { toast(result.msg!, 'd'); return; }
-      toast(t('toast.termsSet'), 'i');
+      toast(t('toast.termsSet'), 's');
+      onTermsSet?.();
       return;
     }
 
@@ -222,7 +304,25 @@ export function MasterContractSetup() {
         reinsurer,
       });
 
+      try {
+        await putMasterAgreementDisplayNames(masterAgreementPDA.toBase58(), {
+          participants: participants.map((p, i) => ({
+            wallet: participantPubkeys[i]!.toBase58(),
+            displayName: p.name.trim() || `${t('confirm.participant')} ${i + 1}`,
+          })),
+          reinsurer: reinsurer.enabled && reinsurerPubkey
+            ? {
+              wallet: reinsurerPubkey.toBase58(),
+              displayName: (reinsurer.name ?? '').trim() || t('party.reinsurer'),
+            }
+            : null,
+        });
+      } catch {
+        toast('Display names were not saved to backend', 'w');
+      }
+
       toast(`Master policy created! TX: ${sig.slice(0, 8)}...`, 's');
+      onTermsSet?.();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       if (message.includes('AlreadyProcessed') || message.includes('already been processed')) {
@@ -338,87 +438,28 @@ export function MasterContractSetup() {
           />
         </FormGroup>
         <Divider />
-        <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--sub)', marginBottom: 6 }}>
-          {t('master.payoutByTier')}
-        </div>
-        {([
-          { label: '2h~2h59m', color: '#F59E0B', value: locked ? store.payoutTiers.delay2h : payout2h, set: setPayout2h },
-          { label: '3h~3h59m', color: '#f97316', value: locked ? store.payoutTiers.delay3h : payout3h, set: setPayout3h },
-          { label: '4h~5h59m', color: '#EF4444', value: locked ? store.payoutTiers.delay4to5h : payout4to5h, set: setPayout4to5h },
-          { label: t('master.tier.6h'), color: '#fca5a5', value: locked ? store.payoutTiers.delay6hOrCancelled : payout6h, set: setPayout6h },
-        ] as { label: string; color: string; value: number; set: (v: number) => void }[]).map(tier => (
-          <div key={tier.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
-            <span style={{ fontSize: 10, color: 'var(--sub)' }}>{tier.label}</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <input
-                type="number"
-                value={tier.value}
-                onChange={e => tier.set(parseInt(e.target.value) || 0)}
-                min={0}
-                readOnly={locked}
-                style={{
-                  width: 52, textAlign: 'right', fontFamily: "'DM Mono', monospace", fontSize: 10,
-                  color: tier.color, background: 'var(--card2)', border: '1px solid var(--border)',
-                  borderRadius: 5, padding: '2px 5px', outline: 'none',
-                  opacity: locked ? 0.6 : 1,
-                }}
-              />
-              <span style={{ fontSize: 9, color: 'var(--sub)' }}>USDC</span>
-            </div>
-          </div>
-        ))}
+        <SectionLabel>{t('master.payoutByTier')}</SectionLabel>
+        <TierGrid data-testid="payout-tier-grid">
+          {payoutTiers.map(tier => (
+            <TierField key={tier.label} data-testid={`payout-tier-card-${tier.label}`}>
+              <TierFieldLabel tone={tier.color}>{tier.label}</TierFieldLabel>
+              <TierInputRow>
+                <TierAmountInput
+                  type="number"
+                  value={tier.value}
+                  onChange={e => tier.set(parseInt(e.target.value) || 0)}
+                  min={0}
+                  readOnly={locked}
+                  tone={tier.color}
+                  $locked={locked}
+                />
+                <TierUnit>USDC</TierUnit>
+              </TierInputRow>
+            </TierField>
+          ))}
+        </TierGrid>
         <Divider />
-        {mode === 'onchain' && (
-          <>
-            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--sub)', marginBottom: 6 }}>
-              {t('master.participantAddresses')}
-            </div>
-            {participants.map((p, i) => (
-              <FormGroup key={p.id}>
-                <FormLabel style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: PARTICIPANT_COLORS[i], display: 'inline-block' }} />
-                  {p.name || `${t('share.participant')} ${i + 1}`}
-                </FormLabel>
-                <FormInput
-                  value={p.address}
-                  onChange={e => store.updateParticipant(p.id, { address: e.target.value })}
-                  placeholder={`${t('share.participant')} ${i + 1} wallet address`}
-                  readOnly={locked}
-                  style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, opacity: locked ? 0.6 : 1 }}
-                />
-              </FormGroup>
-            ))}
-            {reinsurer.enabled ? (
-              <FormGroup>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <FormLabel style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: REINSURER_COLOR, display: 'inline-block' }} />
-                    {t('master.reinsurerAddress')}
-                  </FormLabel>
-                  {!locked && (
-                    <button
-                      onClick={() => store.toggleReinsurer()}
-                      style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 9, padding: '0 4px' }}
-                    >{t('master.removeReinsurer')}</button>
-                  )}
-                </div>
-                <FormInput
-                  value={reinsurer.address}
-                  onChange={e => store.setReinsurer({ address: e.target.value })}
-                  placeholder="Reinsurer wallet address"
-                  readOnly={locked}
-                  style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, opacity: locked ? 0.6 : 1 }}
-                />
-              </FormGroup>
-            ) : (
-              !locked && (
-                <Button variant="outline" size="sm" fullWidth onClick={() => store.toggleReinsurer()} style={{ marginBottom: 8 }}>
-                  + {t('master.addReinsurer')}
-                </Button>
-              )
-            )}
-          </>
-        )}
+        <ParticipationStructure mode={mode} locked={locked} />
         {mode === 'onchain' && !connected && (
           <div style={{ fontSize: 9, color: 'var(--danger)', marginBottom: 6, textAlign: 'center' }}>
             Wallet not connected — connect to use on-chain mode

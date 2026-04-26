@@ -5,7 +5,7 @@ export const FormGroup = styled.div`
 `;
 
 export const FormLabel = styled.label`
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.07em;
@@ -22,7 +22,7 @@ export const FormInput = styled.input`
   border-radius: 5px;
   color: ${p => p.theme.colors.text};
   font-family: inherit;
-  font-size: 11px;
+  font-size: 12px;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 
@@ -45,7 +45,7 @@ export const FormSelect = styled.select`
   border-radius: 5px;
   color: ${p => p.theme.colors.text};
   font-family: inherit;
-  font-size: 11px;
+  font-size: 12px;
   outline: none;
   transition: border-color 0.15s;
   appearance: none;

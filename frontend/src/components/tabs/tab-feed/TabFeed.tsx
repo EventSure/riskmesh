@@ -1,31 +1,18 @@
-import styled from '@emotion/styled';
-import { ContractForm } from './ContractForm';
-import { AccumulatedSummary } from './AccumulatedSummary';
-import { PremiumPieChart } from './PremiumPieChart';
+import { FeedStepPanel } from './FeedStepPanel';
 import { ContractFeedTable } from './ContractFeedTable';
 import { PremiumLineChart } from './PremiumLineChart';
-
-const Col = styled.div`
-  overflow-y: auto;
-  border-right: 1px solid ${p => p.theme.colors.border};
-  padding: 12px;
-  &:last-child { border-right: none; }
-`;
-const ColSm = styled(Col)`flex: 0 0 272px;`;
-const ColLg = styled(Col)`flex: 1;`;
+import { PremiumPieChart } from './PremiumPieChart';
+import { ContentArea } from '@/components/common/StepPanel';
 
 export function TabFeed() {
   return (
     <>
-      <ColSm>
-        <ContractForm />
-        <AccumulatedSummary />
-        <PremiumPieChart />
-      </ColSm>
-      <ColLg>
+      <FeedStepPanel />
+      <ContentArea>
         <ContractFeedTable />
         <PremiumLineChart />
-      </ColLg>
+        <PremiumPieChart />
+      </ContentArea>
     </>
   );
 }

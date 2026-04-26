@@ -44,6 +44,32 @@ pub(super) struct MasterAgreementFlightPoliciesResponse {
     pub flight_policies: Vec<crate::oracle::program_accounts::FlightPolicyInfo>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub(super) struct MasterAgreementDisplayNamesResponse {
+    #[serde(rename = "master_policy_pubkey")]
+    pub master_policy_pubkey: String,
+    pub participants: Vec<ParticipantDisplayNamePayload>,
+    pub reinsurer: Option<ReinsurerDisplayNamePayload>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub(super) struct ParticipantDisplayNamePayload {
+    pub wallet: String,
+    pub display_name: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub(super) struct ReinsurerDisplayNamePayload {
+    pub wallet: String,
+    pub display_name: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+pub(super) struct PutMasterAgreementDisplayNamesRequest {
+    pub participants: Vec<ParticipantDisplayNamePayload>,
+    pub reinsurer: Option<ReinsurerDisplayNamePayload>,
+}
+
 #[derive(Serialize)]
 pub(super) struct MasterAgreementAccountTree {
     #[serde(rename = "master_agreement_pubkey")]
