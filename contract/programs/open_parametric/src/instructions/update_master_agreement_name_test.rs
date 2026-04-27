@@ -77,7 +77,8 @@ fn normalized_success_writes_trimmed_value() {
     let operator = Pubkey::new_unique();
     let mut master = master_agreement_with_name("existing", leader, operator);
 
-    let result = apply_master_agreement_name_update(&mut master, leader, "  2026 인천-뉴욕 공동계약  ");
+    let result =
+        apply_master_agreement_name_update(&mut master, leader, "  2026 인천-뉴욕 공동계약  ");
 
     assert!(result.is_ok());
     assert_eq!(master.name, "2026 인천-뉴욕 공동계약");
