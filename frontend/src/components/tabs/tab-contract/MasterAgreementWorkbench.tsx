@@ -299,7 +299,7 @@ export function MasterAgreementWorkbench() {
 
       <Body>
         <MainColumn>
-          {canEditName && (
+          {canEditName && activeStep === 'basic' && processStep >= 1 && (
             <EditorWrap>
               <MasterAgreementNameEditor />
             </EditorWrap>

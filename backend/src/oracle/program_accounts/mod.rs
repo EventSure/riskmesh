@@ -133,10 +133,45 @@ fn scan_accounts<T>(
 }
 
 fn parse_master_agreement(pubkey: &Pubkey, data: &[u8]) -> Result<MasterAgreementInfo> {
+    match parse_master_agreement_with_name(pubkey, data) {
+        Ok(info) => Ok(info),
+        Err(name_layout_err) => {
+            let legacy = parse_master_agreement_legacy(pubkey, data);
+            match legacy {
+                Ok(info) => {
+                    tracing::info!(
+                        "[program_accounts] legacy MasterAgreement 레이아웃으로 파싱 성공 {pubkey}"
+                    );
+                    Ok(info)
+                }
+                Err(legacy_err) => Err(name_layout_err)
+                    .with_context(|| format!("legacy 레이아웃 파싱도 실패: {legacy_err}")),
+            }
+        }
+    }
+}
+
+fn parse_master_agreement_with_name(pubkey: &Pubkey, data: &[u8]) -> Result<MasterAgreementInfo> {
     let mut offset = 8usize;
 
     let master_id = read_u64(data, &mut offset)?;
     let name = read_string(data, &mut offset)?;
+    parse_master_agreement_from_offset(pubkey, data, offset, master_id, name)
+}
+
+fn parse_master_agreement_legacy(pubkey: &Pubkey, data: &[u8]) -> Result<MasterAgreementInfo> {
+    let mut offset = 8usize;
+    let master_id = read_u64(data, &mut offset)?;
+    parse_master_agreement_from_offset(pubkey, data, offset, master_id, String::new())
+}
+
+fn parse_master_agreement_from_offset(
+    pubkey: &Pubkey,
+    data: &[u8],
+    mut offset: usize,
+    master_id: u64,
+    name: String,
+) -> Result<MasterAgreementInfo> {
     let leader = read_pubkey(data, &mut offset)?;
     let operator = read_pubkey(data, &mut offset)?;
     let currency_mint = read_pubkey(data, &mut offset)?;

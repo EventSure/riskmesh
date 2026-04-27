@@ -82,6 +82,77 @@ fn build_master_agreement_bytes() -> (Pubkey, Vec<u8>, Vec<Pubkey>) {
     )
 }
 
+fn build_legacy_master_agreement_bytes() -> (Pubkey, Vec<u8>, Vec<Pubkey>) {
+    let pubkey = Pubkey::new_unique();
+    let leader = Pubkey::new_unique();
+    let operator = Pubkey::new_unique();
+    let currency_mint = Pubkey::new_unique();
+    let reinsurer = Pubkey::new_unique();
+    let reinsurer_pool_wallet = Pubkey::new_unique();
+    let reinsurer_deposit_wallet = Pubkey::new_unique();
+    let leader_pool_wallet = Pubkey::new_unique();
+    let leader_deposit_wallet = Pubkey::new_unique();
+    let participant_insurer = Pubkey::new_unique();
+    let participant_pool_wallet = Pubkey::new_unique();
+    let participant_deposit_wallet = Pubkey::new_unique();
+    let oracle_feed = Pubkey::new_unique();
+
+    let mut data = anchor_account_discriminator("MasterAgreement").to_vec();
+    data.extend_from_slice(&7u64.to_le_bytes());
+    push_pubkey(&mut data, &leader);
+    push_pubkey(&mut data, &operator);
+    push_pubkey(&mut data, &currency_mint);
+    data.extend_from_slice(&100i64.to_le_bytes());
+    data.extend_from_slice(&200i64.to_le_bytes());
+    data.extend_from_slice(&1_000u64.to_le_bytes());
+    data.extend_from_slice(&100u64.to_le_bytes());
+    data.extend_from_slice(&200u64.to_le_bytes());
+    data.extend_from_slice(&300u64.to_le_bytes());
+    data.extend_from_slice(&400u64.to_le_bytes());
+    data.extend_from_slice(&5_000u16.to_le_bytes());
+    data.extend_from_slice(&1_100u16.to_le_bytes());
+    data.extend_from_slice(&220u16.to_le_bytes());
+    data.extend_from_slice(&880u16.to_le_bytes());
+    data.push(1);
+    push_pubkey(&mut data, &reinsurer);
+    data.push(1);
+    data.push(1);
+    push_pubkey(&mut data, &reinsurer_pool_wallet);
+    data.push(1);
+    push_pubkey(&mut data, &reinsurer_deposit_wallet);
+    push_pubkey(&mut data, &leader_pool_wallet);
+    push_pubkey(&mut data, &leader_deposit_wallet);
+    data.extend_from_slice(&1u32.to_le_bytes());
+    push_pubkey(&mut data, &participant_insurer);
+    data.extend_from_slice(&5_000u16.to_le_bytes());
+    data.push(1);
+    push_pubkey(&mut data, &participant_pool_wallet);
+    push_pubkey(&mut data, &participant_deposit_wallet);
+    push_pubkey(&mut data, &oracle_feed);
+    data.push(2);
+    data.extend_from_slice(&777i64.to_le_bytes());
+    data.push(254);
+
+    (
+        pubkey,
+        data,
+        vec![
+            leader,
+            operator,
+            currency_mint,
+            reinsurer,
+            reinsurer_pool_wallet,
+            reinsurer_deposit_wallet,
+            leader_pool_wallet,
+            leader_deposit_wallet,
+            participant_insurer,
+            participant_pool_wallet,
+            participant_deposit_wallet,
+            oracle_feed,
+        ],
+    )
+}
+
 fn build_flight_policy_bytes(status: u8) -> (Pubkey, Vec<u8>, Pubkey, Pubkey) {
     let pubkey = Pubkey::new_unique();
     let master = Pubkey::new_unique();
@@ -149,6 +220,23 @@ fn parse_master_agreement_parses_full_account_data() {
 }
 
 #[test]
+fn parse_master_agreement_parses_legacy_account_data_without_name() {
+    let (pubkey, data, keys) = build_legacy_master_agreement_bytes();
+
+    let agreement = parse_master_agreement(&pubkey, &data).unwrap();
+
+    assert_eq!(agreement.pubkey, pubkey.to_string());
+    assert_eq!(agreement.master_id, 7);
+    assert_eq!(agreement.name, "");
+    assert_eq!(agreement.leader, keys[0].to_string());
+    assert_eq!(agreement.operator, keys[1].to_string());
+    assert_eq!(agreement.currency_mint, keys[2].to_string());
+    assert_eq!(agreement.participants.len(), 1);
+    assert_eq!(agreement.oracle_feed, keys[11].to_string());
+    assert_eq!(agreement.status, 2);
+}
+
+#[test]
 fn parse_flight_policy_parses_full_account_data() {
     let (pubkey, data, master, creator) = build_flight_policy_bytes(4);
 
@@ -190,5 +278,11 @@ fn parse_master_agreement_fails_on_truncated_data() {
 
     let error = parse_master_agreement(&pubkey, &data).unwrap_err();
 
-    assert!(error.to_string().contains("읽기 실패") || error.to_string().contains("범위 초과"));
+    let message = error.to_string();
+    assert!(
+        message.contains("읽기 실패")
+            || message.contains("범위 초과")
+            || message.contains("legacy 레이아웃 파싱도 실패"),
+        "unexpected error: {message}"
+    );
 }
