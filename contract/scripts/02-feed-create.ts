@@ -9,11 +9,15 @@
  * 사전 조건:
  *   - devnet 사용 권장: ANCHOR_PROVIDER_URL=https://api.devnet.solana.com
  *   - 지갑에 충분한 SOL (feed 생성 약 0.01–0.05 SOL)
+ *   - Cloudflare Worker 배포 완료 (oracle-proxy/ 참고)
  *
  * 환경변수:
- *   AVIATIONSTACK_API_KEY   AviationStack API 키 (job에 embed)
+ *   PROXY_URL               HTTPS 프록시 URL (기본값: contract/.env의 PROXY_URL)
+ *                           예: https://riskmesh-aviation-proxy.<account>.workers.dev
  *   FLIGHT_NO               항공편 코드 (기본값: "KE017")
  *   ANCHOR_PROVIDER_URL     RPC 엔드포인트
+ *
+ * 주의: API 키는 Cloudflare Worker secret에 저장되므로 job spec에 포함되지 않습니다.
  */
 import * as anchor from "@coral-xyz/anchor";
 import {
@@ -23,17 +27,23 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
-import { CrossbarClient, OracleJob, OracleFeed } from "@switchboard-xyz/common";
+import { OracleJob } from "@switchboard-xyz/common";
 import {
   PullFeed,
   ON_DEMAND_DEVNET_PID,
   ON_DEMAND_DEVNET_QUEUE,
 } from "@switchboard-xyz/on-demand";
 import { loadState, kp, RPC_URL, saveState } from "./common";
-import { requireApiKey } from "./lib/flight-api";
 
 async function main() {
-  const apiKey = requireApiKey();
+  const proxyUrl = process.env.PROXY_URL;
+  if (!proxyUrl) {
+    throw new Error(
+      "PROXY_URL 환경변수가 설정되지 않았습니다.\n" +
+      "contract/.env에 PROXY_URL=https://riskmesh-aviation-proxy.<account>.workers.dev 를 추가하세요.\n" +
+      "Cloudflare Worker 배포 방법은 oracle-proxy/README.md를 참고하세요."
+    );
+  }
   const flightNo = (process.env.FLIGHT_NO ?? "KE017").toUpperCase();
   const s = loadState();
   const leader = kp(s.leaderKey);
@@ -55,22 +65,19 @@ async function main() {
 
   // ─── Job 정의 ─────────────────────────────────────────────────────────────
   // AviationStack → 출발 지연(분) → 10분 단위 내림
-  //
-  // 주의: API 키가 job에 포함되어 Crossbar에 저장됩니다.
-  //   - 무료 플랜 키는 노출되어도 괜찮지만, 유료 키는 주의 필요
-  //   - 향후 Switchboard Secrets를 통해 키를 숨기는 방법 사용 가능
   const jobSpec = OracleJob.create({
     tasks: [
       {
         httpTask: {
-          // AviationStack 무료 플랜: HTTP 전용 (유료: HTTPS)
-          url: `http://api.aviationstack.com/v1/flights?access_key=${apiKey}&flight_iata=${flightNo}`,
+          // Cloudflare Worker HTTPS 프록시 경유 (Switchboard는 HTTPS만 허용)
+          // API 키는 Worker secret에 저장됨 — URL에 포함되지 않음
+          url: `${proxyUrl}?flight_iata=${flightNo}`,
         },
       },
       {
         jsonParseTask: {
-          // 출발 지연(분). 데이터 없으면 0.
-          path: "$.data[0].departure.delay",
+          // Worker가 {"delay": N} 형태로 정규화해서 반환 (데이터 없으면 0)
+          path: "$.delay",
         },
       },
       // 10분 단위 내림: floor(delay / 10) * 10
@@ -79,22 +86,27 @@ async function main() {
     ],
   });
 
-  // ─── Crossbar에 job 업로드 (v2 /v2/store) ────────────────────────────────
-  // storeOracleFeed (v2) 는 feedId = sha256(OracleFeed) 를 반환한다.
-  // 이 feedId가 온체인 feedHash로 사용되어야 Switchboard UI와 oracle 노드가
-  // /v2/fetch/{feedId}로 job 정의를 조회할 수 있다.
-  //
-  // ❌ 이전 실수: storeOracleFeed로 저장하고 FeedHash.compute(queue, jobs) 를
-  //    온체인에 넣으면 feedId ≠ feedHash가 되어 503이 난다.
-  // ❌ 이전 실수: v1 /store 를 쓰면 v2 /v2/fetch에서 400이 난다.
+  // ─── Crossbar에 job 업로드 (v2 /v2/store) ───────────────────────────────
+  // v2 스토리지를 사용해야 Switchboard 웹사이트에서 feedId로 조회 가능.
+  // v1 /store는 다른 해시 알고리즘을 사용하므로 웹사이트 v2 /v2/fetch에서 400이 남.
+  // 05b-claim.ts는 IOracleFeed 객체 방식으로 Crossbar를 완전 우회하므로
+  // v1/v2 저장 방식과 무관하게 oracle 실행에는 영향 없음.
   console.log("\nCrossbar에 job 업로드 중 (v2 /v2/store)...");
-  const crossbar = CrossbarClient.default();
-  const oracleFeed = OracleFeed.create({ jobs: [jobSpec] });
-  const { cid, feedId } = await crossbar.storeOracleFeed(oracleFeed);
-  // feedId 를 그대로 온체인 feedHash로 사용한다.
-  const feedHash = Buffer.from(feedId.replace(/^0x/, ""), "hex");
+  const v2Res = await fetch("https://crossbar.switchboard.xyz/v2/store", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      feed: { jobs: [OracleJob.toObject(jobSpec)] },
+    }),
+  });
+  if (!v2Res.ok) throw new Error(`Crossbar v2/store 실패: ${v2Res.status}`);
+  const v2Data = await v2Res.json() as { cid: string; feedId: string; version: string };
+  const cid = v2Data.cid;
+  const feedHashHex = v2Data.feedId;
+  const feedId = feedHashHex;
+  const feedHash = Buffer.from(feedHashHex.replace(/^0x/, ""), "hex");
   console.log("IPFS CID   :", cid);
-  console.log("Feed ID    :", feedId);
+  console.log("Feed ID    :", feedHashHex);
 
   // ─── Feed 생성 ─────────────────────────────────────────────────────────────
   // storeFeed가 반환한 feedHash를 initIx에 전달한다.
@@ -139,6 +151,8 @@ async function main() {
   console.log("Feed ID        :", feedId);
   console.log("항공편         :", flightNo);
   console.log("Switchboard Queue:", ON_DEMAND_DEVNET_QUEUE.toBase58());
+  console.log("\nSwitchboard 웹사이트 feed 조회:");
+  console.log(`  https://on.switchboard.xyz/solana/devnet/feeds/${feedPubkey}`);
 
   // .state.json에 feed pubkey, cid, feedId 저장
   saveState({ ...s, feedPubkey, feedCid: cid, feedHash: feedId });

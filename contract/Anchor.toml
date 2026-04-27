@@ -7,6 +7,10 @@ skip-lint = false
 [programs.localnet]
 open_parametric = "ETEEEssGKAAQEGwz3ggDcy9vzPAPtBjtb2KocdyLBMjh"
 
+[programs.devnet]
+open_parametric = "ETEEEssGKAAQEGwz3ggDcy9vzPAPtBjtb2KocdyLBMjh"
+open_parametric_staging = "3oxBawS9rzZxRhKzkCqeoy1tDpH4mhTHBrt8aUG6Mfot"
+
 [registry]
 url = "https://api.apr.dev"
 

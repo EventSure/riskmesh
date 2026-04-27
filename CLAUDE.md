@@ -26,6 +26,12 @@ yarn test
 # Run a single test file
 yarn ts-mocha -p ./tsconfig.json -t 1000000 tests/settle_flight_claim.ts
 
+# Rust unit tests (pure logic, no validator — fast)
+cargo test -p open_parametric --lib
+
+# Settlement logic tests (Node.js, no validator)
+node --test tests/master_settlement_logic.test.mjs
+
 # List program keypair
 anchor keys list
 ```
@@ -40,10 +46,10 @@ cargo build
 
 # Run (requires .env file — copy from .env.example)
 cp .env.example .env   # fill in PROGRAM_ID, LEADER_PUBKEY, SWITCHBOARD_QUEUE
-cargo run
+cargo run --bin oracle-daemon
 
 # Log level controlled by RUST_LOG (default: info)
-RUST_LOG=debug cargo run
+RUST_LOG=debug cargo run --bin oracle-daemon
 ```
 
 Required env vars: `PROGRAM_ID`, `LEADER_PUBKEY`, `SWITCHBOARD_QUEUE`, `AVIATIONSTACK_API_KEY`. Optional: `DB_BACKEND` (`sqlite`|`firebase`), `DATABASE_PATH`, `WEB_BIND_ADDR` (default: `0.0.0.0:3000`), `ORACLE_CHECK_CRON`, `DB_SYNC_CRON`.
@@ -66,6 +72,9 @@ npm test
 # Watch mode
 npm run test:watch
 
+# Coverage report
+npm run test:coverage
+
 # Run a single test file
 npx vitest run src/lib/__tests__/pda.test.ts
 
@@ -74,20 +83,52 @@ npm run lint
 npm run format
 ```
 
+### Devnet Deployment (from `contract/`)
+
+Two contracts are maintained on devnet:
+
+| Contract | Program ID | Script |
+|---|---|---|
+| Production | `ETEEEssGKAAQEGwz3ggDcy9vzPAPtBjtb2KocdyLBMjh` | `deploy-production.sh` |
+| Staging | `3oxBawS9rzZxRhKzkCqeoy1tDpH4mhTHBrt8aUG6Mfot` | `deploy-staging.sh` |
+
+Both use `~/.config/solana/id.json` (J6...) as the upgrade authority.
+
+```bash
+# Upgrade production (build → anchor upgrade)
+./deploy-production.sh
+
+# Deploy/upgrade staging (swap declare_id! → build → deploy → restore)
+./deploy-staging.sh
+```
+
+Staging keypair lives at `contract/keys/staging-keypair.json` (gitignored — needed only for initial deploy; upgrades only require the upgrade authority).
+
+If `deploy-staging.sh` fails mid-run, restore manually: `mv programs/open_parametric/src/lib.rs.bak programs/open_parametric/src/lib.rs`
+
+Frontend program selection via env vars:
+- `VITE_PROGRAM_STAGE=stable` → production
+- `VITE_PROGRAM_STAGE=staging` + `VITE_STAGING_PROGRAM_ID=3oxBaw...` → staging
+
 ### Demo Scripts (from `contract/`, against devnet)
 
 Scripts override cluster to devnet via `ANCHOR_PROVIDER_URL`; `Anchor.toml` defaults to localnet.
 
 ```bash
 yarn demo:1-setup         # mint + airdrop setup
-yarn demo:2-feed-create   # create Switchboard feed
+yarn demo:2-feed-create   # create Switchboard feed (requires PROXY_URL in .env)
 yarn demo:3-master-setup  # create MasterAgreement + confirm participants
 yarn demo:4-flight-create # issue a FlightPolicy under the master
 yarn demo:5a-resolve      # resolve flight delay (Track A)
-yarn demo:5b-claim        # settle claim (Track B)
+yarn demo:5b-claim        # settle claim (Track B — requires PROXY_URL in .env)
 yarn demo:6-settle        # settle no-claim
+yarn demo:simulate        # simulate feed and print per-task receipts (Track B debug)
 yarn demo:manual-list     # list current on-chain accounts
 ```
+
+Track B scripts require `PROXY_URL` in `contract/.env` pointing to the deployed Cloudflare Worker (`contract/oracle-proxy/`). The Worker proxies AviationStack HTTP → HTTPS for Switchboard oracle nodes.
+
+`FLIGHT_NO` env var overrides the queried flight number in `demo:5b-claim` without recreating on-chain accounts (useful for testing different flights).
 
 ## Architecture
 
@@ -101,6 +142,10 @@ contract/programs/open_parametric/src/
   state.rs                 — all account structs and enums
   math.rs                  — tiered_payout, split_by_bps, effective_reinsurer_bps
   instructions/            — one file per instruction (+ *_test.rs unit tests)
+contract/oracle-proxy/
+  src/index.js             — Cloudflare Worker: AviationStack HTTP → HTTPS proxy
+                             Returns {delay, found, source}; DELAY_OVERRIDE secret for demo mode
+  wrangler.toml            — Worker config (name: riskmesh-aviation-proxy)
 backend/src/
   main.rs                  — tokio entry; loads config, starts scheduler + API server
   config.rs                — Config::from_env() (reads .env)
@@ -151,10 +196,11 @@ Both tracks run in the same cron cycle via `scheduler::run_oracle_check`. A sepa
 
 | Instruction | Signer | Notes |
 |---|---|---|
-| `create_master_agreement` | Leader | Sets tiered payouts + ceded/reins ratios |
+| `create_master_agreement` | Leader | Sets tiered payouts + ceded/reins ratios; `collateral_claim_count` specifies how many claims the pool pre-funds |
 | `register_participant_wallets` | Leader | Registers token wallet PDAs for all participants |
 | `confirm_master` | Participant or Reinsurer | `role: u8` (0=Participant, 1=Reinsurer) |
 | `activate_master` | Leader | All participants must have confirmed |
+| `fund_pool` | Any actor | Deposits tokens into a participant's or reinsurer's pool wallet; `role: u8` (0=Participant, 1=Reinsurer) |
 | `create_flight_policy_from_master` | Anyone (operator) | Issues child FlightPolicy |
 | `resolve_flight_delay` | Leader or Operator | Track A: sets delay_minutes + triggers settlement |
 | `check_oracle_and_resolve_flight` | Anyone | Track B: requires 3 ixs in same tx (Ed25519 + Switchboard + this) |
@@ -184,9 +230,14 @@ MAX_SUBSCRIBER_REF_LEN: usize = 64
 Ratios use basis points: 10000 bps = 100%. All participant ratios must sum to exactly 10000 bps.
 
 Frontend key constants (`lib/constants.ts`):
-- `PROGRAM_ID` — deployed program address (devnet: `ETEEEss...`)
+- `PROGRAM_ID` — resolved by `lib/programEnv.ts` from env vars (default stable: `ETEEEss...`)
 - `CURRENCY_MINT` — SPL token mint used for all premiums and payouts (devnet: `5YsAiRY...`)
 - `BACKEND_URL` — defaults to `http://localhost:3000`; override with `VITE_BACKEND_URL` env var
+
+Frontend program env vars (`lib/programEnv.ts`):
+- `VITE_PROGRAM_STAGE` — `"stable"` (default) or `"staging"`
+- `VITE_PROGRAM_ID` — overrides the stable program address
+- `VITE_STAGING_PROGRAM_ID` — required when `VITE_PROGRAM_STAGE=staging`
 
 ### Frontend Architecture
 
@@ -216,7 +267,7 @@ The frontend is a React 19 + Vite + TypeScript SPA, styled with Emotion (`jsxImp
 
 **Contract:**
 - `anchor-lang = "0.31.1"`, `anchor-spl = "0.31.1"`
-- `switchboard-on-demand = { version = "0.9.5", features = ["anchor"] }`
+- `switchboard-on-demand = { version = "0.9.5", features = ["anchor", "devnet"] }` — `devnet` feature required so `default_queue()` returns devnet queue address
 - `blake3` pinned to `1.8.2` in `Cargo.lock` (avoids `constant_time_eq` edition2024 conflict)
 
 **Frontend:** React 19, `@coral-xyz/anchor ^0.31.1`, `@solana/wallet-adapter-*`, `@tanstack/react-query ^5`, `zustand ^5`, `chart.js` + `react-chartjs-2`, `i18next`.

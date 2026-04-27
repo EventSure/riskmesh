@@ -7,3 +7,4 @@ scripts/.state.json
 .pnp.cjs
 .pnp.loader.mjs
 .yarn/
+keys/

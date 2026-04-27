@@ -1,0 +1,6 @@
+name = "riskmesh-aviation-proxy"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+# AVIATIONSTACK_API_KEY 는 평문으로 여기에 넣지 말고 반드시 secret으로 설정:
+#   wrangler secret put AVIATIONSTACK_API_KEY

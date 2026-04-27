@@ -2,6 +2,7 @@
  * scripts/common.ts — 공통 유틸리티
  * 로컬 상태(.state.json)를 읽고 써서 스크립트 간 데이터를 공유합니다.
  */
+import 'dotenv/config';
 import * as anchor from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { AnchorProvider, BN, Program, Wallet } from "@coral-xyz/anchor";
