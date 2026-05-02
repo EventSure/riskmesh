@@ -59,6 +59,10 @@ async function main() {
     : Math.floor(Date.now() / 1000) - 2 * 3600;
 
   const flightPda = flightPolicyPub(masterPda, childId);
+  const feedTag = process.env.FEED_TAG ?? `${subscriberRef}-${childId}`;
+  const feedUrl = new URL(proxyUrl);
+  feedUrl.searchParams.set("flight_iata", flightNo);
+  feedUrl.searchParams.set("feed_tag", feedTag);
 
   // ─── per-flight Switchboard Pull Feed 생성 ──────────────────────────────────
   console.log(`\nSwitchboard Feed 생성 중 (항공편: ${flightNo})...`);
@@ -69,27 +73,36 @@ async function main() {
 
   const jobSpec = OracleJob.create({
     tasks: [
-      { httpTask: { url: `${proxyUrl}?flight_iata=${flightNo}` } },
+      { httpTask: { url: feedUrl.toString() } },
       { jsonParseTask: { path: "$.delay" } },
       { divideTask: { scalar: 10 } },
       { multiplyTask: { scalar: 10 } },
     ],
   });
 
+  const jobs = [OracleJob.toObject(jobSpec)];
+  const queue = new PublicKey(ON_DEMAND_DEVNET_QUEUE);
   const v2Res = await fetch("https://crossbar.switchboard.xyz/v2/store", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ feed: { jobs: [OracleJob.toObject(jobSpec)] } }),
+    body: JSON.stringify({ feed: { jobs } }),
   });
   if (!v2Res.ok) throw new Error(`Crossbar v2/store 실패: ${v2Res.status} ${await v2Res.text()}`);
-  const v2Data = await v2Res.json() as { cid: string; feedId: string };
-  const feedHashHex = v2Data.feedId;
+  const v2Data = await v2Res.json() as { cid?: string; feedId?: string; feedHash?: string };
+  const feedHashHex = v2Data.feedId ?? v2Data.feedHash;
+  if (!feedHashHex) {
+    throw new Error(`Crossbar v2/store 응답에 feedId/feedHash가 없습니다: ${JSON.stringify(v2Data)}`);
+  }
+  const fetchRes = await fetch(`https://crossbar.switchboard.xyz/v2/fetch/${feedHashHex}`);
+  if (!fetchRes.ok) {
+    throw new Error(`Crossbar v2/fetch 검증 실패: ${fetchRes.status} ${await fetchRes.text()}`);
+  }
   const feedHash = Buffer.from(feedHashHex.replace(/^0x/, ""), "hex");
   console.log(`  Feed Hash  : ${feedHashHex}`);
 
   const [pullFeed, feedKeypair] = (PullFeed as any).generate(sbProgram as any);
   const initIx = await (pullFeed as any).initIx({
-    queue: new PublicKey(ON_DEMAND_DEVNET_QUEUE),
+    queue,
     feedHash,
     name: `${flightNo}-DELAY`,
     maxVariance: 1.0,
@@ -156,10 +169,12 @@ async function main() {
     departureTs,
     feedPubkey: feedPubkey.toBase58(),
     feedHash: feedHashHex,
+    feedCid: v2Data.cid,
+    feedTag,
   }];
   saveState({ ...s, flightPolicies: updated });
   console.log("✓ .state.json 업데이트 완료");
-  console.log("\n다음 단계: 백엔드 데몬 실행 또는 yarn demo:5b-claim");
+  console.log("\n다음 단계: 백엔드 데몬 실행 또는 npm run demo:5b-claim");
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

@@ -36,7 +36,6 @@ backend/
     ├── db.rs               # SQLite 기반 PolicyRepository 구현
     ├── events.rs           # EventBus — SSE 실시간 이벤트 브로드캐스트
     ├── flight_api.rs       # AviationStack HTTP 클라이언트
-    ├── switchboard.rs      # Switchboard On-Demand 오라클 클라이언트
     ├── api/                # REST API 레이어 (Axum)
     │   ├── client.rs       # HTTP 클라이언트 유틸
     │   ├── error.rs        # API 에러 타입
@@ -192,50 +191,31 @@ resolve_flight_delay 인스트럭션 빌드
 
 ## Track B: Switchboard 오라클
 
-> **대상 계정:** `Policy` (state = `Active`, leader == 내 리더 pubkey)
-> **외부 API:** Switchboard Crossbar API
-> **트랜잭션:** `check_oracle_and_create_claim` 인스트럭션 (v0, LUT 포함)
+> **대상 계정:** `FlightPolicy` (`AwaitingOracle`, `Claimable`, `NoClaim`)
+> **외부 API:** Switchboard Crossbar v2 quote
+> **트랜잭션:** `check_oracle_and_resolve_flight` 이후 상태별 settle
 
 ### 파이프라인
 
 ```
-[track_b::run_oracle_check]
+[scheduler oracle check]
   ↓
-scan_active_policies()
-  → get_program_accounts(POLICY discriminator)
-  → borsh 디코딩으로 policy_id, leader, oracle_feed, departure_date, state 파싱
-  → state == Active(3) AND leader == config.leader_pubkey 만 필터링
+scan_flight_policies()
+  → get_program_accounts(FlightPolicy discriminator)
+  → AwaitingOracle / Claimable / NoClaim 필터링
   ↓
-각 Policy 에 대해 track_b::run() 실행
+각 FlightPolicy 에 대해 track_b::run() 실행
   ↓
-시간 체크: now < departure_date → 건너뜀
+AwaitingOracle: 출발 전이면 건너뜀
   ↓
-switchboard::fetch_oracle_update(queue, oracle_feed)
-  → Crossbar API POST 호출
-  → Ed25519 서명 검증 인스트럭션 + verified_update 인스트럭션 반환
-  → LUT(Address Lookup Table) 계정 로드
+npm run demo:5b-claim
+  → Crossbar v2 feed hash로 Switchboard quote ix 생성
+  → check_oracle_and_resolve_flight에서 quote 검증
   ↓
-oracle_round = get_slot()
-Claim PDA 도출: ["claim", policy, oracle_round_le8]
-  ↓
-check_oracle_and_create_claim 인스트럭션 빌드
-  → discriminator: sha256("global:check_oracle_and_create_claim")[..8]
-  → data: discriminator + oracle_round(u64 LE)
-  → accounts: [policy(writable), claim(writable), payer(signer,writable),
-               oracle_feed, queue, slot_hashes_sysvar, instructions_sysvar,
-               system_program]
-  ↓
-v0 트랜잭션 전송 (3개 인스트럭션 순서 중요!)
-  1. Ed25519 서명 검증 IX
-  2. Switchboard verified_update IX
-  3. check_oracle_and_create_claim IX
+FlightPolicy 재조회
+  → Claimable이면 settle_flight_claim
+  → NoClaim이면 settle_flight_no_claim
 ```
-
-### Switchboard Crossbar API (`switchboard.rs`)
-
-- 엔드포인트: `POST https://crossbar.switchboard.xyz/updates/solana/{queue}/{feed_pubkey}`
-- 응답: base64 인코딩된 인스트럭션 2개 + LUT 주소 목록 + 오라클 값(f64)
-- 인스트럭션은 bincode로 역직렬화
 - LUT는 온체인에서 실제 계정 데이터를 로드하여 사용
 
 > **중요:** Track B 트랜잭션은 반드시 위 3개 인스트럭션이 **이 순서 그대로** 하나의 트랜잭션에 포함되어야 온체인 프로그램이 유효성을 검증할 수 있다.

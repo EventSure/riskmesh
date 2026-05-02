@@ -2,8 +2,8 @@
 ///
 /// 흐름:
 ///   1. getProgramAccounts로 AwaitingOracle(1) FlightPolicy 목록 조회
-///   2. FlightPolicy.master 주소로 Master Agreement 계정 RPC 조회 → oracle_feed 확인
-///   3. `yarn demo:5b-claim` 서브프로세스 실행 → oracle on-demand fetch + check_oracle_and_resolve_flight tx
+///   2. FlightPolicy.master 주소로 Master Agreement 계정 RPC 조회 → 정산 지갑 확인
+///   3. `npm run demo:5b-claim` 서브프로세스 실행 → per-flight quote 검증 + check_oracle_and_resolve_flight tx
 ///   4. FlightPolicy 재조회 → Claimable → settle_flight_claim, NoClaim → settle_flight_no_claim
 use anyhow::{Context, Result};
 use solana_sdk::{
@@ -34,7 +34,6 @@ const FLIGHT_POLICY_STATUS_NO_CLAIM: u8 = 4;
 #[derive(Debug)]
 struct MasterAgreementInfo {
     pub pubkey: Pubkey,
-    pub oracle_feed: Pubkey,
     pub leader_pool_wallet: Pubkey,
     pub leader_deposit_wallet: Pubkey,
     pub reinsurer_pool_wallet: Option<Pubkey>,
@@ -138,25 +137,20 @@ pub async fn run(
         flight.pubkey
     );
 
-    // 1. Master Agreement 계정 조회 → oracle_feed + 정산 지갑 목록 추출
+    // 1. Master Agreement 계정 조회 → 정산 지갑 목록 추출
+    //    Legacy/main accounts may still store MasterAgreement.oracle_feed, but this
+    //    branch resolves Track B from FlightPolicy.oracle_feed in 05b-claim.ts.
     let agreement = fetch_master_agreement(client, &flight.master_agreement)
         .with_context(|| format!("MasterAgreement 조회 실패: {}", flight.master_agreement))?;
 
-    if agreement.oracle_feed == Pubkey::default() {
-        tracing::info!(
-            "[track_b] {} oracle_feed 미설정 (Track A 전용 master), 스킵",
-            flight.flight_no
-        );
-        return Ok(());
-    }
-
-    // 2. 05b-claim.ts 서브프로세스 실행 (oracle fetch + check_oracle_and_resolve_flight)
+    // 2. 05b-claim.ts 서브프로세스 실행 (per-flight quote fetch + check_oracle_and_resolve_flight)
     let child_id_str = flight.child_policy_id.to_string();
     tracing::info!(
         "[track_b] {} 서브프로세스 실행 (CHILD_POLICY_ID={})",
         flight.flight_no, child_id_str
     );
-    let exit_status = tokio::process::Command::new("yarn")
+    let exit_status = tokio::process::Command::new("npm")
+        .arg("run")
         .arg("demo:5b-claim")
         .current_dir(&config.contract_dir)
         .env("ANCHOR_PROVIDER_URL", &config.rpc_url)
@@ -318,11 +312,10 @@ fn parse_master_agreement(pubkey: &Pubkey, data: &[u8]) -> Result<MasterAgreemen
         participant_deposit_wallets.push(deposit_wallet);
     }
 
-    let oracle_feed = read_pubkey(data, &mut offset)?;
+    let _legacy_oracle_feed = read_pubkey(data, &mut offset)?;
 
     Ok(MasterAgreementInfo {
         pubkey: *pubkey,
-        oracle_feed,
         leader_pool_wallet,
         leader_deposit_wallet,
         reinsurer_pool_wallet,

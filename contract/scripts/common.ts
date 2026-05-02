@@ -41,6 +41,10 @@ export interface State {
     pda: string;
     flightNo: string;
     departureTs: number;
+    feedPubkey?: string;
+    feedHash?: string;
+    feedCid?: string;
+    feedTag?: string;
     resolvedDelay?: number;
   }>;
   // Track B — oracle-feed-create 스크립트가 저장
@@ -79,6 +83,7 @@ export function makeProgram(payer: Keypair): any {
       "utf-8"
     )
   );
+  idl.address = PROGRAM_ID.toBase58();
   return new anchor.Program(idl, provider);
 }
 

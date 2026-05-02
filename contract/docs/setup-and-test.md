@@ -104,7 +104,7 @@ yarn demo:1-setup
 #    stable/devnet master mint는 고정 approved mint A6ty... 만 허용
 #    escrow pool 계정은 빈 상태로 생성되고, confirm_master가 각 ATA에서 collateral을 이체
 #    이미 MASTER_ID=1 계정이 있으면: MASTER_ID=2 yarn demo:3-master-setup
-yarn demo:3-master-setup
+npm run demo:3-master-setup
 
 # 4. FlightPolicy 발행
 FLIGHT_NO=KE017 yarn demo:4-flight-create
@@ -143,14 +143,13 @@ AVIATIONSTACK_API_KEY=<키> FLIGHT_NO=KE017 yarn demo:2-feed-create
 yarn demo:3-master-setup
 
 # 5. FlightPolicy 발행
-FLIGHT_NO=KE017 yarn demo:4-flight-create
+FLIGHT_NO=KE017 npm run demo:4-flight-create
 
-# 6. Switchboard oracle → check_oracle_and_resolve_flight
-#    1~2분 대기 후 실행 (oracle 노드 처리 시간)
-yarn demo:5b-claim
+# 6. Switchboard quote → check_oracle_and_resolve_flight
+npm run demo:5b-claim
 
 # 7. 정산
-yarn demo:6-settle
+npm run demo:6-settle
 ```
 
 ---

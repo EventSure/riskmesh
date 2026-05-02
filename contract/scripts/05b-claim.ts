@@ -1,20 +1,20 @@
 /**
- * yarn demo:5b-claim
+ * npm run demo:5b-claim
  *
- * Track B — Switchboard On-Demand Pull Feed 기반 자동화
+ * Track B — Switchboard On-Demand quote 기반 자동화
  *
- * PullFeed.fetchUpdateIx()를 사용해 oracle_feed 계정을 on-chain 업데이트합니다.
- * → Switchboard Explorer에서 실시간 oracle 값 확인 가능
+ * Crossbar v2 feed hash로 ed25519 quote를 받아 계약에서 직접 검증합니다.
+ * oracle_feed 계정은 Explorer가 조회할 v2 feed hash를 보관하는 기준 계정입니다.
  *
  * 트랜잭션 구조:
- *   [0] pullIx (Switchboard PullFeed.fetchUpdateIx) — oracle_feed 계정 업데이트
- *   [1] check_oracle_and_resolve_flight              — 업데이트된 feed에서 값 읽기
+ *   [0] ed25519 quote ix                  — oracle 값 서명 검증
+ *   [1] check_oracle_and_resolve_flight   — 검증된 quote에서 값 읽기
  *
  * 환경변수:
  *   ANCHOR_PROVIDER_URL  devnet RPC
  *   CHILD_POLICY_ID      처리할 FlightPolicy ID (기본값: 마지막 항목)
  *   PROGRAM_ID           프로그램 ID override (선택)
- *   PROXY_URL            AviationStack 프록시 URL (선택 — pull feed 방식은 불필요하지만 로그에 활용)
+ *   PROXY_URL            04-flight-create에서 feed 생성 시 필요
  */
 import * as anchor from "@coral-xyz/anchor";
 import {
@@ -25,8 +25,11 @@ import {
 } from "@solana/web3.js";
 import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
 import {
-  PullFeed,
   ON_DEMAND_DEVNET_PID,
+  ON_DEMAND_DEVNET_QUEUE,
+  Queue,
+  SPL_SYSVAR_INSTRUCTIONS_ID,
+  SPL_SYSVAR_SLOT_HASHES_ID,
 } from "@switchboard-xyz/on-demand";
 import { CrossbarClient } from "@switchboard-xyz/common";
 import {
@@ -104,7 +107,7 @@ async function main() {
   console.log(`\noracle_feed : ${oracleFeed.toBase58()}`);
   console.log(`  Explorer  : https://on.switchboard.xyz/solana/devnet/feeds/${oracleFeed.toBase58()}`);
 
-  // ─── Switchboard 프로그램 로드 ────────────────────────────────────────────
+  // ─── Switchboard quote ix 생성 ───────────────────────────────────────────
   console.log("\nSwitchboard 프로그램 로드 중...");
   const sbIdl = await anchor.Program.fetchIdl(
     new PublicKey(ON_DEMAND_DEVNET_PID),
@@ -113,32 +116,22 @@ async function main() {
   if (!sbIdl) throw new Error("Switchboard IDL 로드 실패. devnet RPC를 확인하세요.");
   const sbProgram = new anchor.Program(sbIdl as any, provider);
 
-  // CrossbarClient (Crossbar 게이트웨이를 통해 oracle 노드에 on-demand 요청)
   const crossbar = (CrossbarClient as any).default();
-
-  // ─── PullFeed.fetchUpdateIx — oracle_feed 계정 업데이트 ───────────────────
-  // fetchUpdateIx는 pullIx를 반환:
-  //   - oracle 노드가 job spec 평가 후 서명
-  //   - pullIx 실행 시 oracle_feed 계정이 on-chain 업데이트 → Explorer 가시
-  console.log("\noracle update 요청 중 (PullFeed.fetchUpdateIx)...");
-  const pullFeed = new (PullFeed as any)(sbProgram, oracleFeed);
-  const { pullIx, responses, numSuccess } = await pullFeed.fetchUpdateIx({ crossbar });
-
-  if (numSuccess === 0) {
+  const feedHash = (fpMeta as any).feedHash as string | undefined;
+  if (!feedHash) {
     throw new Error(
-      "oracle 노드 응답 없음 (numSuccess=0).\n" +
-      "Crossbar 게이트웨이 또는 oracle 노드 상태를 확인하세요."
+      ".state.json의 FlightPolicy 항목에 feedHash가 없습니다.\n" +
+        "Explorer 호환 feed로 새 FlightPolicy를 생성하세요."
     );
   }
-  console.log(`oracle 응답: numSuccess=${numSuccess}`);
-  if (responses && responses[0]) {
-    const resp = responses[0];
-    // Switchboard PRECISION=18: 실제값 = raw / 10^18
-    const raw = typeof resp.value === "bigint" ? resp.value : BigInt(resp.value ?? 0);
-    const PRECISION = BigInt("1000000000000000000");
-    const actualMinutes = Number(raw / PRECISION);
-    console.log(`  oracle 응답 값: ${actualMinutes}분 (raw=${raw})`);
-  }
+  console.log("\noracle quote 요청 중 (Crossbar v2 feed hash)...");
+  const switchboardQueue = new PublicKey(ON_DEMAND_DEVNET_QUEUE);
+  const queueAccount = new (Queue as any)(sbProgram, switchboardQueue);
+  const quoteIx = await queueAccount.fetchQuoteIx(crossbar, [feedHash], {
+    numSignatures: 1,
+    instructionIdx: 0,
+  });
+  console.log(`  state feed_hash : ${feedHash}`);
 
   // ─── check_oracle_and_resolve_flight 인스트럭션 빌드 ─────────────────────
   const ourIx = await pg.methods
@@ -148,11 +141,15 @@ async function main() {
       masterAgreement: masterPda,
       flightPolicy:    flightPda,
       oracleFeed:      oracleFeed,
+      switchboardQueue,
+      slothashSysvar:   SPL_SYSVAR_SLOT_HASHES_ID,
+      instructionsSysvar: SPL_SYSVAR_INSTRUCTIONS_ID,
     })
     .instruction();
 
-  // ─── v0 트랜잭션 구성 (순서 필수: pullIx[0], check_oracle[1]) ────────────
-  const allIxs = [pullIx, ourIx];
+  // ─── v0 트랜잭션 구성 ────────────────────────────────────────────────────
+  // 순서 필수: [Switchboard quote ed25519 ix, check_oracle]
+  const allIxs = [quoteIx, ourIx];
   const { blockhash, lastValidBlockHeight } =
     await conn.getLatestBlockhash("confirmed");
 

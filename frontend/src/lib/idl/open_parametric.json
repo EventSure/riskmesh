@@ -77,8 +77,17 @@
         {
           "name": "oracle_feed",
           "docs": [
-            "동일 tx의 앞선 pullIx(ix[0])가 이 계정을 업데이트한 후 실행되어야 함."
+            "feed_hash를 읽어 quote feed_id와 일치하는지 검증."
           ]
+        },
+        {
+          "name": "switchboard_queue"
+        },
+        {
+          "name": "slothash_sysvar"
+        },
+        {
+          "name": "instructions_sysvar"
         }
       ],
       "args": []

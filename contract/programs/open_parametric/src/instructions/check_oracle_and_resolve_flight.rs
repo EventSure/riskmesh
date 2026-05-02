@@ -1,19 +1,19 @@
 use anchor_lang::prelude::*;
-use switchboard_on_demand::PullFeedAccountData;
+use switchboard_on_demand::{PullFeedAccountData, QuoteVerifier};
 
 use crate::constants::ORACLE_MAX_STALENESS_SLOTS;
 use crate::errors::OpenParamError;
 use crate::math::{tiered_payout, TierPayouts};
 use crate::state::*;
 
-/// Track B — Switchboard On-Demand Pull Feed 기반 자동 지연 확정.
+/// Track B — Switchboard On-Demand quote 기반 자동 지연 확정.
 ///
-/// 이 instruction은 반드시 동일 트랜잭션의 2번째 instruction으로 포함되어야 한다:
-///   ix[0]: Switchboard pullIx (PullFeed.fetchUpdateIx) — oracle_feed 계정 업데이트
-///   ix[1]: 이 instruction — 업데이트된 oracle_feed 계정에서 값 읽기
+/// 이 instruction은 반드시 동일 트랜잭션에서 Switchboard quote 검증 instruction 뒤에
+/// 포함되어야 한다:
+///   ix[0]: Switchboard quote ed25519 ix — feed hash와 oracle 값을 서명 검증
+///   ix[1]: 이 instruction — 검증된 quote에서 값 읽기
 ///
-/// FlightPolicy.oracle_feed (per-flight feed)의 값을 검증하고 지연을 확정한다.
-/// Switchboard Explorer에서 oracle_feed 주소로 실시간 업데이트를 확인할 수 있다.
+/// oracle_feed 계정은 Explorer 조회용 v2 feed hash를 보관하는 기준 계정으로 사용한다.
 #[derive(Accounts)]
 pub struct CheckOracleAndResolveFlight<'info> {
     /// 트랜잭션 수수료 부담자. 누구나 호출 가능.
@@ -25,8 +25,14 @@ pub struct CheckOracleAndResolveFlight<'info> {
     #[account(mut)]
     pub flight_policy: Account<'info, FlightPolicy>,
     /// CHECK: flight_policy.oracle_feed와 일치 여부를 handler에서 검증.
-    /// 동일 tx의 앞선 pullIx(ix[0])가 이 계정을 업데이트한 후 실행되어야 함.
+    /// feed_hash를 읽어 quote feed_id와 일치하는지 검증.
     pub oracle_feed: UncheckedAccount<'info>,
+    /// CHECK: Switchboard queue account for quote verification.
+    pub switchboard_queue: UncheckedAccount<'info>,
+    /// CHECK: SlotHashes sysvar, validated by Switchboard verifier.
+    pub slothash_sysvar: UncheckedAccount<'info>,
+    /// CHECK: Instructions sysvar, validated by Switchboard verifier.
+    pub instructions_sysvar: UncheckedAccount<'info>,
 }
 
 /// 계정 상태·주소 사전 검증.
@@ -101,22 +107,32 @@ pub fn handler(ctx: Context<CheckOracleAndResolveFlight>) -> Result<()> {
         flight.status,
     )?;
 
-    // pullIx(ix[0])가 oracle_feed 계정을 업데이트한 후 이 instruction이 실행됨.
-    // PullFeedAccountData는 bytemuck::Pod 타입 — 8-byte discriminator 건너뛰고 zero-copy 캐스트.
+    // oracle_feed 계정은 Explorer 호환 v2 feed hash를 저장하는 기준 계정이다.
     let feed_data = ctx.accounts.oracle_feed.try_borrow_data()?;
     let needed = 8 + std::mem::size_of::<PullFeedAccountData>();
     require!(feed_data.len() >= needed, OpenParamError::OracleFormat);
     let feed: &PullFeedAccountData =
         bytemuck::from_bytes(&feed_data[8..8 + std::mem::size_of::<PullFeedAccountData>()]);
 
-    // oracle_feed가 아직 한 번도 업데이트되지 않은 경우 (slot == 0)
-    require!(feed.result.slot > 0, OpenParamError::OracleStale);
-
     let current_slot = Clock::get()?.slot;
+    let quote = QuoteVerifier::new()
+        .queue(&*ctx.accounts.switchboard_queue)
+        .slothash_sysvar(&*ctx.accounts.slothash_sysvar)
+        .ix_sysvar(&*ctx.accounts.instructions_sysvar)
+        .clock_slot(current_slot)
+        .max_age(ORACLE_MAX_STALENESS_SLOTS)
+        .verify_instruction_at(0)
+        .map_err(|_| OpenParamError::OracleFormat)?;
+
+    let quote_feed = quote
+        .feeds()
+        .iter()
+        .find(|quote_feed| quote_feed.feed_id() == &feed.feed_hash)
+        .ok_or(OpenParamError::OracleFormat)?;
 
     // Switchboard PRECISION=18: result.value = actual_minutes * 10^18
     const ORACLE_PRECISION: i128 = 1_000_000_000_000_000_000; // 10^18
-    let raw_value = feed.result.value;
+    let raw_value = quote_feed.feed_value();
     let mantissa = if raw_value < 0 || ORACLE_PRECISION == 0 {
         return Err(OpenParamError::OracleFormat.into());
     } else {
@@ -126,7 +142,7 @@ pub fn handler(ctx: Context<CheckOracleAndResolveFlight>) -> Result<()> {
     let (delay_minutes, payout, status) = apply_oracle_reading(
         mantissa,
         0, // scale=0 (already converted from PRECISION=18)
-        feed.result.slot,
+        current_slot,
         current_slot,
         TierPayouts {
             delay_2h: master.payout_delay_2h,
