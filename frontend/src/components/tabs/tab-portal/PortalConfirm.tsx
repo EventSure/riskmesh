@@ -224,6 +224,14 @@ export function PortalConfirm({ masterPDA, participantInfo, allRoles, onSuccess 
     setLoading(true);
     try {
       const { actorSourceToken, actorPoolToken } = await ensureActorAccounts();
+      const confirmContext = {
+        walletPublicKey: wallet.publicKey.toBase58(),
+        participantIndex: participantInfo.participantIndex,
+        confirmRole,
+        actorSourceToken: actorSourceToken.toBase58(),
+        actorPoolToken: actorPoolToken.toBase58(),
+      };
+      console.log('[PortalConfirm] confirm_master accounts', confirmContext);
       const result = await confirmMaster({
         masterAgreement: masterPDA,
         role: confirmRole,
@@ -245,6 +253,12 @@ export function PortalConfirm({ masterPDA, participantInfo, allRoles, onSuccess 
       onSuccess?.();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
+      console.log('[PortalConfirm] confirm_master failed', {
+        walletPublicKey: wallet.publicKey.toBase58(),
+        participantIndex: participantInfo.participantIndex,
+        confirmRole,
+        error: message,
+      });
       if (message.includes('AlreadyProcessed') || message.includes('already been processed')) {
         setConfirmedLocally(true);
         toast(t('portal.confirmSuccess'), 's');

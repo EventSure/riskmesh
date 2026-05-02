@@ -4,12 +4,12 @@ import { Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram } from "@solana/web
 import {
   TOKEN_PROGRAM_ID,
   createAccount,
-  createMint,
   getAccount,
   mintTo,
 } from "@solana/spl-token";
 import { OpenParametric } from "../target/types/open_parametric";
 import { strict as assert } from "assert";
+import { ensureApprovedMasterCurrencyMint } from "./helpers/approvedMint";
 
 describe("settle_flight_no_claim", () => {
   const provider = anchor.AnchorProvider.env();
@@ -57,7 +57,7 @@ describe("settle_flight_no_claim", () => {
     // leaderDeposit은 리더(payer) 소유 ATA(정산 목적지). 풀 지갑은 PDA 소유 에스크로.
     const leaderDeposit   = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
     const reinsurerPool   = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
-    const reinsurerDeposit = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
+    const reinsurerDeposit = await createAccount(connection, payer, mint, reinsurer.publicKey, Keypair.generate());
     const leaderPool      = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
     const aPool           = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
     const bPool           = await createAccount(connection, payer, mint, masterAgreementPda, Keypair.generate());
@@ -176,7 +176,7 @@ describe("settle_flight_no_claim", () => {
     const aShare          = 825_000n;   // 0.825 USDC
     const bShare          = 550_000n;   // 0.55 USDC
 
-    const mint = await createMint(connection, payer, payer.publicKey, null, DECIMALS);
+    const mint = await ensureApprovedMasterCurrencyMint(connection, payer, payer.publicKey, null, DECIMALS);
     const { masterAgreementPda, leaderDeposit, leaderPool, reinsurerDeposit, aDeposit, bDeposit } =
       await setupActiveMaster(new anchor.BN(10), mint, {
         cededRatioBps: 5_000,
@@ -186,7 +186,7 @@ describe("settle_flight_no_claim", () => {
       });
 
     // 프리미엄 지불용 토큰 계정
-    const payerToken = await createAccount(connection, payer, mint, payer.publicKey);
+    const payerToken = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
     await mintTo(connection, payer, mint, payerToken, payer, premiumAmount);
 
     const childPolicyId = new anchor.BN(1);
@@ -268,7 +268,7 @@ describe("settle_flight_no_claim", () => {
     const aShare        = 1_500_000n; // 5 * 30%
     const bShare        = 1_000_000n; // 5 * 20%
 
-    const mint = await createMint(connection, payer, payer.publicKey, null, DECIMALS);
+    const mint = await ensureApprovedMasterCurrencyMint(connection, payer, payer.publicKey, null, DECIMALS);
     const { masterAgreementPda, leaderDeposit, leaderPool, reinsurerDeposit, aDeposit, bDeposit } =
       await setupActiveMaster(new anchor.BN(11), mint, {
         cededRatioBps: 0,
@@ -277,7 +277,7 @@ describe("settle_flight_no_claim", () => {
         payoutDelay6H: 10n * UNIT,
       });
 
-    const payerToken = await createAccount(connection, payer, mint, payer.publicKey);
+    const payerToken = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
     // premiumPerPolicy는 setupActiveMaster에서 5_000_000으로 고정
     await mintTo(connection, payer, mint, payerToken, payer, 5_000_000);
 
@@ -336,7 +336,7 @@ describe("settle_flight_no_claim", () => {
 
   it("sets NoClaim when delay is exactly 119 minutes (threshold boundary)", async () => {
     const premiumAmount = 1n * UNIT;
-    const mint = await createMint(connection, payer, payer.publicKey, null, DECIMALS);
+    const mint = await ensureApprovedMasterCurrencyMint(connection, payer, payer.publicKey, null, DECIMALS);
     const { masterAgreementPda, leaderDeposit, leaderPool, reinsurerDeposit, aDeposit, bDeposit } =
       await setupActiveMaster(new anchor.BN(12), mint, {
         cededRatioBps: 0,
@@ -345,7 +345,7 @@ describe("settle_flight_no_claim", () => {
         payoutDelay6H: 10n * UNIT,
       });
 
-    const payerToken = await createAccount(connection, payer, mint, payer.publicKey);
+    const payerToken = await createAccount(connection, payer, mint, payer.publicKey, Keypair.generate());
     await mintTo(connection, payer, mint, payerToken, payer, 5_000_000);
 
     const childPolicyId = new anchor.BN(1);

@@ -7,7 +7,7 @@
 | # | 파일 | 변경 내용 |
 |---|------|-----------|
 | 1 | `frontend/.env` and `frontend/.env.example` | Set `VITE_PROGRAM_STAGE`, `VITE_PROGRAM_ID`, and `VITE_STAGING_PROGRAM_ID` |
-| 2 | `src/lib/constants.ts` (line 7) | `CURRENCY_MINT` → 본인이 만든 SPL 토큰 mint 주소 |
+| 2 | `src/lib/constants.ts` (line 7) | `CURRENCY_MINT` → 승인된 고정 devnet mint `A6ty3ZmdzFW9JS92QCc5n7XPUM2cfwKzdnPmyXP2hY8w` |
 | 3 | `src/lib/idl/open_parametric.json` | **빌드 결과 IDL로 전체 교체** |
 
 ## 1. IDL 파일 교체
@@ -69,24 +69,27 @@ account layout, discriminator가 바뀌면 직렬화/호출 자체가 깨지기 
 
 ```typescript
 // src/lib/constants.ts
-export const CURRENCY_MINT = new PublicKey('<SPL 토큰 mint 주소>');
+export const CURRENCY_MINT = new PublicKey('A6ty3ZmdzFW9JS92QCc5n7XPUM2cfwKzdnPmyXP2hY8w');
 ```
 
-### SPL 토큰이 없다면 생성
+Stable/devnet의 `create_master_agreement`는 위 approved mint만 허용합니다.
+새 SPL 토큰을 만들어 `CURRENCY_MINT`에 넣으면 MasterAgreement 생성과 이후
+premium/payout 경로가 `InvalidInput`으로 실패합니다.
+
+### approved mint 테스트 자금 준비
 
 ```bash
-# Devnet 기준
-solana config set --url devnet
+cd contract
 
-# 새 토큰 생성 (6 decimals = USDC와 동일)
-spl-token create-token --decimals 6
-# 출력: Creating token <MINT_ADDRESS>
+# full prefund path: operator mint + leader / participants / reinsurer 분배
+# 현재 Solana CLI 지갑/민트 authority가 예상 stable/devnet 운영 환경과 다르면 스크립트가 즉시 실패
+./scripts/prefund-parties.sh
 
-# 본인 지갑에 토큰 계정(ATA) 생성
-spl-token create-account <MINT_ADDRESS>
+# 선택 사항: operator ATA만 추가 충전
+./scripts/mint-test-token-to-operator.sh
 
-# 테스트용 토큰 발행 (1000개)
-spl-token mint <MINT_ADDRESS> 1000
+# 선택 사항: 지갑/익스플로러에서 토큰 이름 표시
+./scripts/apply-test-token-metadata.sh
 ```
 
 ### 왜 필요한가?
@@ -107,19 +110,24 @@ mint 주소가 실제 컨트랙트에 등록된 것과 다르면:
 - → `InvalidInput` 에러 (mint 불일치)
 - → 또는 `AccountNotInitialized` 에러 (ATA 미생성)
 
+`03-master-setup`도 같은 fixed mint를 직접 사용하므로, frontend/contract가 같은
+mint 주소를 공유해야 새 agreement 생성 경로가 일관되게 동작합니다.
+생성되는 escrow pool 계정은 처음엔 비어 있으며, `confirm_master`가 prefunded
+ATA들에서 필요한 collateral을 이체합니다.
+
 ## 4. 지갑 사전 준비
 
 | 항목 | 필요량 | 용도 |
 |------|--------|------|
 | SOL | ~0.5 SOL | TX 수수료 + 계정 rent |
-| SPL 토큰 | 최소 1개 | Flight policy 생성 시 premium 지불 |
+| Approved SPL 토큰 | 최소 1개 | Flight policy 생성 시 premium 지불 |
 
 ```bash
 # SOL 에어드롭 (devnet)
 solana airdrop 2
 
-# 토큰 잔액 확인
-spl-token balance <MINT_ADDRESS>
+# approved mint 잔액 확인
+spl-token balance A6ty3ZmdzFW9JS92QCc5n7XPUM2cfwKzdnPmyXP2hY8w
 ```
 
 ## 전체 설정 요약 (Quick Start)
@@ -127,8 +135,7 @@ spl-token balance <MINT_ADDRESS>
 ```bash
 # 1. 컨트랙트 빌드 & 배포
 cd contract
-anchor build
-anchor deploy --provider.cluster devnet
+yarn deploy:stable
 
 # 2. IDL 복사
 cp target/idl/open_parametric.json ../frontend/src/lib/idl/open_parametric.json
@@ -143,18 +150,20 @@ cd ../frontend
 #   VITE_PROGRAM_STAGE=stable
 #   VITE_PROGRAM_ID=<stable devnet program id>
 
-# 4. SPL 토큰 생성 (최초 1회)
+# 4. approved mint 테스트 자금 준비
 cd ../contract
-spl-token create-token --decimals 6
-spl-token create-account <MINT_ADDRESS>
-spl-token mint <MINT_ADDRESS> 1000
+# full prefund path
+./scripts/prefund-parties.sh
+
+# 필요하면 operator ATA만 추가 충전
+# ./scripts/mint-test-token-to-operator.sh
 
 # 5. constants.ts 수정
-#    CURRENCY_MINT = '<spl-token create-token 출력값>'
+#    CURRENCY_MINT = 'A6ty3ZmdzFW9JS92QCc5n7XPUM2cfwKzdnPmyXP2hY8w'
 
-# 6. 프론트엔드 실행
+# 6. 프런트엔드 실행
 cd ../frontend
-npm run dev:stage
+npm run dev:stable
 ```
 
 Frontend run scripts:

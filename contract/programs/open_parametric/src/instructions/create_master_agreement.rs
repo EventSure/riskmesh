@@ -52,6 +52,11 @@ pub fn handler(
         ctx.accounts.leader.key(),
         params.collateral_claim_count,
     )?;
+    let approved_mint = approved_master_currency_mint()?;
+    require!(
+        ctx.accounts.currency_mint.key() == approved_mint,
+        OpenParamError::InvalidInput
+    );
 
     require!(
         ctx.accounts.leader_deposit_wallet.mint == ctx.accounts.currency_mint.key(),

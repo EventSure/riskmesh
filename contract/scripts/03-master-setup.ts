@@ -2,14 +2,17 @@
  * yarn demo:3-master-setup
  *
  * Master Agreement 전체 셋업 (devnet):
- *   1. Mint 재사용 또는 신규 생성
+ *   1. 승인된 고정 master mint(A6ty...) 사용
  *   2. PDA 소유 토큰 계정 생성 (leaderDeposit, reinsurerPool, reinsurerDeposit, 각 participant pool)
- *   3. 각 참여사 ATA 생성 및 리더 ATA에 토큰 민팅
+ *   3. 각 참여사 ATA 생성 및 사전 입금된 approved mint 잔액 확인
  *   4. create_master_agreement  ← oracle_feed: state.json의 feedPubkey (없으면 Track A)
  *   5. register_participant_wallets (leader, A, B)
  *   6. confirm_master(0) — leader, A, B
- *      confirm_master(1) — reinsurer
  *   7. activate_master
+ *
+ * 사전 준비:
+ *   - ./scripts/prefund-parties.sh              (full prefund path)
+ *   - ./scripts/mint-test-token-to-operator.sh  (optional operator-only top-up)
  *
  * 고정 키페어 경로:
  *   Leader    : ~/.config/solana/riskmesh-leader.json
@@ -27,7 +30,8 @@ import {
   Connection, Keypair, PublicKey, SystemProgram, LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
 import {
-  createAccount, createMint, mintTo,
+  createAccount,
+  getMint,
   getOrCreateAssociatedTokenAccount, TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { BN } from "@coral-xyz/anchor";
@@ -36,6 +40,10 @@ import {
 } from "./common";
 
 const MASTER_ID = process.env.MASTER_ID ? parseInt(process.env.MASTER_ID) : 1;
+const APPROVED_MASTER_CURRENCY_MINT = new PublicKey("A6ty3ZmdzFW9JS92QCc5n7XPUM2cfwKzdnPmyXP2hY8w");
+const LEADER_REQUIRED_COLLATERAL = 3_000_000n;
+const PARTICIPANT_A_REQUIRED_COLLATERAL = 1_800_000n;
+const PARTICIPANT_B_REQUIRED_COLLATERAL = 1_200_000n;
 
 // 고정 키페어 경로
 const KP_PATHS = {
@@ -48,6 +56,20 @@ const KP_PATHS = {
 function loadKp(p: string): Keypair {
   if (!fs.existsSync(p)) throw new Error(`키페어 파일 없음: ${p}`);
   return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync(p, "utf-8"))));
+}
+
+function formatUsdc(amount: bigint): string {
+  return `${Number(amount) / 1_000_000} USDC`;
+}
+
+function requirePrefundedBalance(label: string, amount: bigint, required: bigint): void {
+  console.log(`${label} 잔액: ${formatUsdc(amount)} (필요: ${formatUsdc(required)})`);
+  if (amount < required) {
+    throw new Error(
+      `${label} 잔액이 부족합니다. 승인된 고정 mint(${APPROVED_MASTER_CURRENCY_MINT.toBase58()})를 먼저 분배하세요.\n` +
+      "  ./scripts/prefund-parties.sh"
+    );
+  }
 }
 
 async function main() {
@@ -78,18 +100,17 @@ async function main() {
     console.log("에어드롭 완료 (+2 SOL)");
   }
 
-  // ── Mint 확인 → 없으면 신규 생성 ────────────────────────────────────────────
-  let mintPubkey: PublicKey;
-  const existingMintInfo = await conn.getAccountInfo(new PublicKey(s.mint));
-  if (!existingMintInfo) {
-    console.log("\n기존 mint가 devnet에 없습니다. 새로 생성 중...");
-    mintPubkey = await createMint(conn, leader, leader.publicKey, null, 6);
-    console.log(`새 Mint: ${mintPubkey.toBase58()}`);
-    s.mint = mintPubkey.toBase58();
-  } else {
-    mintPubkey = new PublicKey(s.mint);
-    console.log(`\n기존 Mint 사용: ${mintPubkey.toBase58()}`);
+  // ── Approved mint 확인 ───────────────────────────────────────────────────────
+  const mintPubkey = APPROVED_MASTER_CURRENCY_MINT;
+  const approvedMint = await getMint(conn, mintPubkey);
+  if (approvedMint.decimals !== 6) {
+    throw new Error(`승인된 mint decimals=${approvedMint.decimals}. 6이 필요합니다.`);
   }
+  console.log(`\nApproved Mint 사용: ${mintPubkey.toBase58()}`);
+  if (s.mint && s.mint !== mintPubkey.toBase58()) {
+    console.log(`state.json의 기존 mint(${s.mint})는 무시하고 approved mint로 덮어씁니다.`);
+  }
+  s.mint = mintPubkey.toBase58();
 
   const pg = makeProgram(leader);
 
@@ -115,12 +136,15 @@ async function main() {
   const bAta      = await getOrCreateAssociatedTokenAccount(conn, leader, mintPubkey, partyB.publicKey);
   const reinsAta  = await getOrCreateAssociatedTokenAccount(conn, leader, mintPubkey, reins.publicKey);
 
-  // 리더 ATA에 premium 지불용 토큰 민팅 (10 USDC)
-  await mintTo(conn, leader, mintPubkey, leaderAta.address, leader, 10_000_000);
-  console.log(`Leader ATA    : ${leaderAta.address.toBase58()} (+10 USDC)`);
+  console.log(`Leader ATA    : ${leaderAta.address.toBase58()}`);
   console.log(`Participant A ATA: ${aAta.address.toBase58()}`);
   console.log(`Participant B ATA: ${bAta.address.toBase58()}`);
   console.log(`Reinsurer ATA : ${reinsAta.address.toBase58()}`);
+
+  console.log("\nApproved mint 사전 입금 상태 확인 중...");
+  requirePrefundedBalance("Leader ATA", leaderAta.amount, LEADER_REQUIRED_COLLATERAL);
+  requirePrefundedBalance("Participant A ATA", aAta.amount, PARTICIPANT_A_REQUIRED_COLLATERAL);
+  requirePrefundedBalance("Participant B ATA", bAta.amount, PARTICIPANT_B_REQUIRED_COLLATERAL);
 
   // ── PDA 소유 토큰 계정 생성 ──────────────────────────────────────────────────
   // leaderDeposit은 leader(ATA) 소유. 나머지 풀은 모두 masterPda 소유 에스크로.
@@ -137,18 +161,12 @@ async function main() {
   await createAccount(conn, leader, mintPubkey, masterPda, aPoolKp);
   await createAccount(conn, leader, mintPubkey, masterPda, bPoolKp);
 
-  // 각 pool에 최대 페이아웃 분담분 적립 (6 USDC 기준, ceded=0)
-  // Leader 50% = 3 USDC, A 30% = 1.8 USDC, B 20% = 1.2 USDC
-  await mintTo(conn, leader, mintPubkey, leaderPoolKp.publicKey, leader, 3_000_000);
-  await mintTo(conn, leader, mintPubkey, aPoolKp.publicKey,      leader, 1_800_000);
-  await mintTo(conn, leader, mintPubkey, bPoolKp.publicKey,      leader, 1_200_000);
-
   console.log(`leaderDepositWallet : ${leaderAta.address.toBase58()} (leader ATA)`);
   console.log(`reinsurerPoolWallet : ${reinsurerPoolKp.publicKey.toBase58()}`);
   console.log(`reinsurerDepWallet  : ${reinsurerDepKp.publicKey.toBase58()}`);
-  console.log(`leaderPoolWallet    : ${leaderPoolKp.publicKey.toBase58()} (+3 USDC)`);
-  console.log(`participantAPool    : ${aPoolKp.publicKey.toBase58()} (+1.8 USDC)`);
-  console.log(`participantBPool    : ${bPoolKp.publicKey.toBase58()} (+1.2 USDC)`);
+  console.log(`leaderPoolWallet    : ${leaderPoolKp.publicKey.toBase58()} (빈 escrow, confirm_master가 자금 이체)`);
+  console.log(`participantAPool    : ${aPoolKp.publicKey.toBase58()} (빈 escrow, confirm_master가 자금 이체)`);
+  console.log(`participantBPool    : ${bPoolKp.publicKey.toBase58()} (빈 escrow, confirm_master가 자금 이체)`);
 
   // ── create_master_agreement ─────────────────────────────────────────────────────
   const oracleFeed = s.feedPubkey ? new PublicKey(s.feedPubkey) : PublicKey.default;

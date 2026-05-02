@@ -13,6 +13,7 @@ export interface ProgramConfig {
   readonly stage: ProgramStage;
   readonly programId: PublicKey;
   readonly selectedKey: ProgramEnvSource;
+  readonly approvedMasterCurrencyMint: PublicKey;
 }
 
 export interface AnchorProgramIdlLike {
@@ -21,6 +22,8 @@ export interface AnchorProgramIdlLike {
 }
 
 const DEFAULT_STABLE_PROGRAM_ID = 'ETEEEssGKAAQEGwz3ggDcy9vzPAPtBjtb2KocdyLBMjh';
+const DEFAULT_APPROVED_MASTER_CURRENCY_MINT = '9ZefJZPJAK1d6v2iq1fXd2NFHjNULcXM9wMKD1f69p98';
+const PRODUCTION_APPROVED_MASTER_CURRENCY_MINT = 'A6ty3ZmdzFW9JS92QCc5n7XPUM2cfwKzdnPmyXP2hY8w';
 
 export function resolveProgramConfig(env: ProgramEnv): ProgramConfig {
   const stage = env.VITE_PROGRAM_STAGE ?? 'stable';
@@ -45,6 +48,11 @@ export function resolveProgramConfig(env: ProgramEnv): ProgramConfig {
       stage,
       programId: new PublicKey(rawProgramId),
       selectedKey,
+      approvedMasterCurrencyMint: new PublicKey(
+        stage === 'stable'
+          ? PRODUCTION_APPROVED_MASTER_CURRENCY_MINT
+          : DEFAULT_APPROVED_MASTER_CURRENCY_MINT,
+      ),
     };
   } catch {
     throw new Error(`${selectedKey} must be a valid Solana public key`);
