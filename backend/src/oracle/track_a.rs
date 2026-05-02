@@ -25,6 +25,7 @@ use crate::{
 #[derive(Debug)]
 pub struct FlightPolicyInfo {
     pub pubkey: Pubkey,
+    pub child_policy_id: u64,
     pub master_agreement: Pubkey,
     pub flight_no: String,
     pub departure_ts: i64,
@@ -81,7 +82,7 @@ pub fn parse_flight_policy(pubkey: &Pubkey, data: &[u8]) -> Result<FlightPolicyI
     let mut offset = 8usize; // skip discriminator
 
     // child_policy_id (u64)
-    let _child_id = read_u64(data, &mut offset)?;
+    let child_policy_id = read_u64(data, &mut offset)?;
 
     // master (Pubkey, 32 bytes)
     let master_agreement = read_pubkey(data, &mut offset)?;
@@ -118,6 +119,7 @@ pub fn parse_flight_policy(pubkey: &Pubkey, data: &[u8]) -> Result<FlightPolicyI
 
     Ok(FlightPolicyInfo {
         pubkey: *pubkey,
+        child_policy_id,
         master_agreement,
         flight_no,
         departure_ts,

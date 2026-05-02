@@ -63,6 +63,8 @@ fn test_config() -> Config {
         db_backend: DbBackend::Sqlite,
         database_path: String::new(),
         web_bind_addr: "127.0.0.1:3000".to_string(),
+        contract_dir: String::new(),
+        proxy_url: String::new(),
     }
 }
 
