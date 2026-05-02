@@ -64,7 +64,7 @@
         {
           "name": "master_agreement",
           "docs": [
-            "oracle_feed 주소와 tiered payout 기준을 제공하는 마스터 계약."
+            "tiered payout 기준을 제공하는 마스터 계약."
           ]
         },
         {
@@ -75,19 +75,10 @@
           "writable": true
         },
         {
-          "name": "oracle_feed"
-        },
-        {
-          "name": "queue",
-          "address": "A43DyUGA7s8eXPxqEjJY6EBu1KKbNgfxF8h17VAHn13w"
-        },
-        {
-          "name": "slot_hashes",
-          "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "instructions",
-          "address": "Sysvar1nstructions1111111111111111111111111"
+          "name": "oracle_feed",
+          "docs": [
+            "동일 tx의 앞선 pullIx(ix[0])가 이 계정을 업데이트한 후 실행되어야 함."
+          ]
         }
       ],
       "args": []
@@ -652,6 +643,10 @@
           {
             "name": "departure_ts",
             "type": "i64"
+          },
+          {
+            "name": "oracle_feed",
+            "type": "pubkey"
           }
         ]
       }
@@ -794,6 +789,10 @@
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "oracle_feed",
+            "type": "pubkey"
           }
         ]
       }

@@ -62,6 +62,7 @@ fn flight_policy(pubkey: &str, master: &str, status: u8) -> FlightPolicyInfo {
         premium_distributed: false,
         created_at: 123,
         updated_at: 124,
+        oracle_feed: String::new(),
     }
 }
 

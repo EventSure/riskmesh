@@ -68,6 +68,7 @@ pub struct CreateFlightPolicyParams {
     pub flight_no: String,
     pub route: String,
     pub departure_ts: i64,
+    pub oracle_feed: Pubkey,
 }
 
 // ─── Account Structs ──────────────────────────────────────────────────────────
@@ -121,4 +122,5 @@ pub struct FlightPolicy {
     pub created_at: i64,
     pub updated_at: i64,
     pub bump: u8,
+    pub oracle_feed: Pubkey,
 }
