@@ -107,6 +107,15 @@ const InfoDot = styled.span`
   background: rgba(99,179,237,0.6);
 `;
 
+const ActionFooter = styled.div`
+  position: sticky;
+  bottom: -14px;
+  z-index: 2;
+  margin: 12px -14px -14px;
+  padding: 12px 14px 14px;
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0), ${p => p.theme.colors.surface1} 28%);
+`;
+
 /* ── OracleConsole ── */
 
 export function OracleConsole() {
@@ -275,19 +284,21 @@ export function OracleConsole() {
                 <MsgText variant="ok">{result.msg}</MsgText>
               </MsgBox>
             )}
-            <Button
-              variant="primary"
-              fullWidth
-              onClick={handleRun}
-              disabled={!masterActive || contractId === 0 || loading}
-              data-guide="resolve-btn"
-            >
-              {loading
-                ? t('oracle.sendingTx')
-                : resolveType === 'noDelay'
-                  ? (mode === 'onchain' ? t('oracle.runBtnNoDelayOnchain') : t('oracle.runBtnNoDelay'))
-                  : (mode === 'onchain' ? t('oracle.runBtnOnchain') : t('oracle.runBtn'))}
-            </Button>
+            <ActionFooter data-testid="oracle-action-footer">
+              <Button
+                variant="primary"
+                fullWidth
+                onClick={handleRun}
+                disabled={!masterActive || contractId === 0 || loading}
+                data-guide="resolve-btn"
+              >
+                {loading
+                  ? t('oracle.sendingTx')
+                  : resolveType === 'noDelay'
+                    ? (mode === 'onchain' ? t('oracle.runBtnNoDelayOnchain') : t('oracle.runBtnNoDelay'))
+                    : (mode === 'onchain' ? t('oracle.runBtnOnchain') : t('oracle.runBtn'))}
+              </Button>
+            </ActionFooter>
       </CardBody>
     </Card>
   );
