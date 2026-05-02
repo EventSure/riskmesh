@@ -15,8 +15,9 @@
  *   PROXY_URL       AviationStack 프록시 URL (필수)
  */
 import * as anchor from "@coral-xyz/anchor";
-import { PublicKey, Connection, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
+import { PublicKey, Connection, SystemProgram, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
 import { AnchorProvider, Wallet, BN } from "@coral-xyz/anchor";
+import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { OracleJob } from "@switchboard-xyz/common";
 import {
   PullFeed,
@@ -25,10 +26,15 @@ import {
 } from "@switchboard-xyz/on-demand";
 import { kp, loadState, makeProgram, flightPolicyPub, saveState, RPC_URL } from "./common";
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function main() {
   const s = loadState() as any;
-  if (!s.masterId || !s.masterPda || !s.leaderAta || !s.leaderPoolWallet) {
-    throw new Error("master-setup 데이터 없음. yarn demo:3-master-setup 먼저 실행하세요.");
+  const masterPdaStr = process.env.MASTER_PDA ?? s.masterPda;
+  if (!masterPdaStr) {
+    throw new Error("MASTER_PDA 또는 .state.json의 masterPda가 필요합니다.");
   }
 
   const proxyUrl = process.env.PROXY_URL;
@@ -45,11 +51,22 @@ async function main() {
   anchor.setProvider(provider);
 
   const pg = makeProgram(leader);
-  const masterPda = new PublicKey(s.masterPda);
-  const existing = (s.flightPolicies as any[] ?? []);
-  const childId = existing.length > 0
-    ? existing[existing.length - 1].childId + 1
-    : 1;
+  const masterPda = new PublicKey(masterPdaStr);
+  const master = await pg.account.masterAgreement.fetch(masterPda);
+  const payerAta = await getAssociatedTokenAddress(master.currencyMint, leader.publicKey);
+  const leaderPoolToken: PublicKey = master.leaderPoolWallet;
+
+  const allFlights = await pg.account.flightPolicy.all([
+    { memcmp: { offset: 16, bytes: masterPda.toBase58() } },
+  ]);
+  const maxChildId = allFlights.reduce(
+    (max: number, f: any) => Math.max(max, f.account.childPolicyId.toNumber()),
+    0
+  );
+  const childId = process.env.CHILD_POLICY_ID
+    ? parseInt(process.env.CHILD_POLICY_ID)
+    : maxChildId + 1;
+  const existing = (s.flightPolicies as any[] ?? []).filter((f) => f.childId !== childId);
 
   const flightNo     = process.env.FLIGHT_NO      ?? "KE017";
   const route        = process.env.ROUTE          ?? "ICN-NRT";
@@ -93,9 +110,16 @@ async function main() {
   if (!feedHashHex) {
     throw new Error(`Crossbar v2/store 응답에 feedId/feedHash가 없습니다: ${JSON.stringify(v2Data)}`);
   }
-  const fetchRes = await fetch(`https://crossbar.switchboard.xyz/v2/fetch/${feedHashHex}`);
-  if (!fetchRes.ok) {
-    throw new Error(`Crossbar v2/fetch 검증 실패: ${fetchRes.status} ${await fetchRes.text()}`);
+  let fetchRes: Response | undefined;
+  for (let attempt = 1; attempt <= 6; attempt++) {
+    fetchRes = await fetch(`https://crossbar.switchboard.xyz/v2/fetch/${feedHashHex}`);
+    if (fetchRes.ok) break;
+    const body = await fetchRes.text();
+    if (attempt === 6) {
+      throw new Error(`Crossbar v2/fetch 검증 실패: ${fetchRes.status} ${body}`);
+    }
+    console.log(`  Crossbar fetch 대기 중 (${attempt}/6): ${fetchRes.status}`);
+    await sleep(3000);
   }
   const feedHash = Buffer.from(feedHashHex.replace(/^0x/, ""), "hex");
   console.log(`  Feed Hash  : ${feedHashHex}`);
@@ -136,6 +160,9 @@ async function main() {
   console.log(`  route         : ${route}`);
   console.log(`  departureTs   : ${new Date(departureTs * 1000).toISOString()}`);
   console.log(`  flightPda     : ${flightPda.toBase58()}`);
+  console.log(`  masterPda     : ${masterPda.toBase58()}`);
+  console.log(`  payerToken    : ${payerAta.toBase58()}`);
+  console.log(`  leaderPool    : ${leaderPoolToken.toBase58()}`);
 
   const tx = await pg.methods
     .createFlightPolicyFromMaster({
@@ -146,12 +173,14 @@ async function main() {
       departureTs: new BN(departureTs),
       oracleFeed: feedPubkey,
     })
-    .accounts({
+    .accountsPartial({
       creator:         leader.publicKey,
       masterAgreement: masterPda,
       flightPolicy:    flightPda,
-      payerToken:      new PublicKey(s.leaderAta),
-      leaderPoolToken: new PublicKey(s.leaderPoolWallet),
+      payerToken:      payerAta,
+      leaderPoolToken,
+      tokenProgram:    TOKEN_PROGRAM_ID,
+      systemProgram:   SystemProgram.programId,
     })
     .signers([leader])
     .rpc();
@@ -172,7 +201,17 @@ async function main() {
     feedCid: v2Data.cid,
     feedTag,
   }];
-  saveState({ ...s, flightPolicies: updated });
+  saveState({
+    ...s,
+    mint: master.currencyMint.toBase58(),
+    masterPda: masterPda.toBase58(),
+    leaderAta: payerAta.toBase58(),
+    leaderDepositWallet: master.leaderDepositWallet.toBase58(),
+    leaderPoolWallet: leaderPoolToken.toBase58(),
+    reinsurerPoolWallet: master.reinsurerPoolWallet.toBase58(),
+    reinsurerDepositWallet: master.reinsurerDepositWallet.toBase58(),
+    flightPolicies: updated,
+  });
   console.log("✓ .state.json 업데이트 완료");
   console.log("\n다음 단계: 백엔드 데몬 실행 또는 npm run demo:5b-claim");
 }
