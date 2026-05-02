@@ -18,6 +18,7 @@ export interface SettleFlightClaimInput {
 export interface SettleFlightNoClaimInput {
   masterAgreement: PublicKey;
   flightPolicy: PublicKey;
+  leaderPoolToken: PublicKey;
   leaderDepositToken: PublicKey;
   reinsurerDepositToken: PublicKey;
   /** Deposit wallet accounts for each participant (same order as master.participants) */
@@ -87,6 +88,7 @@ export function useSettleFlight() {
               executor: wallet.publicKey,
               masterAgreement: input.masterAgreement,
               flightPolicy: input.flightPolicy,
+              leaderPoolToken: input.leaderPoolToken,
               leaderDepositToken: input.leaderDepositToken,
               reinsurerDepositToken: input.reinsurerDepositToken,
               tokenProgram: TOKEN_PROGRAM_ID,

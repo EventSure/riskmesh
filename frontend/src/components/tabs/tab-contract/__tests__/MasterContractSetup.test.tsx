@@ -2,15 +2,17 @@ import '@testing-library/jest-dom/vitest';
 import { ThemeProvider } from '@emotion/react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { PublicKey } from '@solana/web3.js';
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { useProtocolStore, type Participant } from '@/store/useProtocolStore';
 import { darkTheme } from '@/styles/theme';
-import { MasterContractSetup } from '../MasterContractSetup';
 
 const mockToast = vi.fn();
 const mockSendAndConfirm = vi.fn();
 const mockFetchMasterAgreement = vi.fn();
 const mockInstruction = vi.fn();
+const walletPublicKey = new PublicKey('Cfj5n5ixCRJvFtVDEpaPqV8usUtCUVQcrFcUr6r8jG34');
+const participantPublicKey = new PublicKey('BUZvadSkpEmST3kaLQdE2BzfPmQ3ne6CDfQvv7pdrj3j');
+let MasterContractSetup: typeof import('../MasterContractSetup').MasterContractSetup;
 
 vi.mock('@/components/common', async () => {
   const actual = await vi.importActual<typeof import('@/components/common')>('@/components/common');
@@ -20,9 +22,52 @@ vi.mock('@/components/common', async () => {
   };
 });
 
+vi.mock('@solana/web3.js', async () => {
+  const actual = await vi.importActual<typeof import('@solana/web3.js')>('@solana/web3.js');
+  const programId = new actual.PublicKey('11111111111111111111111111111111');
+
+  return {
+    ...actual,
+    SystemProgram: {
+      ...actual.SystemProgram,
+      createAccount: vi.fn(() => new actual.TransactionInstruction({
+        keys: [],
+        programId,
+        data: Buffer.alloc(0),
+      })),
+    },
+  };
+});
+
 vi.mock('@/services/insurerApi', () => ({
   putMasterAgreementDisplayNames: vi.fn(),
 }));
+
+vi.mock('@/lib/pda', () => ({
+  getMasterAgreementPDA: () => [new PublicKey('11111111111111111111111111111111'), 255],
+}));
+
+vi.mock('@solana/spl-token', async () => {
+  const { PublicKey, TransactionInstruction } = await vi.importActual<typeof import('@solana/web3.js')>('@solana/web3.js');
+  const tokenProgram = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+
+  return {
+    ACCOUNT_SIZE: 165,
+    TOKEN_PROGRAM_ID: tokenProgram,
+    ASSOCIATED_TOKEN_PROGRAM_ID: new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'),
+    getAssociatedTokenAddress: vi.fn().mockResolvedValue(new PublicKey('So11111111111111111111111111111111111111112')),
+    createInitializeAccount3Instruction: vi.fn(() => new TransactionInstruction({
+      keys: [],
+      programId: tokenProgram,
+      data: Buffer.alloc(0),
+    })),
+    createAssociatedTokenAccountIdempotentInstruction: vi.fn(() => new TransactionInstruction({
+      keys: [],
+      programId: tokenProgram,
+      data: Buffer.alloc(0),
+    })),
+  };
+});
 
 vi.mock('@/hooks/useProgram', () => ({
   useProgram: () => ({
@@ -45,7 +90,7 @@ vi.mock('@/hooks/useProgram', () => ({
       sendAndConfirm: mockSendAndConfirm,
     },
     wallet: {
-      publicKey: new PublicKey('11111111111111111111111111111111'),
+      publicKey: walletPublicKey,
     },
     connected: true,
   }),
@@ -56,7 +101,7 @@ const makeParticipants = (): Participant[] => [
     id: 'p1',
     name: 'Hyundai Marine',
     share: 50,
-    address: 'BPFLoaderUpgradeab1e11111111111111111111111',
+    address: participantPublicKey.toBase58(),
     confirmed: false,
   },
 ];
@@ -69,6 +114,10 @@ const renderSubject = (onTermsSet = vi.fn()) => {
   );
   return { onTermsSet };
 };
+
+beforeAll(async () => {
+  MasterContractSetup = (await import('../MasterContractSetup')).MasterContractSetup;
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -102,7 +151,7 @@ beforeEach(() => {
 
 describe('MasterContractSetup', () => {
   test('does not mark terms set when AlreadyProcessed cannot be verified on chain', async () => {
-    mockSendAndConfirm.mockResolvedValueOnce('setup-sig').mockRejectedValueOnce(new Error('Transaction already been processed'));
+    mockSendAndConfirm.mockResolvedValueOnce('setup-sig').mockRejectedValueOnce('Transaction already been processed');
     mockFetchMasterAgreement.mockRejectedValueOnce(new Error('Account does not exist'));
     const { onTermsSet } = renderSubject();
 
@@ -118,7 +167,7 @@ describe('MasterContractSetup', () => {
   }, 15000);
 
   test('marks terms set when AlreadyProcessed is verified by fetching the master account', async () => {
-    mockSendAndConfirm.mockResolvedValueOnce('setup-sig').mockRejectedValueOnce(new Error('Transaction already been processed'));
+    mockSendAndConfirm.mockResolvedValueOnce('setup-sig').mockRejectedValueOnce('Transaction already been processed');
     mockFetchMasterAgreement.mockResolvedValueOnce({ masterId: 1 });
     const { onTermsSet } = renderSubject();
 
