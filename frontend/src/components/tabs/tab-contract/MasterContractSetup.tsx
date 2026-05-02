@@ -87,6 +87,9 @@ const TierUnit = styled.span`
   font-size: 9px;
 `;
 
+const isAlreadyProcessedError = (message: string) =>
+  message.includes('AlreadyProcessed') || message.includes('already been processed');
+
 export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
   const store = useProtocolStore();
   const {
@@ -174,20 +177,70 @@ export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
 
     setCollateralClaimCount(localCollateralClaimCount);
     setLoading(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const prog = program as any;
+    let pendingMasterAgreementPDA: PublicKey | null = null;
+    let pendingParticipantPoolKps: Keypair[] = [];
+
+    const completeMasterAgreementSetup = async (
+      signature: string,
+      masterAgreementPDA: PublicKey,
+      participantPoolKps: Keypair[],
+    ) => {
+      // pool wallet pubkey 저장
+      participants.forEach((p, i) => {
+        setPoolWallet(p.id, participantPoolKps[i]!.publicKey);
+      });
+
+      // ── Update store ──
+      setMasterAgreementPDA(masterAgreementPDA.toBase58());
+      onChainSetTerms(signature, {
+        cededRatioBps: reinsurer.enabled ? 5000 : 0,
+        reinsCommissionBps: reinsurer.enabled ? 1000 : 0,
+        premium,
+        collateralClaimCount: localCollateralClaimCount,
+        payoutTiers: { delay2h: payout2h, delay3h: payout3h, delay4to5h: payout4to5h, delay6hOrCancelled: payout6h },
+        coverageDates: { start: coverageStart, end: coverageEnd },
+        leaderShare,
+        participants,
+        reinsurer,
+      });
+
+      try {
+        await putMasterAgreementDisplayNames(masterAgreementPDA.toBase58(), {
+          participants: participants.map((p, i) => ({
+            wallet: participantPubkeys[i]!.toBase58(),
+            displayName: p.name.trim() || `${t('confirm.participant')} ${i + 1}`,
+          })),
+          reinsurer: reinsurer.enabled && reinsurerPubkey
+            ? {
+              wallet: reinsurerPubkey.toBase58(),
+              displayName: (reinsurer.name ?? '').trim() || t('party.reinsurer'),
+            }
+            : null,
+        });
+      } catch {
+        toast('Display names were not saved to backend', 'w');
+      }
+
+      toast(signature ? `Master policy created! TX: ${signature.slice(0, 8)}...` : 'Master policy 생성 완료 (tx 중복 확인)', 's');
+      onTermsSet?.();
+    };
+
     try {
       const leaderKey = wallet.publicKey;
       const leaderATA = await getAssociatedTokenAddress(CURRENCY_MINT, leaderKey);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const prog = program as any;
 
       // PDA-owned pool 계정 키페어
       const leaderPoolKp = Keypair.generate();
       const participantPoolKps = participants.map(() => Keypair.generate());
       const reinsurerPoolKp = reinsurer.enabled ? Keypair.generate() : null;
+      pendingParticipantPoolKps = participantPoolKps;
 
       const masterId = Date.now();
       const masterIdBN = new BN(masterId);
       const [masterAgreementPDA] = getMasterAgreementPDA(leaderKey, masterIdBN);
+      pendingMasterAgreementPDA = masterAgreementPDA;
 
       const operatorKey = leaderKey;
 
@@ -312,48 +365,16 @@ export function MasterContractSetup({ onTermsSet }: MasterContractSetupProps) {
       const tx2 = new Transaction().add(createMasterIx, regLeaderIx, confirmLeaderIx);
       const sig = await provider.sendAndConfirm(tx2, []);
 
-      // pool wallet pubkey 저장
-      participants.forEach((p, i) => {
-        setPoolWallet(p.id, participantPoolKps[i]!.publicKey);
-      });
-
-      // ── Update store ──
-      setMasterAgreementPDA(masterAgreementPDA.toBase58());
-      onChainSetTerms(sig, {
-        cededRatioBps: reinsurer.enabled ? 5000 : 0,
-        reinsCommissionBps: reinsurer.enabled ? 1000 : 0,
-        premium,
-        collateralClaimCount: localCollateralClaimCount,
-        payoutTiers: { delay2h: payout2h, delay3h: payout3h, delay4to5h: payout4to5h, delay6hOrCancelled: payout6h },
-        coverageDates: { start: coverageStart, end: coverageEnd },
-        leaderShare,
-        participants,
-        reinsurer,
-      });
-
-      try {
-        await putMasterAgreementDisplayNames(masterAgreementPDA.toBase58(), {
-          participants: participants.map((p, i) => ({
-            wallet: participantPubkeys[i]!.toBase58(),
-            displayName: p.name.trim() || `${t('confirm.participant')} ${i + 1}`,
-          })),
-          reinsurer: reinsurer.enabled && reinsurerPubkey
-            ? {
-              wallet: reinsurerPubkey.toBase58(),
-              displayName: (reinsurer.name ?? '').trim() || t('party.reinsurer'),
-            }
-            : null,
-        });
-      } catch {
-        toast('Display names were not saved to backend', 'w');
-      }
-
-      toast(`Master policy created! TX: ${sig.slice(0, 8)}...`, 's');
-      onTermsSet?.();
+      await completeMasterAgreementSetup(sig, masterAgreementPDA, participantPoolKps);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      if (message.includes('AlreadyProcessed') || message.includes('already been processed')) {
-        toast('Master policy 생성 완료 (tx 중복 응답 무시)', 's');
+      if (isAlreadyProcessedError(message) && pendingMasterAgreementPDA) {
+        try {
+          await prog.account.masterAgreement.fetch(pendingMasterAgreementPDA);
+          await completeMasterAgreementSetup('', pendingMasterAgreementPDA, pendingParticipantPoolKps);
+        } catch {
+          toast(`TX failed: ${message}`, 'd');
+        }
       } else {
         toast(`TX failed: ${message}`, 'd');
       }
