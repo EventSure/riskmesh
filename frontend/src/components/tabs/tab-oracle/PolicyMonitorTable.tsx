@@ -124,7 +124,14 @@ export function PolicyMonitorTable() {
     setSettleLoadingId(cid);
     const [flightPDA] = getFlightPolicyPDA(masterPK, new BN(cid));
     const accs = buildSettleAccounts(masterAccount);
-    const res = await settleFlightNoClaim({ masterAgreement: masterPK, flightPolicy: flightPDA, leaderDepositToken: accs.leaderDepositWallet, reinsurerDepositToken: accs.reinsurerDepositWallet, participantDepositWallets: accs.participantDepositWallets });
+    const res = await settleFlightNoClaim({
+      masterAgreement: masterPK,
+      flightPolicy: flightPDA,
+      leaderPoolToken: accs.leaderPoolWallet,
+      leaderDepositToken: accs.leaderDepositWallet,
+      reinsurerDepositToken: accs.reinsurerDepositWallet,
+      participantDepositWallets: accs.participantDepositWallets,
+    });
     setSettleLoadingId(null);
     if (!res.success) { toast(t('oracle.txFailedMsg', { error: res.error }), 'd'); }
     else { onChainSettle(cid, res.signature); toast(t('oracle.settleNoClaimBtn'), 's'); }
