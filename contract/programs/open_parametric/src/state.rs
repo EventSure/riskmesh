@@ -46,6 +46,7 @@ pub struct MasterParticipant {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateMasterAgreementParams {
     pub master_id: u64,
+    pub name: String,
     pub coverage_start_ts: i64,
     pub coverage_end_ts: i64,
     pub premium_per_policy: u64,
@@ -75,6 +76,7 @@ pub struct CreateFlightPolicyParams {
 #[account]
 pub struct MasterAgreement {
     pub master_id: u64,
+    pub name: String,
     pub leader: Pubkey,
     pub operator: Pubkey,
     pub currency_mint: Pubkey,

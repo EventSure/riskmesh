@@ -10,6 +10,7 @@ pub const ORACLE_MAX_STALENESS_SLOTS: u64 = 150; // approx 60-90s depending on c
 pub const MAX_ROUTE_LEN: usize = 16;
 pub const MAX_FLIGHT_NO_LEN: usize = 16;
 pub const MAX_MASTER_PARTICIPANTS: usize = 5;
+pub const MASTER_AGREEMENT_NAME_MAX_LEN: usize = 40;
 pub const MAX_SUBSCRIBER_REF_LEN: usize = 64;
 pub const APPROVED_MASTER_CURRENCY_MINT_ENV: &str = "OPEN_PARAMETRIC_APPROVED_MASTER_CURRENCY_MINT";
 pub const DEFAULT_APPROVED_MASTER_CURRENCY_MINT: Pubkey =
@@ -17,8 +18,7 @@ pub const DEFAULT_APPROVED_MASTER_CURRENCY_MINT: Pubkey =
 pub const PRODUCTION_APPROVED_MASTER_CURRENCY_MINT: Pubkey =
     pubkey!("A6ty3ZmdzFW9JS92QCc5n7XPUM2cfwKzdnPmyXP2hY8w");
 
-// oracle_feed(32 bytes) 추가됐지만 4096 버퍼로 충분.
-pub const MASTER_POLICY_SPACE: usize = 4096;
+pub const MASTER_POLICY_SPACE: usize = 8 + 1024 + 4 + MASTER_AGREEMENT_NAME_MAX_LEN * 4;
 pub const FLIGHT_POLICY_SPACE: usize = 1024;
 
 pub fn approved_master_currency_mint() -> std::result::Result<Pubkey, OpenParamError> {

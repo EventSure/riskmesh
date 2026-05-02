@@ -104,6 +104,7 @@ fn master_agreement(
     MasterAgreementInfo {
         pubkey: pubkey.to_string(),
         master_id: 1,
+        name: "test master agreement".to_string(),
         leader: leader.to_string(),
         operator: leader.to_string(),
         currency_mint: Pubkey::new_unique().to_string(),

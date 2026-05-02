@@ -6,6 +6,8 @@ use crate::errors::OpenParamError;
 use crate::math::effective_reinsurer_bps;
 use crate::state::*;
 
+use super::master_agreement_name::normalize_master_agreement_name;
+
 #[derive(Accounts)]
 #[instruction(params: CreateMasterAgreementParams)]
 pub struct CreateMasterAgreement<'info> {
@@ -37,6 +39,7 @@ pub fn handler(
     ctx: Context<CreateMasterAgreement>,
     params: CreateMasterAgreementParams,
 ) -> Result<()> {
+    let normalized_name = normalize_master_agreement_name(&params.name)?;
     let master = &mut ctx.accounts.master_agreement;
     let has_reinsurer = params.ceded_ratio_bps > 0;
 
@@ -78,6 +81,7 @@ pub fn handler(
         effective_reinsurer_bps(params.ceded_ratio_bps, params.reins_commission_bps)?;
 
     master.master_id = params.master_id;
+    master.name = normalized_name;
     master.leader = ctx.accounts.leader.key();
     master.operator = ctx.accounts.operator.key();
     master.currency_mint = ctx.accounts.currency_mint.key();

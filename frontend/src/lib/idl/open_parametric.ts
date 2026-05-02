@@ -83,6 +83,7 @@ export interface MasterParticipant {
 /** Mirrors the runtime Anchor JS camelCase account shape. */
 export interface MasterAgreementAccount {
   masterId: BN;
+  name: string;
   leader: PublicKey;
   operator: PublicKey;
   currencyMint: PublicKey;
@@ -139,6 +140,7 @@ export interface MasterParticipantInit {
 
 export interface CreateMasterAgreementParams {
   masterId: BN;
+  name: string;
   coverageStartTs: BN;
   coverageEndTs: BN;
   premiumPerPolicy: BN;
@@ -714,6 +716,35 @@ export type OpenParametric = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "updateMasterAgreementName",
+      "discriminator": [
+        214,
+        111,
+        112,
+        115,
+        193,
+        69,
+        193,
+        59
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "signer": true
+        },
+        {
+          "name": "masterAgreement",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "name",
+          "type": "string"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -873,6 +904,10 @@ export type OpenParametric = {
           {
             "name": "masterId",
             "type": "u64"
+          },
+          {
+            "name": "name",
+            "type": "string"
           },
           {
             "name": "coverageStartTs",
@@ -1063,6 +1098,10 @@ export type OpenParametric = {
           {
             "name": "masterId",
             "type": "u64"
+          },
+          {
+            "name": "name",
+            "type": "string"
           },
           {
             "name": "leader",

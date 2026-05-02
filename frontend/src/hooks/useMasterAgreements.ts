@@ -6,7 +6,9 @@ import { BACKEND_URL } from '@/lib/constants';
 interface BackendMasterAgreementItem {
   pubkey: string;
   master_id: number;
+  name: string;
   leader: string;
+  operator: string;
   reinsurer: string;
   status: number;
   status_label: string;
@@ -16,6 +18,7 @@ interface BackendMasterAgreementItem {
 
 function detectRole(m: BackendMasterAgreementItem, wallet: string): MasterAgreementSummary['myRole'] {
   if (m.leader === wallet) return 'leader';
+  if (m.operator === wallet) return 'operator';
   if (m.reinsurer === wallet) return 'rein';
   const nonLeaders = m.participants.filter(p => p.insurer !== m.leader);
   if (nonLeaders.some(p => p.insurer === wallet)) return 'participant';
@@ -27,10 +30,10 @@ export function useMasterAgreements() {
   const [policies, setPolicies] = useState<MasterAgreementSummary[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchPolicies = useCallback(async () => {
+  const fetchPolicies = useCallback(async (): Promise<boolean> => {
     if (!publicKey) {
       setPolicies([]);
-      return;
+      return false;
     }
 
     setLoading(true);
@@ -44,6 +47,7 @@ export function useMasterAgreements() {
       const mapped: MasterAgreementSummary[] = json.master_agreements.map((m) => ({
         pda: m.pubkey,
         masterId: String(m.master_id),
+        name: m.name,
         status: m.status,
         statusLabel: m.status_label,
         coverageEndTs: m.coverage_end_ts,
@@ -52,15 +56,17 @@ export function useMasterAgreements() {
 
       mapped.sort((a, b) => Number(b.masterId) - Number(a.masterId));
       setPolicies(mapped);
+      return true;
     } catch {
       setPolicies([]);
+      return false;
     } finally {
       setLoading(false);
     }
   }, [publicKey]);
 
   useEffect(() => {
-    fetchPolicies();
+    void fetchPolicies();
   }, [fetchPolicies]);
 
   return { policies, loading, refetch: fetchPolicies };

@@ -4,7 +4,10 @@ use crate::constants::MAX_MASTER_PARTICIPANTS;
 use crate::errors::OpenParamError;
 use crate::state::MasterParticipantInit;
 
-use super::create_master_agreement::{validate_create_master_inputs, validate_master_participants};
+use super::{
+    create_master_agreement::{validate_create_master_inputs, validate_master_participants},
+    master_agreement_name::normalize_master_agreement_name,
+};
 
 #[test]
 fn master_participants_require_10000_bps_with_separate_leader_share() {
@@ -178,4 +181,23 @@ fn accepts_collateral_claim_count_between_1_and_100() {
     let result = validate_create_master_inputs(5_000, &participants, leader, 10);
 
     assert!(result.is_ok());
+}
+
+#[test]
+fn accepts_trimmed_name_within_40_chars() {
+    let normalized = normalize_master_agreement_name("  2026 인천-뉴욕 공동계약  ").unwrap();
+    assert_eq!(normalized, "2026 인천-뉴욕 공동계약");
+}
+
+#[test]
+fn rejects_blank_master_agreement_name() {
+    let error = normalize_master_agreement_name("   ").unwrap_err();
+    assert!(matches!(error, OpenParamError::InvalidInput));
+}
+
+#[test]
+fn rejects_master_agreement_name_longer_than_40_chars() {
+    let error =
+        normalize_master_agreement_name("12345678901234567890123456789012345678901").unwrap_err();
+    assert!(matches!(error, OpenParamError::InvalidInput));
 }

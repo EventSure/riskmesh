@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { useMasterAgreements } from '@/hooks/useMasterAgreements';
 import { useProgram } from '@/hooks/useProgram';
+import { useSyncedSelectedMasterAgreementName } from '@/hooks/useSyncedSelectedMasterAgreementName';
 import { MasterAgreementStatus } from '@/lib/idl/open_parametric';
 
 const SelectBase = styled.select`
@@ -37,27 +38,35 @@ function formatDate(ts: number): string {
   });
 }
 
-const ROLE_LABEL: Record<'leader' | 'participant' | 'rein', string> = {
+const ROLE_LABEL: Record<'leader' | 'participant' | 'rein' | 'operator', string> = {
   leader: '리더사',
   participant: '참여사',
   rein: '재보험사',
+  operator: 'Operator',
 };
 
 export function MasterAgreementDropdown() {
   const mode = useProtocolStore(s => s.mode);
   const masterAgreementPDA = useProtocolStore(s => s.masterAgreementPDA);
+  const selectedMasterAgreementName = useProtocolStore(s => s.selectedMasterAgreementName);
   const selectMasterAgreement = useProtocolStore(s => s.selectMasterAgreement);
   const setRole = useProtocolStore(s => s.setRole);
+  const setSelectedMasterAgreementName = useProtocolStore(s => s.setSelectedMasterAgreementName);
   const { t } = useTranslation();
   const { connected } = useProgram();
   const { policies, loading, refetch } = useMasterAgreements();
+  const selectedPolicy = masterAgreementPDA
+    ? policies.find((policy) => policy.pda === masterAgreementPDA)
+    : undefined;
+
+  useSyncedSelectedMasterAgreementName(selectedPolicy?.name);
 
   // Sync detected role to store when selected policy changes or list updates
   useEffect(() => {
-    if (!masterAgreementPDA) return;
-    const found = policies.find(p => p.pda === masterAgreementPDA);
-    if (found?.myRole) setRole(found.myRole);
-  }, [masterAgreementPDA, policies]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (selectedPolicy?.myRole) {
+      setRole(selectedPolicy.myRole);
+    }
+  }, [selectedPolicy, setRole]);
 
   // Refetch when a newly created policy isn't in the list yet
   useEffect(() => {
@@ -74,6 +83,7 @@ export function MasterAgreementDropdown() {
     if (pda) {
       const found = policies.find(p => p.pda === pda);
       if (found?.myRole) setRole(found.myRole);
+      setSelectedMasterAgreementName(found?.name?.trim() || null);
     }
   };
 
@@ -86,12 +96,12 @@ export function MasterAgreementDropdown() {
       )}
       {policies.map(p => (
         <option key={p.pda} value={p.pda}>
-          {p.pda.slice(0, 8)}... · {statusLabel(p.status)} · {p.myRole ? ROLE_LABEL[p.myRole] : ''} · {formatDate(p.coverageEndTs)}
+          {((p.pda === masterAgreementPDA ? selectedMasterAgreementName : p.name)?.trim() || p.name?.trim() || `${p.pda.slice(0, 8)}...`)} · {(p.statusLabel || statusLabel(p.status))} · {p.myRole ? ROLE_LABEL[p.myRole] : ''} · {formatDate(p.coverageEndTs)}
         </option>
       ))}
       {masterAgreementPDA && !policies.some(p => p.pda === masterAgreementPDA) && (
         <option value={masterAgreementPDA}>
-          {masterAgreementPDA.slice(0, 8)}... · {loading ? t('master.loading') : 'New'}
+          {(selectedMasterAgreementName?.trim() || `${masterAgreementPDA.slice(0, 8)}...`)} · {loading ? t('master.loading') : 'New'}
         </option>
       )}
     </SelectBase>

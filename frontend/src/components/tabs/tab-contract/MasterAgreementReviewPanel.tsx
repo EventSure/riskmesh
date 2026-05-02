@@ -1,7 +1,11 @@
 import styled from '@emotion/styled';
+import { useMemo } from 'react';
+import { PublicKey } from '@solana/web3.js';
 import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import { Card, CardBody, CardHeader, CardTitle, Tag } from '@/components/common';
+import { useMasterAgreementAccount } from '@/hooks/useMasterAgreementAccount';
+import { useSyncedSelectedMasterAgreementName } from '@/hooks/useSyncedSelectedMasterAgreementName';
 import { formatNum, useProtocolStore } from '@/store/useProtocolStore';
 
 export type MasterAgreementReviewStep = 'basic' | 'participants' | 'activate';
@@ -89,6 +93,7 @@ export function MasterAgreementReviewPanel({ selectedStep }: { selectedStep: Mas
     processStep,
     masterActive,
     masterAgreementPDA,
+    selectedMasterAgreementName,
   } = useProtocolStore(useShallow(state => ({
     mode: state.mode,
     coverageStart: state.coverageStart,
@@ -101,6 +106,7 @@ export function MasterAgreementReviewPanel({ selectedStep }: { selectedStep: Mas
     processStep: state.processStep,
     masterActive: state.masterActive,
     masterAgreementPDA: state.masterAgreementPDA,
+    selectedMasterAgreementName: state.selectedMasterAgreementName,
   })));
 
   const shareTotal = leaderShare + participants.reduce((sum, participant) => sum + participant.share, 0);
@@ -122,6 +128,13 @@ export function MasterAgreementReviewPanel({ selectedStep }: { selectedStep: Mas
     reinsurerConfirmed: reinsurer.confirmed,
     masterActive,
   });
+  const masterAgreementKey = useMemo(
+    () => (masterAgreementPDA ? new PublicKey(masterAgreementPDA) : null),
+    [masterAgreementPDA],
+  );
+  const { account } = useMasterAgreementAccount(masterAgreementKey);
+
+  useSyncedSelectedMasterAgreementName(account?.name);
 
   return (
     <Card data-testid="master-agreement-review-panel">
@@ -133,6 +146,11 @@ export function MasterAgreementReviewPanel({ selectedStep }: { selectedStep: Mas
       </CardHeader>
       <CardBody>
         <SummaryStack>
+          <SummaryRow>
+            <SummaryLabel>{t('master.review.name')}</SummaryLabel>
+            <SummaryValue>{selectedMasterAgreementName?.trim() || account?.name?.trim() || t('master.noNameFallback')}</SummaryValue>
+          </SummaryRow>
+
           <SummaryRow>
             <SummaryLabel>{t('master.review.coverage')}</SummaryLabel>
             <SummaryValue>{`${coverageStart} - ${coverageEnd}`}</SummaryValue>
