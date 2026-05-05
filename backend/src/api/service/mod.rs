@@ -329,19 +329,17 @@ pub(super) fn create_flight_policy(
     let leader = program_client.load_leader_signer()?;
     let flight_policy_pubkey =
         program_client.derive_flight_policy_pubkey(master_agreement_pubkey, child_policy_id);
-    let currency_mint = parse_pubkey("currency_mint", &master_agreement.currency_mint)
-        .context("currency_mint 파싱 실패")?;
-    let payer_token_pubkey =
-        program_client.derive_associated_token_account_pubkey(&leader.pubkey(), &currency_mint);
-    let leader_deposit_token = Pubkey::from_str(&master_agreement.leader_deposit_wallet)
+    let payer_token_pubkey = parse_pubkey("leader_deposit_wallet", &master_agreement.leader_deposit_wallet)
         .context("leader_deposit_wallet 주소 파싱 실패")?;
+    let leader_pool_token_pubkey = parse_pubkey("leader_pool_wallet", &master_agreement.leader_pool_wallet)
+        .context("leader_pool_wallet 주소 파싱 실패")?;
 
     let tx_signature = program_client.create_flight_policy(
         &leader,
         master_agreement_pubkey,
         &flight_policy_pubkey,
         &payer_token_pubkey,
-        &leader_deposit_token,
+        &leader_pool_token_pubkey,
         CreateFlightPolicyParamsWire {
             child_policy_id,
             subscriber_ref: req.subscriber_ref,
