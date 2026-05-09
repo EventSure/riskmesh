@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import styled from '@emotion/styled';
 
 const Wrap = styled.div`
@@ -5,6 +6,29 @@ const Wrap = styled.div`
   flex-direction: column;
   gap: 12px;
   height: 100%;
+`;
+
+const TitleBlock = styled.div<{ roleColor: string }>`
+  padding-bottom: 10px;
+  border-bottom: 1px solid ${p => p.theme.colors.border};
+`;
+
+const TitleLabel = styled.div`
+  font-size: 8px;
+  font-weight: 600;
+  color: ${p => p.theme.colors.sub};
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+`;
+
+const TitleName = styled.div<{ roleColor: string }>`
+  font-size: 13px;
+  font-weight: 700;
+  color: ${p => p.theme.colors.text};
+  padding-left: 8px;
+  border-left: 2px solid ${p => p.roleColor};
+  line-height: 1.3;
 `;
 
 const RoleBadge = styled.div<{ roleColor: string }>`
@@ -95,6 +119,7 @@ export interface NavTab {
 }
 
 interface PortalSidebarProps {
+  portalTitle?: string;
   roleName: string;
   roleColor: string;
   kpis: SidebarKpi[];
@@ -104,6 +129,7 @@ interface PortalSidebarProps {
 }
 
 export function PortalSidebar({
+  portalTitle,
   roleName,
   roleColor,
   kpis,
@@ -111,8 +137,15 @@ export function PortalSidebar({
   activeTab,
   onTabChange,
 }: PortalSidebarProps) {
+  const { t } = useTranslation();
   return (
     <Wrap>
+      {portalTitle && (
+        <TitleBlock roleColor={roleColor}>
+          <TitleLabel>{t('portal.sidebarPortalLabel')}</TitleLabel>
+          <TitleName roleColor={roleColor}>{portalTitle}</TitleName>
+        </TitleBlock>
+      )}
       <RoleBadge roleColor={roleColor}>
         <RoleHeader>
           <RoleDot color={roleColor} />

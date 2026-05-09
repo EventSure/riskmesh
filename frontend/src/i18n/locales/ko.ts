@@ -546,6 +546,12 @@ const ko = {
 
   // === Portal ===
   'portal.title': '참여사 포탈',
+  'portal.participantPortalTitle': '참여사 포탈',
+  'portal.leaderPortalTitle': '리더 포탈',
+  'portal.reinPortalTitle': '재보험사 포탈',
+  'portal.operatorPortalTitle': '운영자 포탈',
+  'portal.sidebarPortalLabel': '포탈',
+  'dashboard.title': '정산 대시보드',
   'portal.connectWallet': '지갑을 연결하세요',
   'portal.enterMasterPDA': '마스터 계약 PDA를 URL 파라미터로 입력하세요',
   'portal.enterMasterPDAHint': '예: /portal?master=<MasterAgreement PDA>',

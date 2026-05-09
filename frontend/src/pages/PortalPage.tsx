@@ -158,7 +158,7 @@ export function PortalPage() {
 
   if (!connected || !publicKey) {
     return (
-      <PageShell header={<PortalHeader role={null} masterPDA={null} />}>
+      <PageShell header={<PortalHeader role={null} masterPDA={null} pageTitle={t('portal.title')} />}>
         <CenterBox>
           <div style={{ fontSize: 32, marginBottom: 8 }}>🔗</div>
           <div>{t('portal.connectWallet')}</div>
@@ -170,7 +170,7 @@ export function PortalPage() {
 
   if (!masterPDA) {
     return (
-      <PageShell header={<PortalHeader role={null} masterPDA={null} />}>
+      <PageShell header={<PortalHeader role={null} masterPDA={null} pageTitle={t('portal.title')} />}>
         <PolicyListWrap>
           <PolicyListTitle>{t('portal.myPolicies')}</PolicyListTitle>
           {policiesLoading ? (
@@ -198,7 +198,7 @@ export function PortalPage() {
 
   if (loading) {
     return (
-      <PageShell header={<PortalHeader role={null} masterPDA={masterParam} />}>
+      <PageShell header={<PortalHeader role={null} masterPDA={masterParam} pageTitle={t('portal.title')} />}>
         <CenterBox><div>{t('portal.detectingRole')}</div></CenterBox>
       </PageShell>
     );
@@ -206,7 +206,7 @@ export function PortalPage() {
 
   if (error) {
     return (
-      <PageShell header={<PortalHeader role={null} masterPDA={masterParam} />}>
+      <PageShell header={<PortalHeader role={null} masterPDA={masterParam} pageTitle={t('portal.title')} />}>
         <ErrorBox>{error}</ErrorBox>
       </PageShell>
     );
@@ -214,7 +214,7 @@ export function PortalPage() {
 
   if (!participantInfo || roles.length === 0) {
     return (
-      <PageShell header={<PortalHeader role={null} masterPDA={masterParam} />}>
+      <PageShell header={<PortalHeader role={null} masterPDA={masterParam} pageTitle={t('portal.title')} />}>
         <CenterBox>
           <div style={{ fontSize: 32 }}>🚫</div>
           <div>{t('portal.noPermission')}</div>

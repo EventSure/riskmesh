@@ -148,9 +148,10 @@ interface PortalHeaderProps {
   masterPDA: string | null;
   roles?: ParticipantInfo[];
   hideBottomBar?: boolean;
+  pageTitle?: string;
 }
 
-export function PortalHeader({ role, masterPDA, roles, hideBottomBar = false }: PortalHeaderProps) {
+export function PortalHeader({ role, masterPDA, roles, hideBottomBar = false, pageTitle }: PortalHeaderProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { mode, toggle } = useThemeModeContext();
@@ -197,7 +198,7 @@ export function PortalHeader({ role, masterPDA, roles, hideBottomBar = false }: 
     </Controls>
   );
 
-  const bottomBar = (
+  const bottomBar = (displayRoles.length > 0 || masterPDA) ? (
     <InfoBar>
       {displayRoles.map(r => {
         const color = r.role ? ROLE_COLORS[r.role] || '#94A3B8' : '#94A3B8';
@@ -215,7 +216,7 @@ export function PortalHeader({ role, masterPDA, roles, hideBottomBar = false }: 
         </PdaBadge>
       )}
     </InfoBar>
-  );
+  ) : null;
 
-  return <BaseHeader actions={actions} bottomBar={hideBottomBar ? undefined : bottomBar} />;
+  return <BaseHeader actions={actions} bottomBar={hideBottomBar ? undefined : bottomBar} pageTitle={pageTitle} />;
 }

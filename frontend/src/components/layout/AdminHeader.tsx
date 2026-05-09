@@ -294,5 +294,5 @@ export function AdminHeader() {
     </KpiBar>
   );
 
-  return <BaseHeader nav={nav} actions={actions} bottomBar={bottomBar} />;
+  return <BaseHeader nav={nav} actions={actions} bottomBar={bottomBar} pageTitle={t('dashboard.title')} />;
 }

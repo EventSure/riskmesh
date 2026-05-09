@@ -47,6 +47,25 @@ const LogoMark = styled.div`
   box-shadow: 0 0 18px ${p => p.theme.glowSubtle.primary};
 `;
 
+const LogoImg = styled.img`
+  height: 28px;
+  width: auto;
+`;
+
+const PageTitleSep = styled.div`
+  width: 1px;
+  height: 16px;
+  background: ${p => p.theme.colors.border};
+  margin: 0 2px;
+`;
+
+const PageTitleText = styled.div`
+  font-size: 12px;
+  font-weight: 600;
+  color: ${p => p.theme.colors.sub};
+  letter-spacing: 0.01em;
+`;
+
 const LogoName = styled.div`
   font-size: 15px;
   font-weight: 700;
@@ -67,26 +86,29 @@ const HeaderRight = styled.div`
   gap: 8px;
 `;
 
-export { blink, HeaderWrap, HeaderTop, HeaderRight, Logo, LogoMark, LogoName, LogoSub };
+export { blink, HeaderWrap, HeaderTop, HeaderRight, Logo, LogoMark, LogoImg, LogoName, LogoSub, PageTitleSep, PageTitleText };
 
 interface BaseHeaderProps {
   nav?: ReactNode;
   actions?: ReactNode;
   bottomBar?: ReactNode;
+  pageTitle?: string;
 }
 
-export function BaseHeader({ nav, actions, bottomBar }: BaseHeaderProps) {
+export function BaseHeader({ nav, actions, bottomBar, pageTitle }: BaseHeaderProps) {
   const navigate = useNavigate();
 
   return (
     <HeaderWrap>
       <HeaderTop>
         <Logo onClick={() => navigate('/')}>
-          <LogoMark>OP</LogoMark>
-          <div>
-            <LogoName>OpenParametric Protocol</LogoName>
-            <LogoSub>On-chain Parametric Insurance · Solana</LogoSub>
-          </div>
+          <LogoImg src="/riskmesh/riskmesh-logo.svg" alt="RiskMesh" />
+          {pageTitle && (
+            <>
+              <PageTitleSep />
+              <PageTitleText>{pageTitle}</PageTitleText>
+            </>
+          )}
         </Logo>
         <HeaderRight>
           {nav}
