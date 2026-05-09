@@ -57,25 +57,6 @@ const NavLogo = styled.div`
   gap: 10px;
 `;
 
-const LogoMark = styled.div`
-  width: 32px;
-  height: 32px;
-  background: linear-gradient(135deg, ${p => p.theme.colors.primary}, ${p => p.theme.colors.accent});
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 800;
-  color: #fff;
-  box-shadow: 0 0 20px ${p => p.theme.glow.primary};
-`;
-
-const LogoText = styled.span`
-  font-size: 16px;
-  font-weight: 700;
-  color: ${p => p.theme.colors.text};
-`;
 
 const NavRight = styled.div`
   display: flex;
@@ -643,8 +624,7 @@ export function LandingPage() {
       {/* ── Navbar ── */}
       <Nav>
         <NavLogo>
-          <LogoMark>OP</LogoMark>
-          <LogoText>Open Parametric</LogoText>
+          <img src="/riskmesh/riskmesh-logo.svg" alt="RiskMesh" style={{ height: 28, width: 'auto' }} />
         </NavLogo>
         <NavRight>
           <LangSelect
