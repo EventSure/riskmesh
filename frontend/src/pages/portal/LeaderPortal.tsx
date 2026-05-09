@@ -120,7 +120,7 @@ export function LeaderPortal({
 
   return (
     <PortalShell
-      header={<PortalHeader role="leader" masterPDA={masterPDAStr} roles={allRoles} hideBottomBar />}
+      header={<PortalHeader role="leader" masterPDA={masterPDAStr} roles={allRoles} hideBottomBar pageTitle={t('portal.leaderPortalTitle')} />}
       sidebar={
         <PortalSidebar
           portalTitle={t('portal.leaderPortalTitle')}

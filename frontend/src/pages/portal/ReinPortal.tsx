@@ -97,7 +97,7 @@ export function ReinPortal({ masterPDA, masterPDAStr, participantInfo, allRoles,
 
   return (
     <PortalShell
-      header={<PortalHeader role="rein" masterPDA={masterPDAStr} roles={allRoles} hideBottomBar />}
+      header={<PortalHeader role="rein" masterPDA={masterPDAStr} roles={allRoles} hideBottomBar pageTitle={t('portal.reinPortalTitle')} />}
       sidebar={
         <PortalSidebar
           portalTitle={t('portal.reinPortalTitle')}
