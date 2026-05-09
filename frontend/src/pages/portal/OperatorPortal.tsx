@@ -52,7 +52,7 @@ export function OperatorPortal({ masterPDA, masterPDAStr, allRoles }: OperatorPo
       header={<PortalHeader role={null} masterPDA={masterPDAStr} roles={allRoles} hideBottomBar />}
       sidebar={
         <PortalSidebar
-          portalTitle="Operator Portal"
+          portalTitle={t('portal.operatorPortalTitle')}
           roleName={t('portal.role.operator')}
           roleColor={ROLE_COLOR}
           kpis={sidebarKpis}

@@ -144,7 +144,7 @@ export function ParticipantPortal({
       header={<PortalHeader role="participant" masterPDA={masterPDAStr} roles={allRoles} hideBottomBar />}
       sidebar={
         <PortalSidebar
-          portalTitle="Participant Portal"
+          portalTitle={t('portal.participantPortalTitle')}
           roleName={t('portal.role.participant')}
           roleColor={ROLE_COLOR}
           kpis={sidebarKpis}

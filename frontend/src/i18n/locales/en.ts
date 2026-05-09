@@ -546,6 +546,12 @@ const en = {
 
   // === Portal ===
   'portal.title': 'Participant Portal',
+  'portal.participantPortalTitle': 'Participant Portal',
+  'portal.leaderPortalTitle': 'Leader Portal',
+  'portal.reinPortalTitle': 'Reinsurer Portal',
+  'portal.operatorPortalTitle': 'Operator Portal',
+  'portal.sidebarPortalLabel': 'Portal',
+  'dashboard.title': 'Settlement Dashboard',
   'portal.connectWallet': 'Please connect your wallet',
   'portal.enterMasterPDA': 'Enter a Master Agreement PDA via URL parameter',
   'portal.enterMasterPDAHint': 'e.g., /portal?master=<MasterAgreement PDA>',

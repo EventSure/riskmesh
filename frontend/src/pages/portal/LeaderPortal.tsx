@@ -123,7 +123,7 @@ export function LeaderPortal({
       header={<PortalHeader role="leader" masterPDA={masterPDAStr} roles={allRoles} hideBottomBar />}
       sidebar={
         <PortalSidebar
-          portalTitle="Leader Portal"
+          portalTitle={t('portal.leaderPortalTitle')}
           roleName={t('portal.role.leader')}
           roleColor={ROLE_COLOR}
           kpis={sidebarKpis}

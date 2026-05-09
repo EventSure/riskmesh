@@ -100,7 +100,7 @@ export function ReinPortal({ masterPDA, masterPDAStr, participantInfo, allRoles,
       header={<PortalHeader role="rein" masterPDA={masterPDAStr} roles={allRoles} hideBottomBar />}
       sidebar={
         <PortalSidebar
-          portalTitle="Reinsurer Portal"
+          portalTitle={t('portal.reinPortalTitle')}
           roleName={t('portal.role.rein')}
           roleColor={ROLE_COLOR}
           kpis={sidebarKpis}

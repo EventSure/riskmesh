@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import styled from '@emotion/styled';
 
 const Wrap = styled.div`
@@ -136,11 +137,12 @@ export function PortalSidebar({
   activeTab,
   onTabChange,
 }: PortalSidebarProps) {
+  const { t } = useTranslation();
   return (
     <Wrap>
       {portalTitle && (
         <TitleBlock roleColor={roleColor}>
-          <TitleLabel>Portal</TitleLabel>
+          <TitleLabel>{t('portal.sidebarPortalLabel')}</TitleLabel>
           <TitleName roleColor={roleColor}>{portalTitle}</TitleName>
         </TitleBlock>
       )}
