@@ -1,5 +1,9 @@
 # `track_b.rs` 상세 설명
 
+> Legacy note: 이 문서는 구 `Policy` / `check_oracle_and_create_claim` 기반 Track B를 설명합니다.
+> 현재 구현은 `FlightPolicy` / `check_oracle_and_resolve_flight`와 Switchboard quote 검증 경로를 사용합니다.
+> 최신 운영 흐름은 `backend/docs/backend-overview.md`의 Track B 섹션을 기준으로 보세요.
+
 이 문서는 [track_b.rs](../src/oracle/track_b.rs)를 중심으로, Track B 오라클 파이프라인이 어떤 역할을 하고 어떤 순서로 동작하는지 설명합니다.
 
 Track B는 Switchboard On-Demand 오라클을 사용하는 경로입니다.  
@@ -505,7 +509,7 @@ let oracle_update =
         .context("Switchboard oracle update 수신 실패")?;
 ```
 
-이 부분은 [switchboard.rs](../src/switchboard.rs#L50)로 넘어가서 Crossbar HTTP API를 호출합니다.
+이 부분은 당시 `backend/src/switchboard.rs` 구현으로 넘어가서 Crossbar HTTP API를 호출했습니다. 현재 Track B 구현에서는 이 파일을 제거했고, `contract/scripts/05b-claim.ts`가 per-flight feed quote를 조회합니다.
 
 받아오는 값은 `OracleUpdate`이며 주요 내용은:
 
@@ -701,7 +705,7 @@ Track B는 이 LUT를 써야 할 수 있으므로 v0 transaction 경로를 사�
 ## 12. 관련 파일 같이 보면 좋은 것
 
 - [backend/src/oracle/track_b.rs](../src/oracle/track_b.rs)
-- [backend/src/switchboard.rs](../src/switchboard.rs)
+- `backend/src/switchboard.rs` (legacy, removed)
 - [backend/src/solana/client.rs](../src/solana/client.rs)
 - [backend/src/solana/pda.rs](../src/solana/pda.rs)
 - [backend/src/scheduler.rs](../src/scheduler.rs)

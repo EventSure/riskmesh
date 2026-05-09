@@ -69,6 +69,7 @@ pub struct FlightPolicyInfo {
     pub premium_distributed: bool,
     pub created_at: i64,
     pub updated_at: i64,
+    pub oracle_feed: String,
 }
 
 pub fn scan_master_agreements(
@@ -211,6 +212,14 @@ fn parse_flight_policy(pubkey: &Pubkey, data: &[u8]) -> Result<FlightPolicyInfo>
     let created_at = read_i64(data, &mut offset)?;
     let updated_at = read_i64(data, &mut offset)?;
     let _bump = read_u8(data, &mut offset)?;
+    // oracle_feed는 state.rs에서 bump 뒤에 배치됨 (기존 계정 호환을 위해 선택적 읽기)
+    let oracle_feed = if offset + 32 <= data.len() {
+        read_pubkey(data, &mut offset)
+            .map(|k| k.to_string())
+            .unwrap_or_default()
+    } else {
+        String::new()
+    };
 
     Ok(FlightPolicyInfo {
         pubkey: pubkey.to_string(),
@@ -230,6 +239,7 @@ fn parse_flight_policy(pubkey: &Pubkey, data: &[u8]) -> Result<FlightPolicyInfo>
         premium_distributed,
         created_at,
         updated_at,
+        oracle_feed,
     })
 }
 

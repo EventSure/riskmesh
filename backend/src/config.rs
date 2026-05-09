@@ -15,6 +15,8 @@ pub struct Config {
     pub db_backend: DbBackend,
     pub database_path: String,
     pub web_bind_addr: String,
+    pub contract_dir: String,
+    pub proxy_url: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -49,6 +51,8 @@ impl Config {
             },
             database_path: env("DATABASE_PATH", "data/riskmesh.db"),
             web_bind_addr: env("WEB_BIND_ADDR", "0.0.0.0:3000"),
+            contract_dir: env("CONTRACT_DIR", "../contract"),
+            proxy_url: env("PROXY_URL", ""),
         })
     }
 }

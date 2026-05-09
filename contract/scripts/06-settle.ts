@@ -20,14 +20,22 @@ async function main() {
   if (!s.leaderDepositWallet || !s.reinsurerPoolWallet || !s.leaderPoolWallet || !s.leaderAta) {
     throw new Error("토큰 계정 정보 없음. yarn demo:3-master-setup 먼저 실행하세요.");
   }
-  if (!s.participantAPoolWallet || !s.participantBPoolWallet) {
-    throw new Error("참여사 pool wallet 없음. yarn demo:3-master-setup 먼저 실행하세요.");
-  }
-
   const leader    = kp(s.leaderKey);
   const pg        = makeProgram(leader);
   const masterPda = new PublicKey(s.masterPda);
   const existing  = s.flightPolicies as any[];
+  const master    = await pg.account.masterAgreement.fetch(masterPda);
+  const participants = (master.participants ?? []).filter((p: any) => p.shareBps > 0);
+  const participantPoolAccounts = participants.map((p: any) => ({
+    pubkey: new PublicKey(p.poolWallet ?? p.pool_wallet),
+    isWritable: true,
+    isSigner: false,
+  }));
+  const participantDepositAccounts = participants.map((p: any) => ({
+    pubkey: new PublicKey(p.depositWallet ?? p.deposit_wallet),
+    isWritable: true,
+    isSigner: false,
+  }));
 
   const targetId = process.env.CHILD_POLICY_ID
     ? parseInt(process.env.CHILD_POLICY_ID)
@@ -63,11 +71,7 @@ async function main() {
         reinsurerPoolToken:  new PublicKey(s.reinsurerPoolWallet),
         tokenProgram:        TOKEN_PROGRAM_ID,
       })
-      .remainingAccounts([
-        // participants 순서대로: A, B 각 pool_wallet
-        { pubkey: new PublicKey(s.participantAPoolWallet!), isWritable: true, isSigner: false },
-        { pubkey: new PublicKey(s.participantBPoolWallet!), isWritable: true, isSigner: false },
-      ])
+      .remainingAccounts(participantPoolAccounts)
       .signers([leader])
       .rpc();
 
@@ -92,11 +96,7 @@ async function main() {
         reinsurerDepositToken:  new PublicKey(s.reinsurerDepositWallet ?? s.leaderPoolWallet),
         tokenProgram:           TOKEN_PROGRAM_ID,
       })
-      .remainingAccounts([
-        // participants 순서대로: A, B 각 deposit_wallet
-        { pubkey: new PublicKey(s.participantADepositWallet!),       isWritable: true, isSigner: false },
-        { pubkey: new PublicKey(s.participantBDepositWallet!),       isWritable: true, isSigner: false },
-      ])
+      .remainingAccounts(participantDepositAccounts)
       .signers([leader])
       .rpc();
 

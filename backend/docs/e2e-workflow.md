@@ -219,20 +219,18 @@ AVIATIONSTACK_API_KEY=<키> FLIGHT_NO=KE017 yarn demo:2-feed-create
 yarn demo:3-master-setup
 
 # FlightPolicy 생성
-FLIGHT_NO=KE017 yarn demo:4-flight-create
+FLIGHT_NO=KE017 npm run demo:4-flight-create
 ```
 
 ### Step 5. 백엔드 데몬 실행 (Track B 자동화)
 
-> Track B 백엔드 통합은 현재 진행 중입니다.
-> `check_oracle_and_resolve_flight` instruction이 온체인에 존재하며 수동 테스트는 devnet에서 진행합니다.
-> 자동화 데몬 지원은 추후 추가됩니다.
+> Track B 백엔드는 per-flight Switchboard quote를 검증한 뒤 상태에 따라 자동 정산합니다.
 
 devnet 수동 확인:
 ```bash
 cd contract
-yarn demo:5b-claim   # Switchboard oracle → check_oracle_and_resolve_flight
-yarn demo:6-settle   # 상태에 따라 settle_flight_claim 또는 settle_flight_no_claim
+npm run demo:5b-claim   # Switchboard quote → check_oracle_and_resolve_flight
+npm run demo:6-settle   # 상태에 따라 settle_flight_claim 또는 settle_flight_no_claim
 ```
 
 ---

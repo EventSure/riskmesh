@@ -100,10 +100,11 @@ async fn run_db_sync(
 /// 단일 오라클 체크 사이클: Track A + Track B 모두 실행
 async fn run_oracle_check(config: &Config) -> Result<()> {
     use crate::{
-        oracle::{track_a, track_b},
+        oracle::track_b,
         solana::client::SolanaClient,
     };
-    use solana_sdk::{signature::read_keypair_file, signer::Signer};
+    use solana_sdk::{pubkey::Pubkey, signature::read_keypair_file, signer::Signer};
+    use std::str::FromStr;
 
     let client = SolanaClient::new(&config.rpc_url);
 
@@ -114,8 +115,24 @@ async fn run_oracle_check(config: &Config) -> Result<()> {
     tracing::info!("[scheduler] 오라클 체크 시작. leader={}", leader.pubkey());
 
     // ── Track B ──────────────────────────────────────────────────────────────
-    let track_b_policies =
+    let mut track_b_policies =
         track_b::scan_flight_policies(&client, &config.program_id).await?;
+
+    if let Ok(master_pda) = std::env::var("MASTER_PDA") {
+        let master_pda = Pubkey::from_str(&master_pda)
+            .with_context(|| format!("MASTER_PDA 주소 파싱 실패: {master_pda}"))?;
+        track_b_policies.retain(|fp| fp.master_agreement == master_pda);
+        tracing::info!("[track_b] MASTER_PDA 필터 적용: {}", master_pda);
+    }
+
+    if let Ok(child_policy_id) = std::env::var("CHILD_POLICY_ID") {
+        let child_policy_id = child_policy_id
+            .parse::<u64>()
+            .with_context(|| format!("CHILD_POLICY_ID 파싱 실패: {child_policy_id}"))?;
+        track_b_policies.retain(|fp| fp.child_policy_id == child_policy_id);
+        tracing::info!("[track_b] CHILD_POLICY_ID 필터 적용: {}", child_policy_id);
+    }
+
     tracing::info!("[track_b] AwaitingOracle FlightPolicy {}개 발견", track_b_policies.len());
 
     for fp in &track_b_policies {
@@ -127,20 +144,9 @@ async fn run_oracle_check(config: &Config) -> Result<()> {
         }
     }
 
-    // ── Track A ──────────────────────────────────────────────────────────────
-    let flight_policies =
-        track_a::scan_active_flight_policies(&client, &config.program_id, &config.leader_pubkey)
-            .await?;
-    tracing::info!("[track_a] 처리 대상 FlightPolicy {}개 발견", flight_policies.len());
-
-    for fp in &flight_policies {
-        if let Err(e) = track_a::run(config, &client, &leader, fp).await {
-            tracing::error!(
-                "[track_a] {} 처리 실패: {e:#}",
-                fp.flight_no
-            );
-        }
-    }
+    // Track A is intentionally manual-only. The daemon owns Track B automation so
+    // real runs cannot silently fall back to trusted resolver behavior.
+    tracing::info!("[track_a] 자동 실행 비활성화 (manual resolver only)");
 
     Ok(())
 }

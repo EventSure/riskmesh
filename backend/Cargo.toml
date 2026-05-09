@@ -19,7 +19,7 @@ solana-sdk    = "1.18"
 # Async runtime
 tokio = { version = "1", features = ["full"] }
 
-# HTTP client (AviationStack + Switchboard Crossbar)
+# HTTP client (AviationStack proxy / Firebase)
 reqwest = { version = "0.12", features = ["json"] }
 
 # Scheduling
@@ -44,7 +44,5 @@ borsh     = "0.10"
 shellexpand = "3"
 solana-account-decoder = "1.18"
 sha2      = "0.10"
-bincode   = "1"
-base64    = "0.22"
 tokio-stream = { version = "0.1", features = ["sync"] }
 futures-util = "0.3"

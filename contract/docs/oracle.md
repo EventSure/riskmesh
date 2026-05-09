@@ -16,23 +16,23 @@ Open Parametric 컨트랙트의 오라클 연동은 두 가지 독립적인 트�
 
 ## Switchboard On-Demand 개념
 
-### Pull Feed란
+### Per-flight Pull Feed와 Quote
 
-Switchboard On-Demand의 **Pull Feed**는 Solana 온체인 계정입니다.
-이 계정은 "어떤 외부 데이터를 어떻게 가져와야 하는가"를 정의하는 **Job 목록**을 담고 있으며,
-오라클 노드가 해당 Job을 실행하고 서명한 결과값을 이 계정에 기록합니다.
+Switchboard On-Demand의 **Pull Feed**는 항공편별로 생성되는 Solana 온체인 계정입니다.
+이 계정은 Explorer가 조회할 v2 feed hash를 보관합니다. 실제 지연값 확정은 Pull Feed의
+latest value를 읽지 않고, 같은 feed hash에 대한 Switchboard quote를
+`check_oracle_and_resolve_flight`에서 검증해 처리합니다.
 
 ```
 Pull Feed 계정 (온체인 Solana 계정)
-  ├─ pubkey: <피드 주소>          ← MasterAgreement.oracle_feed에 저장하는 값
+  ├─ pubkey: <피드 주소>          ← FlightPolicy.oracle_feed에 저장하는 값
   ├─ jobs: [ OracleJob, ... ]    ← 데이터 fetch/변환 파이프라인 정의
   ├─ queue: <큐 주소>             ← 어느 오라클 네트워크가 처리할지
-  ├─ latest_value: <최신값>       ← 마지막으로 기록된 오라클 결과
-  └─ latest_slot: <슬롯>          ← 기록 시점 (staleness 판별용)
+  └─ feed_hash: <v2 feed id>      ← quote feed_id와 매칭
 ```
 
-`MasterAgreement.oracle_feed`에 넣는 주소는 **이 Pull Feed 계정의 pubkey**입니다.
-계정을 먼저 생성(1회)하고, 그 주소를 `create_master_agreement` 파라미터로 전달합니다.
+`FlightPolicy.oracle_feed`에 넣는 주소는 **이 Pull Feed 계정의 pubkey**입니다.
+`MasterAgreement.oracle_feed`는 legacy/main 호환 필드로 남아 있지만 Track B resolve에는 사용하지 않습니다.
 
 ### Job이란
 
@@ -185,12 +185,12 @@ MasterAgreement  PDA: ["master_agreement", leader, master_id_le8]
 FlightPolicy  PDA: ["flight_policy", master_agreement, child_policy_id_le8]
 ```
 
-`MasterAgreement`에는 Track B용 Switchboard 피드 주소가 저장됩니다.
+`FlightPolicy`에는 항공편별 Switchboard 피드 주소가 저장됩니다.
 
 ```
-MasterAgreement.oracle_feed
-  - Track B master: Switchboard Pull Feed 계정 주소
-  - Track A master: Pubkey::default() (오라클 없음)
+FlightPolicy.oracle_feed
+  - Track B child policy: 항공편별 Switchboard Pull Feed 계정 주소
+  - Track A/manual child policy: Pubkey::default()
 ```
 
 ### FlightPolicy 상태 머신 (Track A / B 공통)
@@ -327,11 +327,11 @@ Switchboard 오라클 네트워크가 AviationStack API를 직접 호출하여 �
 AviationStack API
        │
        ▼  (Switchboard oracle 노드가 호출)
-Pull Feed 계정 (MasterAgreement.oracle_feed)
-  ← 온체인 기록 + 암호학적 서명
+Pull Feed 계정 (FlightPolicy.oracle_feed)
+  ← v2 feed hash 기준 quote 서명
        │
        ▼
-check_oracle_and_resolve_flight (3-ix 트랜잭션 필수)
+check_oracle_and_resolve_flight (quote ix + resolve ix)
   ├─ payout > 0  → FlightPolicy: Claimable
   └─ payout = 0  → FlightPolicy: NoClaim
        │
@@ -471,9 +471,9 @@ pub struct SettleFlightNoClaim<'info> {
 | **대상 계정** | `FlightPolicy` | `FlightPolicy` |
 | **서명 요건** | Leader 또는 Operator | 누구나 (trustless) |
 | **결항 처리** | `cancelled=true` 파라미터 | 불가 (숫자 피드만) |
-| **tx 구조** | 일반 트랜잭션 | v0 트랜잭션 (3 instructions + LUT) |
+| **tx 구조** | 일반 트랜잭션 | v0 트랜잭션 (quote ix + resolve ix) |
 | **네트워크** | localnet / devnet / mainnet | devnet 이상 필수 |
-| **oracle_feed** | `MasterAgreement.oracle_feed = Pubkey::default()` | Switchboard Pull Feed 주소 |
+| **oracle_feed** | `FlightPolicy.oracle_feed = Pubkey::default()` | 항공편별 Switchboard Pull Feed 주소 |
 | **자동화** | oracle daemon Track A | oracle daemon Track B |
 
 ---
@@ -521,22 +521,22 @@ yarn demo:6-settle
 cd contract
 
 # 1. 초기 셋업 (최초 1회)
-yarn demo:1-setup
+npm run demo:1-setup
 
 # 2. Switchboard Pull Feed 생성 (1회, feedPubkey가 .state.json에 저장됨)
-AVIATIONSTACK_API_KEY=<키> FLIGHT_NO=KE017 yarn demo:2-feed-create
+AVIATIONSTACK_API_KEY=<키> FLIGHT_NO=KE017 npm run demo:2-feed-create
 
 # 3. MasterAgreement 생성 (oracle_feed = 위에서 얻은 feedPubkey 자동 적용)
-yarn demo:3-master-setup
+npm run demo:3-master-setup
 
 # 4. FlightPolicy 생성
-FLIGHT_NO=KE017 yarn demo:4-flight-create
+FLIGHT_NO=KE017 npm run demo:4-flight-create
 
-# 5. Switchboard oracle → check_oracle_and_resolve_flight (수동 트리거)
-yarn demo:5b-claim
+# 5. Switchboard quote → check_oracle_and_resolve_flight (수동 트리거)
+npm run demo:5b-claim
 #    또는 backend daemon이 15분 주기로 자동 처리:
 #    cd ../backend && cargo run
 
 # 6. 정산
-yarn demo:6-settle
+npm run demo:6-settle
 ```

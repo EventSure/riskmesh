@@ -7,7 +7,6 @@ mod flight_api;
 mod oracle;
 mod scheduler;
 mod solana;
-mod switchboard;
 
 use anyhow::Result;
 use std::sync::Arc;
@@ -26,12 +25,13 @@ async fn main() -> Result<()> {
 
     let config = Arc::new(config::Config::from_env()?);
     tracing::info!(
-        "RiskMesh Backend 시작\n  RPC: {}\n  Program: {}\n  Leader: {}\n  Web: {}\n  DB backend: {:?}",
+        "RiskMesh Backend 시작\n  RPC: {}\n  Program: {}\n  Leader: {}\n  Web: {}\n  DB backend: {:?}\n  Contract dir: {}",
         config.rpc_url,
         config.program_id,
         config.leader_pubkey,
         config.web_bind_addr,
         config.db_backend,
+        config.contract_dir,
     );
 
     let repository: Arc<dyn InsuranceRepository> = match config.db_backend {

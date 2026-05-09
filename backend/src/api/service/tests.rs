@@ -92,6 +92,8 @@ fn test_config() -> Config {
         db_backend: DbBackend::Sqlite,
         database_path: ":memory:".to_string(),
         web_bind_addr: "127.0.0.1:3000".to_string(),
+        contract_dir: String::new(),
+        proxy_url: String::new(),
     }
 }
 
@@ -157,6 +159,7 @@ fn flight_policy(pubkey: &str, master: &str, status: u8, child_policy_id: u64) -
         premium_distributed: false,
         created_at: 123,
         updated_at: 124,
+        oracle_feed: Pubkey::new_unique().to_string(),
     }
 }
 

@@ -132,6 +132,7 @@ pub fn handler(
     flight.created_at = now;
     flight.updated_at = now;
     flight.bump = ctx.bumps.flight_policy;
+    flight.oracle_feed = params.oracle_feed;
 
     Ok(())
 }

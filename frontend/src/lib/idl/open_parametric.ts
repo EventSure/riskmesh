@@ -249,7 +249,7 @@ export type OpenParametric = {
     {
       "name": "checkOracleAndResolveFlight",
       "docs": [
-        "3-instruction 트랜잭션 필요: [Ed25519, verified_update, 이 instruction]"
+        "2-instruction 트랜잭션 필요: [Switchboard quote Ed25519, 이 instruction]"
       ],
       "discriminator": [
         14,
@@ -273,7 +273,7 @@ export type OpenParametric = {
         {
           "name": "masterAgreement",
           "docs": [
-            "oracle_feed 주소와 tiered payout 기준을 제공하는 마스터 계약."
+            "tiered payout 기준을 제공하는 마스터 계약."
           ]
         },
         {
@@ -287,15 +287,14 @@ export type OpenParametric = {
           "name": "oracleFeed"
         },
         {
-          "name": "queue",
-          "address": "A43DyUGA7s8eXPxqEjJY6EBu1KKbNgfxF8h17VAHn13w"
+          "name": "switchboardQueue"
         },
         {
-          "name": "slotHashes",
+          "name": "slothashSysvar",
           "address": "SysvarS1otHashes111111111111111111111111111"
         },
         {
-          "name": "instructions",
+          "name": "instructionsSysvar",
           "address": "Sysvar1nstructions1111111111111111111111111"
         }
       ],

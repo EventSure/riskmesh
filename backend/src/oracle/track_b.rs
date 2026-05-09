@@ -1,17 +1,15 @@
-/// Track B — Switchboard On-Demand 자동화
+/// Track B — Switchboard On-Demand 자동화 (TypeScript 서브프로세스 위임)
 ///
 /// 흐름:
 ///   1. getProgramAccounts로 AwaitingOracle(1) FlightPolicy 목록 조회
-///   2. FlightPolicy.master 주소로 Master Agreement 계정 RPC 조회 → oracle_feed 추출
-///   3. Switchboard Crossbar API에서 오라클 업데이트 수신
-///   4. [Ed25519 ix, verified_update ix, check_oracle_and_resolve_flight ix] 트랜잭션 전송
-///   5. FlightPolicy 재조회 → Claimable → settle_flight_claim, NoClaim → settle_flight_no_claim
+///   2. FlightPolicy.master 주소로 Master Agreement 계정 RPC 조회 → 정산 지갑 확인
+///   3. `npm run demo:5b-claim` 서브프로세스 실행 → per-flight quote 검증 + check_oracle_and_resolve_flight tx
+///   4. FlightPolicy 재조회 → Claimable → settle_flight_claim, NoClaim → settle_flight_no_claim
 use anyhow::{Context, Result};
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
     signer::Signer,
-    sysvar,
 };
 use std::str::FromStr;
 
@@ -26,7 +24,6 @@ use crate::{
         discriminators::FLIGHT_POLICY,
         FLIGHT_POLICY_STATUS_AWAITING_ORACLE,
     },
-    switchboard,
 };
 
 // FlightPolicy 상태 상수 — oracle 완료 후 settle 단계 판별용
@@ -37,7 +34,6 @@ const FLIGHT_POLICY_STATUS_NO_CLAIM: u8 = 4;
 #[derive(Debug)]
 struct MasterAgreementInfo {
     pub pubkey: Pubkey,
-    pub oracle_feed: Pubkey,
     pub leader_pool_wallet: Pubkey,
     pub leader_deposit_wallet: Pubkey,
     pub reinsurer_pool_wallet: Option<Pubkey>,
@@ -94,7 +90,7 @@ pub async fn scan_flight_policies(
 }
 
 /// Track B 오라클 실행:
-///   - `AwaitingOracle`: Master Agreement 조회 → Switchboard oracle resolve → settle
+///   - `AwaitingOracle`: Master Agreement 조회 → TypeScript 서브프로세스 oracle resolve → settle
 ///   - `Claimable` / `NoClaim`: oracle 없이 settle만 재시도
 pub async fn run(
     config: &Config,
@@ -141,61 +137,38 @@ pub async fn run(
         flight.pubkey
     );
 
-    // 1. Master Agreement 계정 조회 → oracle_feed + 정산 지갑 목록 추출
+    // 1. Master Agreement 계정 조회 → 정산 지갑 목록 추출
+    //    Legacy/main accounts may still store MasterAgreement.oracle_feed, but this
+    //    branch resolves Track B from FlightPolicy.oracle_feed in 05b-claim.ts.
     let agreement = fetch_master_agreement(client, &flight.master_agreement)
         .with_context(|| format!("MasterAgreement 조회 실패: {}", flight.master_agreement))?;
 
-    if agreement.oracle_feed == Pubkey::default() {
-        tracing::info!(
-            "[track_b] {} oracle_feed 미설정 (Track A 전용 master), 스킵",
-            flight.flight_no
-        );
-        return Ok(());
-    }
-
-    // 2. Switchboard Crossbar에서 서명된 oracle update 수신
-    let oracle_update = switchboard::fetch_oracle_update(
-        &config.switchboard_queue,
-        &agreement.oracle_feed,
-        &client.rpc,
-    )
-    .await
-    .context("Switchboard oracle update 수신 실패")?;
-
+    // 2. 05b-claim.ts 서브프로세스 실행 (per-flight quote fetch + check_oracle_and_resolve_flight)
+    let child_id_str = flight.child_policy_id.to_string();
     tracing::info!(
-        "[track_b] {} oracle 값: {}분",
-        flight.flight_no,
-        oracle_update.value
+        "[track_b] {} 서브프로세스 실행 (CHILD_POLICY_ID={})",
+        flight.flight_no, child_id_str
+    );
+    let exit_status = tokio::process::Command::new("npm")
+        .arg("run")
+        .arg("demo:5b-claim")
+        .current_dir(&config.contract_dir)
+        .env("ANCHOR_PROVIDER_URL", &config.rpc_url)
+        .env("PROGRAM_ID", config.program_id.to_string())
+        .env("PROXY_URL", &config.proxy_url)
+        .env("CHILD_POLICY_ID", &child_id_str)
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
+        .status()
+        .await
+        .context("05b-claim.ts 서브프로세스 실행 실패")?;
+
+    anyhow::ensure!(
+        exit_status.success(),
+        "05b-claim.ts 비정상 종료 (code={:?})", exit_status.code()
     );
 
-    // 3. check_oracle_and_resolve_flight 트랜잭션 전송
-    //    트랜잭션 순서 필수: [Ed25519 ix, verified_update ix, our ix]
-    let our_ix = build_check_oracle_and_resolve_flight_ix(
-        &config.program_id,
-        &payer.pubkey(),
-        &agreement.pubkey,
-        &flight.pubkey,
-        &agreement.oracle_feed,
-        &config.switchboard_queue,
-    )?;
-
-    let instructions = vec![
-        oracle_update.ed25519_ix,
-        oracle_update.verified_update_ix,
-        our_ix,
-    ];
-
-    let sig = client
-        .send_v0_transaction(instructions, &oracle_update.luts, payer)
-        .context("check_oracle_and_resolve_flight 트랜잭션 실패")?;
-
-    tracing::info!(
-        "[track_b] {} oracle resolve 완료. tx={}",
-        flight.flight_no,
-        sig
-    );
-
-    // 4. FlightPolicy 재조회 → Claimable/NoClaim에 따라 settle
+    // 3. FlightPolicy 재조회 → Claimable/NoClaim에 따라 settle
     let updated_account = client
         .get_account(&flight.pubkey)
         .with_context(|| format!("FlightPolicy 재조회 실패: {}", flight.pubkey))?;
@@ -339,11 +312,10 @@ fn parse_master_agreement(pubkey: &Pubkey, data: &[u8]) -> Result<MasterAgreemen
         participant_deposit_wallets.push(deposit_wallet);
     }
 
-    let oracle_feed = read_pubkey(data, &mut offset)?;
+    let _legacy_oracle_feed = read_pubkey(data, &mut offset)?;
 
     Ok(MasterAgreementInfo {
         pubkey: *pubkey,
-        oracle_feed,
         leader_pool_wallet,
         leader_deposit_wallet,
         reinsurer_pool_wallet,
@@ -354,41 +326,6 @@ fn parse_master_agreement(pubkey: &Pubkey, data: &[u8]) -> Result<MasterAgreemen
 }
 
 // ─── Instruction 빌더 ─────────────────────────────────────────────────────────
-
-/// check_oracle_and_resolve_flight instruction을 빌드한다 (인자 없음).
-///
-/// 계정 순서 (check_oracle_and_resolve_flight.rs Accounts 구조체 기준):
-///   [0] payer        (signer, mut)
-///   [1] master_agreement (readonly)
-///   [2] flight_policy (mut)
-///   [3] oracle_feed   (readonly, CHECK)
-///   [4] queue         (readonly, CHECK — address = default_queue())
-///   [5] slot_hashes   (sysvar, readonly)
-///   [6] instructions  (sysvar, readonly)
-fn build_check_oracle_and_resolve_flight_ix(
-    program_id: &Pubkey,
-    payer: &Pubkey,
-    master_agreement: &Pubkey,
-    flight_policy: &Pubkey,
-    oracle_feed: &Pubkey,
-    queue: &Pubkey,
-) -> Result<Instruction> {
-    let discriminator = anchor_instruction_discriminator("check_oracle_and_resolve_flight");
-    Ok(Instruction {
-        program_id: *program_id,
-        accounts: vec![
-            AccountMeta::new(*payer, true),
-            // TODO: instruction accounts are shared with the smart contract; rename with contract update.
-            AccountMeta::new_readonly(*master_agreement, false),
-            AccountMeta::new(*flight_policy, false),
-            AccountMeta::new_readonly(*oracle_feed, false),
-            AccountMeta::new_readonly(*queue, false),
-            AccountMeta::new_readonly(sysvar::slot_hashes::id(), false),
-            AccountMeta::new_readonly(sysvar::instructions::id(), false),
-        ],
-        data: discriminator.to_vec(),
-    })
-}
 
 /// settle_flight_claim instruction을 빌드한다.
 ///

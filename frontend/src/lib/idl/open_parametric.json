@@ -64,7 +64,7 @@
         {
           "name": "master_agreement",
           "docs": [
-            "oracle_feed 주소와 tiered payout 기준을 제공하는 마스터 계약."
+            "tiered payout 기준을 제공하는 마스터 계약."
           ]
         },
         {
@@ -75,19 +75,19 @@
           "writable": true
         },
         {
-          "name": "oracle_feed"
+          "name": "oracle_feed",
+          "docs": [
+            "feed_hash를 읽어 quote feed_id와 일치하는지 검증."
+          ]
         },
         {
-          "name": "queue",
-          "address": "A43DyUGA7s8eXPxqEjJY6EBu1KKbNgfxF8h17VAHn13w"
+          "name": "switchboard_queue"
         },
         {
-          "name": "slot_hashes",
-          "address": "SysvarS1otHashes111111111111111111111111111"
+          "name": "slothash_sysvar"
         },
         {
-          "name": "instructions",
-          "address": "Sysvar1nstructions1111111111111111111111111"
+          "name": "instructions_sysvar"
         }
       ],
       "args": []
@@ -652,6 +652,10 @@
           {
             "name": "departure_ts",
             "type": "i64"
+          },
+          {
+            "name": "oracle_feed",
+            "type": "pubkey"
           }
         ]
       }
@@ -794,6 +798,10 @@
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "oracle_feed",
+            "type": "pubkey"
           }
         ]
       }
