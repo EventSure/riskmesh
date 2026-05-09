@@ -30,6 +30,7 @@ const Logo = styled.div`
   align-items: center;
   gap: 10px;
   cursor: pointer;
+  flex-shrink: 0;
   transition: opacity 0.2s;
   &:hover { opacity: 0.75; }
 `;
@@ -64,6 +65,7 @@ const PageTitleText = styled.div`
   font-weight: 600;
   color: ${p => p.theme.colors.sub};
   letter-spacing: 0.01em;
+  white-space: nowrap;
 `;
 
 const LogoName = styled.div`
