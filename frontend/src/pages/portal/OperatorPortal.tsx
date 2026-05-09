@@ -49,7 +49,7 @@ export function OperatorPortal({ masterPDA, masterPDAStr, allRoles }: OperatorPo
 
   return (
     <PortalShell
-      header={<PortalHeader role={null} masterPDA={masterPDAStr} roles={allRoles} hideBottomBar />}
+      header={<PortalHeader role={null} masterPDA={masterPDAStr} roles={allRoles} hideBottomBar pageTitle={t('portal.operatorPortalTitle')} />}
       sidebar={
         <PortalSidebar
           portalTitle={t('portal.operatorPortalTitle')}

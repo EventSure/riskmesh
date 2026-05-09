@@ -141,7 +141,7 @@ export function ParticipantPortal({
 
   return (
     <PortalShell
-      header={<PortalHeader role="participant" masterPDA={masterPDAStr} roles={allRoles} hideBottomBar />}
+      header={<PortalHeader role="participant" masterPDA={masterPDAStr} roles={allRoles} hideBottomBar pageTitle={t('portal.participantPortalTitle')} />}
       sidebar={
         <PortalSidebar
           portalTitle={t('portal.participantPortalTitle')}
