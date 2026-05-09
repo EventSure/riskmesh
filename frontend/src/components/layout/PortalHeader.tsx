@@ -148,9 +148,10 @@ interface PortalHeaderProps {
   masterPDA: string | null;
   roles?: ParticipantInfo[];
   hideBottomBar?: boolean;
+  pageTitle?: string;
 }
 
-export function PortalHeader({ role, masterPDA, roles, hideBottomBar = false }: PortalHeaderProps) {
+export function PortalHeader({ role, masterPDA, roles, hideBottomBar = false, pageTitle }: PortalHeaderProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { mode, toggle } = useThemeModeContext();
@@ -217,5 +218,5 @@ export function PortalHeader({ role, masterPDA, roles, hideBottomBar = false }: 
     </InfoBar>
   ) : null;
 
-  return <BaseHeader actions={actions} bottomBar={hideBottomBar ? undefined : bottomBar} />;
+  return <BaseHeader actions={actions} bottomBar={hideBottomBar ? undefined : bottomBar} pageTitle={pageTitle} />;
 }
