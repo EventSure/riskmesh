@@ -17,7 +17,6 @@ export interface MyPolicySummary {
   statusLabel: string;
   roles: MyPolicyRole[];
   track: 'A' | 'B';
-  coverageEndTs?: number;
   /** Track B only fields */
   flightNo?: string;
   route?: string;
@@ -34,7 +33,6 @@ interface BackendMasterAgreementFull {
   reinsurer: string;
   reinsurer_confirmed: boolean;
   reinsurer_effective_bps: number;
-  coverage_end_ts: number;
   participants: Array<{
     insurer: string;
     share_bps: number;
@@ -110,7 +108,6 @@ export function useMyPolicies() {
               statusLabel: mp.status_label,
               roles,
               track: 'A',
-              coverageEndTs: mp.coverage_end_ts,
             });
           }
         }
