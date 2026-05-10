@@ -5,8 +5,9 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { BaseHeader } from './BaseHeader';
 import { Mono } from '@/components/common';
 import { useThemeModeContext } from '@/context/ThemeModeContext';
-import { useMyPolicies } from '@/hooks/useMyPolicies';
+import { useMyPolicies, type MyPolicySummary } from '@/hooks/useMyPolicies';
 import type { ParticipantInfo } from '@/hooks/useParticipantRole';
+import { MasterAgreementStatus } from '@/lib/idl/open_parametric';
 
 const Controls = styled.div`
   display: flex;
@@ -18,18 +19,18 @@ const PolicySelect = styled.select`
   background: ${p => p.theme.colors.card};
   border: 1px solid ${p => p.theme.colors.border};
   color: ${p => p.theme.colors.text};
-  font-family: ${p => p.theme.fonts.sans};
-  font-size: 11px;
+  font-family: ${p => p.theme.fonts.mono};
+  font-size: 10px;
   font-weight: 600;
   padding: 5px 24px 5px 9px;
-  border-radius: ${p => p.theme.radii.sm};
+  border-radius: 7px;
   outline: none;
   cursor: pointer;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394A3B8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 8px center;
-  max-width: 160px;
+  max-width: 220px;
 `;
 
 const ThemeToggle = styled.button`
@@ -143,6 +144,29 @@ const ROLE_COLORS: Record<string, string> = {
   rein: '#38BDF8',
 };
 
+const POLICY_ROLE_LABEL: Record<string, string> = {
+  leader: '리더사',
+  partA: '참여사',
+  partB: '참여사',
+  rein: '재보험사',
+};
+
+function policyStatusLabel(p: MyPolicySummary): string {
+  if (p.track === 'B') return p.statusLabel || 'Unknown';
+  if (p.status === MasterAgreementStatus.Active) return 'Active';
+  if (p.status === MasterAgreementStatus.PendingConfirm) return 'Pending';
+  if (p.status === MasterAgreementStatus.Closed) return 'Closed';
+  if (p.status === MasterAgreementStatus.Cancelled) return 'Cancelled';
+  return 'Draft';
+}
+
+function formatPolicyDate(ts?: number): string {
+  if (!ts) return '';
+  return new Date(ts * 1000).toLocaleDateString('ko-KR', {
+    year: '2-digit', month: '2-digit', day: '2-digit',
+  });
+}
+
 interface PortalHeaderProps {
   role: 'leader' | 'participant' | 'rein' | null;
   masterPDA: string | null;
@@ -178,11 +202,22 @@ export function PortalHeader({ role, masterPDA, roles, hideBottomBar = false, pa
       {policies.length > 0 && (
         <PolicySelect value={masterPDA ?? ''} onChange={handlePolicyChange}>
           <option value="">{t('portal.selectPolicy')}</option>
-          {policies.map(p => (
-            <option key={p.pda} value={p.pda}>
-              {p.track === 'B' ? `Policy #${p.masterId}` : `Master #${p.masterId}`}
-            </option>
-          ))}
+          {policies.map(p => {
+            const role = p.roles[0]?.role;
+            const roleLabel = role ? (POLICY_ROLE_LABEL[role] || '') : '';
+            const dateStr = formatPolicyDate(p.coverageEndTs);
+            const parts = [
+              `${p.pda.slice(0, 8)}...`,
+              policyStatusLabel(p),
+              roleLabel,
+              dateStr,
+            ].filter(Boolean);
+            return (
+              <option key={p.pda} value={p.pda}>
+                {parts.join(' · ')}
+              </option>
+            );
+          })}
         </PolicySelect>
       )}
       <ThemeToggle onClick={toggle} aria-label="테마 전환">

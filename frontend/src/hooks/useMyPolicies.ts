@@ -17,6 +17,7 @@ export interface MyPolicySummary {
   statusLabel: string;
   roles: MyPolicyRole[];
   track: 'A' | 'B';
+  /** Coverage end timestamp (Track A only) */
   coverageEndTs?: number;
   /** Track B only fields */
   flightNo?: string;

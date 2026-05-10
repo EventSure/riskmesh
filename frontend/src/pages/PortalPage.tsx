@@ -6,11 +6,11 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { useTranslation } from 'react-i18next';
 import { PageShell } from '@/components/layout/PageShell';
 import { PortalHeader } from '@/components/layout/PortalHeader';
-
+import { Tag, Mono } from '@/components/common';
 import { useParticipantRole } from '@/hooks/useParticipantRole';
 import { useMyPolicies, type MyPolicySummary } from '@/hooks/useMyPolicies';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { MasterAgreementStatus, POLICY_STATE_LABELS } from '@/lib/idl/open_parametric';
+import { MasterAgreementStatus, POLICY_STATE_LABELS, PolicyState } from '@/lib/idl/open_parametric';
 import { LeaderPortal } from './portal/LeaderPortal';
 import { ParticipantPortal } from './portal/ParticipantPortal';
 import { ReinPortal } from './portal/ReinPortal';
@@ -71,6 +71,13 @@ const PolicyCard = styled.div`
   }
 `;
 
+const ROLE_COLORS: Record<string, string> = {
+  leader: '#9945FF',
+  partA: '#22C55E',
+  partB: '#F59E0B',
+  rein: '#38BDF8',
+};
+
 const STATUS_LABELS: Record<number, string> = {
   [MasterAgreementStatus.Draft]: 'Draft',
   [MasterAgreementStatus.PendingConfirm]: 'Pending',
@@ -79,40 +86,55 @@ const STATUS_LABELS: Record<number, string> = {
   [MasterAgreementStatus.Cancelled]: 'Cancelled',
 };
 
-
-const PORTAL_ROLE_LABEL: Record<string, string> = {
-  leader: '리더사',
-  partA: '참여사',
-  partB: '참여사',
-  rein: '재보험사',
+const STATUS_COLORS: Record<number, string> = {
+  [MasterAgreementStatus.Draft]: '#94A3B8',
+  [MasterAgreementStatus.PendingConfirm]: '#F59E0B',
+  [MasterAgreementStatus.Active]: '#22C55E',
+  [MasterAgreementStatus.Closed]: '#64748B',
+  [MasterAgreementStatus.Cancelled]: '#EF4444',
 };
 
-function formatDate(ts: number): string {
-  return new Date(ts * 1000).toLocaleDateString('ko-KR', {
-    year: '2-digit', month: '2-digit', day: '2-digit',
-  });
-}
+const TRACK_B_STATUS_COLORS: Record<number, string> = {
+  [PolicyState.Draft]: '#94A3B8',
+  [PolicyState.Open]: '#38BDF8',
+  [PolicyState.Funded]: '#F59E0B',
+  [PolicyState.Active]: '#22C55E',
+  [PolicyState.Claimable]: '#EF4444',
+  [PolicyState.Approved]: '#9945FF',
+  [PolicyState.Settled]: '#64748B',
+  [PolicyState.Expired]: '#475569',
+};
 
 function PolicyListItem({ policy, onClick }: { policy: MyPolicySummary; onClick: () => void }) {
+  const { t } = useTranslation();
   const isTrackB = policy.track === 'B';
+  const statusColor = isTrackB
+    ? (TRACK_B_STATUS_COLORS[policy.status] || '#94A3B8')
+    : (STATUS_COLORS[policy.status] || '#94A3B8');
   const statusLabel = isTrackB
     ? (POLICY_STATE_LABELS[policy.status] || 'Unknown')
     : (STATUS_LABELS[policy.status] || 'Unknown');
-  const primaryRole = policy.roles[0];
-  const roleLabel = primaryRole ? (PORTAL_ROLE_LABEL[primaryRole.role] || primaryRole.role) : '';
-  const dateStr = policy.coverageEndTs ? formatDate(policy.coverageEndTs) : '';
-  const label = [
-    `${policy.pda.slice(0, 8)}...`,
-    statusLabel,
-    roleLabel,
-    dateStr,
-  ].filter(Boolean).join(' · ');
 
   return (
     <PolicyCard onClick={onClick}>
-      <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, fontWeight: 600 }}>
-        {label}
-      </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {policy.roles.map(r => (
+          <Tag key={r.role} variant="subtle" style={{ color: ROLE_COLORS[r.role] || '#94A3B8', fontSize: 9, minWidth: 48, textAlign: 'center' }}>
+            {t(`portal.role.${r.role}`, r.role)}
+          </Tag>
+        ))}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, fontWeight: 600 }}>
+            {isTrackB ? `Policy #${policy.masterId}` : `Master #${policy.masterId}`}
+          </span>
+          <Mono style={{ fontSize: 9, color: 'var(--sub)' }}>
+            {isTrackB && policy.flightNo
+              ? `${policy.flightNo} · ${policy.route}`
+              : `${policy.pda.slice(0, 12)}...${policy.pda.slice(-8)}`}
+          </Mono>
+        </div>
+      </div>
+      <Tag variant="subtle" style={{ color: statusColor, fontSize: 8 }}>{statusLabel}</Tag>
     </PolicyCard>
   );
 }
