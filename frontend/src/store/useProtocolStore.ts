@@ -283,6 +283,8 @@ interface ProtocolState {
   runOracle: (contractId: number, delay: number, fresh: number, cancelled: boolean) => { ok: boolean; msg: string; type: 'error' | 'ok' | 'info'; code?: string };
   approveClaims: () => number;
   settleClaims: () => number;
+  simSettleClaim: (contractId: number) => boolean;
+  simSettleNoClaim: (contractId: number) => boolean;
   addLog: (msg: string, color: string, instruction: string, detail?: string, txSignature?: string) => void;
   applyMasterAgreementDisplayNames: (payload: MasterAgreementDisplayNames) => void;
   setMasterAgreementPDA: (pda: string | null) => void;
@@ -529,15 +531,20 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     if (fresh < 0 || fresh > 30) return { ok: false, msg: i18n.t('store.oracleStale', { fresh }), type: 'error' as const, code: 'E_ORACLE_STALE' };
     if (delay < 0 || delay % 10 !== 0) return { ok: false, msg: i18n.t('store.oracleFormat', { delay }), type: 'error' as const, code: 'E_ORACLE_FORMAT' };
 
-    const tier = cancelled ? TIERS[3] : getTier(delay);
-    if (!tier) {
-      get().addLog(i18n.t('store.oracleNoTrigger', { delay }), '#22C55E', 'check_oracle');
-      return { ok: true, msg: i18n.t('store.oracleNoTriggerMsg', { delay }), type: 'ok' as const };
-    }
-
+    // Contract 검증을 tier 분기보다 먼저 수행해야 'On Time' 입력에서도 contract 상태가 'noClaim'으로 갱신된다.
     const contract = st.contracts.find(c => c.id === contractId);
     if (!contract) return { ok: false, msg: i18n.t('store.contractNotFound', { id: contractId }), type: 'error' as const, code: 'E_CONTRACT_NOT_FOUND' };
     if (contract.status !== 'active') return { ok: false, msg: i18n.t('store.alreadyClaimed', { id: contractId }), type: 'error' as const, code: 'E_ALREADY_CLAIMED' };
+
+    const tier = cancelled ? TIERS[3] : getTier(delay);
+    if (!tier) {
+      // on-chain onChainResolve와 동일하게 contract 상태를 noClaim으로 전이시킨다.
+      set(prev => ({
+        contracts: prev.contracts.map(c => c.id === contractId ? { ...c, status: 'noClaim' as const } : c),
+      }));
+      get().addLog(i18n.t('store.oracleNoTrigger', { delay }), '#22C55E', 'check_oracle');
+      return { ok: true, msg: i18n.t('store.oracleNoTriggerMsg', { delay }), type: 'ok' as const };
+    }
     const ceded = st.cededRatioBps / 10000;
     const commRate = st.reinsCommissionBps / 10000;
     const reinsEff = st.reinsurer.enabled ? ceded * (1 - commRate) : 0;
@@ -599,8 +606,11 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
     const appr = st.claims.filter(c => c.status === 'approved');
     if (!appr.length) return 0;
     const apprIds = new Set(appr.map(c => c.id));
+    const contractIds = new Set(appr.map(c => c.contractId));
     set(prev => ({
       claims: prev.claims.map(c => apprIds.has(c.id) ? { ...c, status: 'settled' as const, settledAt: nowDate() } : c),
+      // 정산된 claim에 대응하는 contract도 'settled'로 전이시켜야 PolicyMonitorTable의 Settle 버튼이 사라진다.
+      contracts: prev.contracts.map(c => contractIds.has(c.id) ? { ...c, status: 'settled' as const } : c),
       policyStateIdx: 6,
     }));
     get().addLog(
@@ -608,6 +618,37 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       i18n.t('store.settledDetail', { totalClaim: formatNum(st.totalClaim, 2), poolBalance: formatNum(st.poolBalance, 2) }),
     );
     return appr.length;
+  },
+
+  simSettleClaim: (contractId) => {
+    const st = get();
+    const claim = st.claims.find(c => c.contractId === contractId);
+    const contract = st.contracts.find(c => c.id === contractId);
+    if (!contract || !claim || claim.status === 'settled') return false;
+    set(prev => ({
+      claims: prev.claims.map(c => c.contractId === contractId
+        ? { ...c, status: 'settled' as const, approvedAt: c.approvedAt ?? nowDate(), settledAt: nowDate() }
+        : c),
+      contracts: prev.contracts.map(c => c.id === contractId ? { ...c, status: 'settled' as const } : c),
+      policyStateIdx: 6,
+    }));
+    get().addLog(
+      i18n.t('store.settledOnchain', { id: contractId }), '#14F195', 'settle_flight_claim',
+    );
+    return true;
+  },
+
+  simSettleNoClaim: (contractId) => {
+    const st = get();
+    const contract = st.contracts.find(c => c.id === contractId);
+    if (!contract || contract.status !== 'noClaim') return false;
+    set(prev => ({
+      contracts: prev.contracts.map(c => c.id === contractId ? { ...c, status: 'settled' as const } : c),
+    }));
+    get().addLog(
+      i18n.t('store.noTrigger', { id: contractId }), '#94A3B8', 'settle_flight_no_claim',
+    );
+    return true;
   },
 
   addLog: (msg, color, instruction, detail = '', txSignature) => {
@@ -1090,6 +1131,32 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
 
 }), {
   name: 'riskmesh-protocol',
+  // v0 → v1: simulation 모드에서 진행 상태(processStep, masterActive, contracts/claims/acc/pool 등)를
+  // localStorage에 저장하지 않도록 변경. 이전 버전 사용자의 stale 진행 상태를 1회 정리한다.
+  version: 1,
+  migrate: (persistedState, version) => {
+    if (!persistedState || typeof persistedState !== 'object') return persistedState;
+    const next = { ...(persistedState as Record<string, unknown>) };
+    if (version < 1) {
+      const STALE_WORKFLOW_KEYS = [
+        'masterActive', 'processStep', 'policyStateIdx',
+        'contracts', 'claims', 'contractCount', 'claimCount',
+        'acc', 'totalPremium', 'totalClaim',
+        'poolBalance', 'premHist', 'poolHist',
+      ];
+      for (const k of STALE_WORKFLOW_KEYS) delete next[k];
+      if (Array.isArray(next.participants)) {
+        next.participants = (next.participants as Array<Record<string, unknown>>).map(p => ({
+          ...p,
+          confirmed: false,
+        }));
+      }
+      if (next.reinsurer && typeof next.reinsurer === 'object') {
+        next.reinsurer = { ...(next.reinsurer as Record<string, unknown>), confirmed: false };
+      }
+    }
+    return next;
+  },
   partialize: (state) => {
     const always = {
       mode: state.mode,
@@ -1105,11 +1172,10 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       payoutTiers: state.payoutTiers,
     };
     if (state.mode !== 'onchain') {
+      // simulation 모드: 폼 입력값과 진행 상태(processStep, masterActive, contracts/claims/acc/pool 등)를
+      // 모두 영속화. 사용자가 명시적으로 'Sim Reset' 버튼을 눌러야 초기화된다.
       return {
         ...always,
-        // In simulation mode, participants/reinsurer are user-managed — persist them.
-        // In on-chain mode they are authoritative from chain (syncMasterFromChain),
-        // so we skip them to prevent stale confirmed state leaking across agreements.
         participants: state.participants,
         reinsurer: state.reinsurer,
         masterActive: state.masterActive,
@@ -1127,6 +1193,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
         poolHist: state.poolHist,
       };
     }
+    // on-chain 모드: participants/reinsurer는 syncMasterFromChain 권위 값이므로 저장하지 않는다.
     return always;
   },
   onRehydrateStorage: () => (state) => {

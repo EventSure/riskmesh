@@ -48,7 +48,7 @@ export function Dashboard() {
         <TabContent visible={activeTab === 'tab-settlement'}><TabSettlement /></TabContent>
         <TabContent visible={activeTab === 'tab-inspector'}><TabInspector /></TabContent>
       </Body>
-      <GuideTour activeTab={activeTab} />
+      <GuideTour activeTab={activeTab} setActiveTab={setActiveTab} />
     </DashboardRoot>
   );
 }

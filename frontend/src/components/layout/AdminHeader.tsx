@@ -63,6 +63,34 @@ const ModeDot = styled.div<{ variant: 'sim' | 'chain'; active?: boolean }>`
   animation: ${p => p.active ? blink : 'none'} 2s infinite;
 `;
 
+/* ── Sim Reset Button (sim 모드 전용) ── */
+
+const SimResetBtn = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 18px;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.08);
+  color: ${p => p.theme.colors.danger};
+  font-family: ${p => p.theme.fonts.mono};
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+
+  &:hover {
+    background: rgba(239, 68, 68, 0.16);
+    border-color: rgba(239, 68, 68, 0.55);
+  }
+
+  &:active {
+    transform: scale(0.96);
+  }
+`;
+
 /* ── Selects ── */
 
 const SelectBase = styled.select`
@@ -222,8 +250,8 @@ const KpiValue = styled(Mono)`
 `;
 
 export function AdminHeader() {
-  const { mode, setMode, role, masterAgreementPDA, masterActive, contracts, totalPremium, totalClaim, poolBalance } = useProtocolStore(
-    useShallow(s => ({ mode: s.mode, setMode: s.setMode, role: s.role, masterAgreementPDA: s.masterAgreementPDA, masterActive: s.masterActive, contracts: s.contracts, totalPremium: s.totalPremium, totalClaim: s.totalClaim, poolBalance: s.poolBalance })),
+  const { mode, setMode, role, masterAgreementPDA, masterActive, contracts, totalPremium, totalClaim, poolBalance, resetAll } = useProtocolStore(
+    useShallow(s => ({ mode: s.mode, setMode: s.setMode, role: s.role, masterAgreementPDA: s.masterAgreementPDA, masterActive: s.masterActive, contracts: s.contracts, totalPremium: s.totalPremium, totalClaim: s.totalClaim, poolBalance: s.poolBalance, resetAll: s.resetAll })),
   );
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
@@ -236,6 +264,12 @@ export function AdminHeader() {
       return;
     }
     setMode(m);
+  };
+
+  const handleSimReset = () => {
+    if (!window.confirm(t('header.simReset.confirm'))) return;
+    resetAll();
+    toast(t('toast.resetDone'), 's');
   };
 
   const kpis = [
@@ -260,6 +294,11 @@ export function AdminHeader() {
           SIM
         </ModeBtn>
       </ModeToggleWrap>
+      {mode === 'simulation' && (
+        <SimResetBtn onClick={handleSimReset} title={t('header.simReset.confirm')}>
+          {t('header.simReset.btn')}
+        </SimResetBtn>
+      )}
       <MasterAgreementDropdown />
     </>
   );

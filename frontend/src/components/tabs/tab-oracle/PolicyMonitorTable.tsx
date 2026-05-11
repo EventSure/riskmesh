@@ -102,13 +102,19 @@ const STATUS_ICON: Record<string, string> = {
 export function PolicyMonitorTable() {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { contracts, claims, masterAgreementPDA, onChainSettle } = useProtocolStore();
+  const { mode, contracts, claims, masterAgreementPDA, onChainSettle, simSettleClaim, simSettleNoClaim } = useProtocolStore();
   const masterPK = masterAgreementPDA ? new PublicKey(masterAgreementPDA) : null;
   const { account: masterAccount } = useMasterAgreementAccount(masterPK);
   const { settleFlightClaim, settleFlightNoClaim, buildSettleAccounts, loading: settleLoading } = useSettleFlight();
   const [settleLoadingId, setSettleLoadingId] = useState<number | null>(null);
 
   const handleSettleClaim = async (cid: number) => {
+    if (mode === 'simulation') {
+      const ok = simSettleClaim(cid);
+      if (!ok) toast(t('toast.noClaimSettle'), 'w');
+      else toast(t('oracle.settleClaimBtn'), 's');
+      return;
+    }
     if (!masterPK || !masterAccount) { toast(t('toast.walletNotAvailable'), 'd'); return; }
     setSettleLoadingId(cid);
     const [flightPDA] = getFlightPolicyPDA(masterPK, new BN(cid));
@@ -120,6 +126,12 @@ export function PolicyMonitorTable() {
   };
 
   const handleSettleNoClaim = async (cid: number) => {
+    if (mode === 'simulation') {
+      const ok = simSettleNoClaim(cid);
+      if (!ok) toast(t('toast.noClaimSettle'), 'w');
+      else toast(t('oracle.settleNoClaimBtn'), 's');
+      return;
+    }
     if (!masterPK || !masterAccount) { toast(t('toast.walletNotAvailable'), 'd'); return; }
     setSettleLoadingId(cid);
     const [flightPDA] = getFlightPolicyPDA(masterPK, new BN(cid));

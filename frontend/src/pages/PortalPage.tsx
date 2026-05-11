@@ -105,6 +105,13 @@ const TRACK_B_STATUS_COLORS: Record<number, string> = {
   [PolicyState.Expired]: '#475569',
 };
 
+function formatPolicyEndDate(ts?: number): string {
+  if (!ts) return '';
+  return new Date(ts * 1000).toLocaleDateString('ko-KR', {
+    year: '2-digit', month: '2-digit', day: '2-digit',
+  });
+}
+
 function PolicyListItem({ policy, onClick }: { policy: MyPolicySummary; onClick: () => void }) {
   const { t } = useTranslation();
   const isTrackB = policy.track === 'B';
@@ -114,6 +121,10 @@ function PolicyListItem({ policy, onClick }: { policy: MyPolicySummary; onClick:
   const statusLabel = isTrackB
     ? (POLICY_STATE_LABELS[policy.status] || 'Unknown')
     : (STATUS_LABELS[policy.status] || 'Unknown');
+  const addressLabel = `${policy.pda.slice(0, 12)}...${policy.pda.slice(-8)}`;
+  const subLabel = isTrackB && policy.flightNo
+    ? `${policy.flightNo} · ${policy.route}`
+    : formatPolicyEndDate(policy.coverageEndTs);
 
   return (
     <PolicyCard onClick={onClick}>
@@ -125,12 +136,10 @@ function PolicyListItem({ policy, onClick }: { policy: MyPolicySummary; onClick:
         ))}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, fontWeight: 600 }}>
-            {isTrackB ? `Policy #${policy.masterId}` : `Master #${policy.masterId}`}
+            {addressLabel}
           </span>
           <Mono style={{ fontSize: 9, color: 'var(--sub)' }}>
-            {isTrackB && policy.flightNo
-              ? `${policy.flightNo} · ${policy.route}`
-              : `${policy.pda.slice(0, 12)}...${policy.pda.slice(-8)}`}
+            {subLabel}
           </Mono>
         </div>
       </div>
