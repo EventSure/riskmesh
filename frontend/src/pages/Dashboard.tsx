@@ -21,12 +21,19 @@ const DashboardRoot = styled.div`
 const Body = styled.div`
   display: flex;
   flex: 1;
+  /* min-height: 0 — column 부모(DashboardRoot)의 main축에서 컨텐츠보다 작게 줄어들 수 있도록.
+     없으면 본인이 자식 컨텐츠의 내재 높이만큼 늘어 ActionPanel/StepsScroll의 높이 제약이 풀린다. */
+  min-height: 0;
   overflow: hidden;
 `;
 
 const TabContent = styled.div<{ visible: boolean }>`
   display: ${p => (p.visible ? 'flex' : 'none')};
   flex: 1;
+  /* TabContent는 row flex 컨테이너이지만 자체도 row(Body)의 자식. cross축(높이)은 Body 높이로 결정.
+     Body의 min-height:0 만으로 충분하지만 안전하게 자체에도 부여. */
+  min-height: 0;
+  min-width: 0;
   overflow: hidden;
 `;
 

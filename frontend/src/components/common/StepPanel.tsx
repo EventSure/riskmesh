@@ -11,6 +11,13 @@ export const ActionPanel = styled.div`
   flex-direction: column;
   overflow: hidden;
   background: ${p => p.theme.colors.bg};
+  /* 높이 제약 — flex chain이 정상이면 height:100% 만으로 충분. 그래도 안전차원에서
+     viewport 기준 max-height(헤더 ~140px 추정)도 같이 걸어둔다. align-self:stretch를 명시하여
+     row flex 부모에서 cross-axis가 컨텐츠 크기로 부풀지 않게 한다. */
+  align-self: stretch;
+  height: 100%;
+  max-height: calc(100vh - 140px);
+  min-height: 0;
 `;
 
 export const PanelHeader = styled.div`
@@ -58,9 +65,26 @@ export const StepsScroll = styled.div`
   display: flex;
   flex-direction: column;
   gap: 5px;
+  /* 자식 Card들이 flex-shrink:1 기본값으로 줄어들어 컨텐츠를 잘라먹는 걸 방지.
+     이게 빠지면 Card의 overflow:hidden이 CardBody 하단을 클립해 버튼이 사라진다. */
+  > * { flex-shrink: 0; }
+  /* 스크롤 가능 여부를 사용자가 인지할 수 있도록 스크롤바를 충분히 보이게 */
+  scrollbar-width: thin;
+  scrollbar-color: ${p => p.theme.colors.border2} transparent;
 
-  &::-webkit-scrollbar { width: 3px; }
-  &::-webkit-scrollbar-thumb { background: ${p => p.theme.colors.border2}; border-radius: 2px; }
+  &::-webkit-scrollbar { width: 8px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb {
+    background: ${p => p.theme.colors.border2};
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: ${p => p.theme.colors.sub};
+    background-clip: padding-box;
+    border: 2px solid transparent;
+  }
 `;
 
 export const ContentArea = styled.div`
