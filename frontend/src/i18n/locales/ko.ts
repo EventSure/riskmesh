@@ -27,6 +27,8 @@ const ko = {
   'header.kpi.totalClaim': '누적 보험금',
   'header.kpi.poolBalance': 'Pool 잔액',
   'header.kpi.poolHealth': 'Pool 건전성',
+  'header.simReset.btn': 'Sim Reset',
+  'header.simReset.confirm': '시뮬레이션 모드 상태를 초기화 할까요?',
 
   // === Roles (dropdown) ===
   'role.leader': '👑 리더사 (삼성화재)',

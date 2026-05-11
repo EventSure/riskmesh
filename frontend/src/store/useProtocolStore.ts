@@ -1131,6 +1131,32 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
 
 }), {
   name: 'riskmesh-protocol',
+  // v0 → v1: simulation 모드에서 진행 상태(processStep, masterActive, contracts/claims/acc/pool 등)를
+  // localStorage에 저장하지 않도록 변경. 이전 버전 사용자의 stale 진행 상태를 1회 정리한다.
+  version: 1,
+  migrate: (persistedState, version) => {
+    if (!persistedState || typeof persistedState !== 'object') return persistedState;
+    const next = { ...(persistedState as Record<string, unknown>) };
+    if (version < 1) {
+      const STALE_WORKFLOW_KEYS = [
+        'masterActive', 'processStep', 'policyStateIdx',
+        'contracts', 'claims', 'contractCount', 'claimCount',
+        'acc', 'totalPremium', 'totalClaim',
+        'poolBalance', 'premHist', 'poolHist',
+      ];
+      for (const k of STALE_WORKFLOW_KEYS) delete next[k];
+      if (Array.isArray(next.participants)) {
+        next.participants = (next.participants as Array<Record<string, unknown>>).map(p => ({
+          ...p,
+          confirmed: false,
+        }));
+      }
+      if (next.reinsurer && typeof next.reinsurer === 'object') {
+        next.reinsurer = { ...(next.reinsurer as Record<string, unknown>), confirmed: false };
+      }
+    }
+    return next;
+  },
   partialize: (state) => {
     const always = {
       mode: state.mode,
@@ -1146,11 +1172,10 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
       payoutTiers: state.payoutTiers,
     };
     if (state.mode !== 'onchain') {
+      // simulation 모드: 폼 입력값과 진행 상태(processStep, masterActive, contracts/claims/acc/pool 등)를
+      // 모두 영속화. 사용자가 명시적으로 'Sim Reset' 버튼을 눌러야 초기화된다.
       return {
         ...always,
-        // In simulation mode, participants/reinsurer are user-managed — persist them.
-        // In on-chain mode they are authoritative from chain (syncMasterFromChain),
-        // so we skip them to prevent stale confirmed state leaking across agreements.
         participants: state.participants,
         reinsurer: state.reinsurer,
         masterActive: state.masterActive,
@@ -1168,6 +1193,7 @@ export const useProtocolStore = create<ProtocolState>()(persist((set, get) => ({
         poolHist: state.poolHist,
       };
     }
+    // on-chain 모드: participants/reinsurer는 syncMasterFromChain 권위 값이므로 저장하지 않는다.
     return always;
   },
   onRehydrateStorage: () => (state) => {

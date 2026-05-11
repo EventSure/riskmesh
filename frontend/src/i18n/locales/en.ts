@@ -27,6 +27,8 @@ const en = {
   'header.kpi.totalClaim': 'Total Claims',
   'header.kpi.poolBalance': 'Pool Balance',
   'header.kpi.poolHealth': 'Pool Health',
+  'header.simReset.btn': 'Sim Reset',
+  'header.simReset.confirm': 'Reset simulation state?',
 
   // === Roles (dropdown) ===
   'role.leader': '👑 Leader (Samsung F&M)',
