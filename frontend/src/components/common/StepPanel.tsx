@@ -50,6 +50,9 @@ export const PanelStatusBadge = styled.span<{ variant?: 'warning' | 'accent' | '
 
 export const StepsScroll = styled.div`
   flex: 1;
+  /* min-height: 0 — flex column 안에서 overflow-y: auto가 실제로 작동하려면 필수.
+     없으면 자식 컨텐츠의 내재 높이만큼 확장되어 스크롤이 활성화되지 않는다. */
+  min-height: 0;
   overflow-y: auto;
   padding: 8px;
   display: flex;
