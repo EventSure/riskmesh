@@ -4,26 +4,28 @@ import styled from '@emotion/styled';
 import { keyframes } from '@emotion/react';
 import { useTranslation } from 'react-i18next';
 import { useGuideTour } from './useGuideTour';
-import { GUIDE_STEPS, TOTAL_STEPS } from './guideSteps';
+import {
+  GUIDE_ANCHORS,
+  GUIDE_STEPS,
+  TOTAL_STEPS,
+  type GuideStateSnapshot,
+  type GuideContext,
+} from './guideSteps';
 import { useProtocolStore } from '@/store/useProtocolStore';
 import { useShallow } from 'zustand/shallow';
 import type { TabId } from '@/components/layout/TabBar';
 
 interface Props {
   activeTab: TabId;
+  setActiveTab: (tab: TabId) => void;
 }
 
 /* ── Animations ── */
 
-const fadeIn = keyframes`
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+const noticeFadeIn = keyframes`
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 6px)); }
+  to { opacity: 1; transform: translate(-50%, -50%); }
 `;
-
-// const pulse = keyframes`
-//   0%, 100% { box-shadow: 0 0 0 9999px rgba(0,0,0,0.6); }
-//   50% { box-shadow: 0 0 0 9999px rgba(0,0,0,0.65); }
-// `;
 
 const completeFadeIn = keyframes`
   from { opacity: 0; transform: scale(0.9); }
@@ -32,17 +34,15 @@ const completeFadeIn = keyframes`
 
 /* ── Styled ── */
 
-// const Spotlight = styled.div`
-//   position: fixed;
-//   z-index: 9998;
-//   border-radius: 8px;
-//   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
-//   pointer-events: none;
-//   transition: top 0.3s ease, left 0.3s ease, width 0.3s ease, height 0.3s ease;
-//   animation: ${pulse} 3s ease-in-out infinite;
-// `;
-
-const TooltipWrap = styled.div`
+/**
+ * Tooltip은 항상 mount된 채로 opacity/transform 으로만 표시 전환.
+ * 같은 인스턴스를 유지해야 위치(top/left) 보정이 transition으로 자연스럽게 흐른다.
+ *
+ * smoothPos:
+ *   true → 같은 step 내 위치 보정 (scroll, post-scroll 재측정)에서 부드럽게 슬라이드
+ *   false → step 전환 직후엔 transition을 꺼서 이전→새 위치 사이를 날아다니지 않게
+ */
+const TooltipWrap = styled.div<{ visible: boolean; smoothPos: boolean }>`
   position: fixed;
   z-index: 9999;
   min-width: 240px;
@@ -52,8 +52,11 @@ const TooltipWrap = styled.div`
   border-radius: 12px;
   padding: 14px 16px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.5), 0 0 20px rgba(153,69,255,0.12);
-  animation: ${fadeIn} 0.25s ease;
-  pointer-events: auto;
+  pointer-events: ${p => (p.visible ? 'auto' : 'none')};
+  opacity: ${p => (p.visible ? 1 : 0)};
+  transition: ${p => p.smoothPos
+    ? 'opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1), top 0.32s cubic-bezier(0.4, 0, 0.2, 1), left 0.32s cubic-bezier(0.4, 0, 0.2, 1)'
+    : 'opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1)'};
 `;
 
 const StepBadge = styled.span`
@@ -145,13 +148,31 @@ const Arrow = styled.div<{ position: 'top' | 'bottom' | 'left' | 'right' }>`
   `}
 `;
 
+/* ── 화면 중앙에 띄우는 안내(앵커 미발견 시) ── */
+
+const CenterNotice = styled.div`
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+  background: rgba(17, 24, 39, 0.98);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: 12px;
+  padding: 16px 20px;
+  font-size: 12px;
+  color: #FCD34D;
+  text-align: center;
+  animation: ${noticeFadeIn} 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+`;
+
 /* ── Completion overlay ── */
 
 const CompleteOverlay = styled.div`
   position: fixed;
   inset: 0;
   z-index: 9998;
-  /* background: rgba(0, 0, 0, 0.7); */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -211,119 +232,177 @@ function getTooltipStyle(rect: DOMRect, position: string): React.CSSProperties {
   }
 }
 
-/* Steps that need a manual "Next" button (auto-advance not reliable) */
-const MANUAL_STEPS = new Set([11, 13]);
+const STEP_FADE_OUT_MS = 240;             // step 전환 시 의도적 hidden 시간 (탭 전환/리렌더 grace)
+const ANCHOR_RETRY_INTERVAL_MS = 90;      // anchor 폴링 간격
+const ANCHOR_MISSING_GRACE_MS = 2200;     // anchor 못 찾으면 안내 띄우기 전 대기
+const ANCHOR_MISSING_SKIP_MS = 6000;      // 그래도 못 찾으면 다음 단계로
 
 /* ── Component ── */
 
-export function GuideTour({ activeTab }: Props) {
+export function GuideTour({ activeTab, setActiveTab }: Props) {
   const { currentStep, showComplete, nextStep, skipTour, dismissComplete } = useGuideTour();
   const { t } = useTranslation();
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const [missingAnchor, setMissingAnchor] = useState(false);
+  // step 전환 직후엔 false → 이전 위치에서 새 위치로 날아가지 않게.
+  // 첫 rect가 자리잡은 직후 true로 → 같은 step 내 후속 rect 변경(post-scroll, resize)은 부드럽게.
+  const [smoothPos, setSmoothPos] = useState(false);
 
-  const { processStep, role, participants, reinsurer, masterActive, contracts, claims } = useProtocolStore(
+  const { processStep, masterActive, participants, reinsurer, contracts, claims } = useProtocolStore(
     useShallow(s => ({
       processStep: s.processStep,
-      role: s.role,
+      masterActive: s.masterActive,
       participants: s.participants,
       reinsurer: s.reinsurer,
-      masterActive: s.masterActive,
       contracts: s.contracts,
       claims: s.claims,
     })),
   );
 
-  const contractsAtStart = useRef(0);
-  const claimsAtStart = useRef(0);
+  // step 진입 시점의 baseline (contracts/claims 카운트 비교용)
+  const baselineRef = useRef<GuideStateSnapshot | null>(null);
+
+  const snapshot: GuideStateSnapshot = {
+    processStep,
+    masterActive,
+    reinsurerEnabled: reinsurer.enabled,
+    reinsurerConfirmed: reinsurer.confirmed,
+    firstParticipantConfirmed: participants[0]?.confirmed ?? false,
+    contractsCount: contracts.length,
+    claimsCount: claims.length,
+    anySettled: claims.some(c => c.status === 'settled'),
+    activeTab,
+  };
+
+  const ctx: GuideContext = { setActiveTab };
 
   const step = currentStep !== null ? GUIDE_STEPS[currentStep] : null;
 
-  /* ── Find & track target element ── */
+  /* ── 진입 시: 이전 tooltip 잠깐 fade-out → prepare → 일정 grace 후 anchor 폴링 시작 ── */
+
+  useEffect(() => {
+    if (!step) { setTargetRect(null); setMissingAnchor(false); setSmoothPos(false); return; }
+    baselineRef.current = { ...snapshot };
+    // 이전 step의 tooltip을 즉시 fade-out (opacity transition만 작동, 위치는 transition off로 이동)
+    setTargetRect(null);
+    setMissingAnchor(false);
+    setSmoothPos(false); // 새 step 시작 → 위치 transition off (날아다님 방지)
+    step.prepare?.(ctx);
+
+    let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let postScrollTimer: ReturnType<typeof setTimeout> | null = null;
+    let smoothEnableTimer: ReturnType<typeof setTimeout> | null = null;
+    const pollForAnchor = () => {
+      if (cancelled) return;
+      const el = document.querySelector(`[data-guide="${step.anchor}"]`);
+      if (el) {
+        // block:'center'로 화면 중앙에 배치하여 사용자가 즉시 인지 가능하게.
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // 스크롤 시작 직후 rect — 위치 transition이 꺼져 있어 즉시 새 자리에 표시
+        requestAnimationFrame(() => {
+          if (cancelled) return;
+          setTargetRect(el.getBoundingClientRect());
+          // 첫 rect 적용 후 transition 다시 활성화 → post-scroll 재측정 시 부드럽게 슬라이드
+          smoothEnableTimer = setTimeout(() => {
+            if (!cancelled) setSmoothPos(true);
+          }, 60);
+        });
+        // smooth scroll이 완료된 시점에 한 번 더 측정 → 최종 위치로 tooltip 슬라이드
+        postScrollTimer = setTimeout(() => {
+          if (cancelled) return;
+          setTargetRect(el.getBoundingClientRect());
+        }, 480);
+        return;
+      }
+      retryTimer = setTimeout(pollForAnchor, ANCHOR_RETRY_INTERVAL_MS);
+    };
+    // prepare(탭 전환) 후 DOM이 안정될 때까지 의도적 grace
+    const startTimer = setTimeout(pollForAnchor, STEP_FADE_OUT_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(startTimer);
+      if (retryTimer) clearTimeout(retryTimer);
+      if (postScrollTimer) clearTimeout(postScrollTimer);
+      if (smoothEnableTimer) clearTimeout(smoothEnableTimer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep]);
+
+  /* ── 같은 step 내 위치 보정 (scroll/resize) ── */
 
   const updateRect = useCallback(() => {
-    if (!step) { setTargetRect(null); return; }
-    const el = document.querySelector(`[data-guide="${step.target}"]`);
+    if (!step) return;
+    const el = document.querySelector(`[data-guide="${step.anchor}"]`);
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      requestAnimationFrame(() => {
-        setTargetRect(el.getBoundingClientRect());
-      });
-    } else {
-      setTargetRect(null);
+      // 위치만 갱신, 못 찾으면 이전 rect 유지하여 깜빡임 방지
+      setTargetRect(el.getBoundingClientRect());
     }
   }, [step]);
 
   useEffect(() => {
-    if (currentStep === null) { setTargetRect(null); return; }
-    const timer = setTimeout(updateRect, 150);
+    if (currentStep === null) return;
     window.addEventListener('resize', updateRect);
     window.addEventListener('scroll', updateRect, true);
     return () => {
-      clearTimeout(timer);
       window.removeEventListener('resize', updateRect);
       window.removeEventListener('scroll', updateRect, true);
     };
   }, [currentStep, updateRect]);
 
-  /* ── Auto-skip when target not found ── */
+  /* ── precondition false면 즉시 skip (optional step) ── */
 
   useEffect(() => {
-    if (currentStep === null || targetRect) return;
-    const timer = setTimeout(() => {
-      const el = document.querySelector(`[data-guide="${GUIDE_STEPS[currentStep]!.target}"]`);
-      if (!el) nextStep();
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [currentStep, targetRect, nextStep]);
-
-  /* ── Snapshot counts when step changes ── */
-
-  useEffect(() => {
-    contractsAtStart.current = contracts.length;
-    claimsAtStart.current = claims.length;
+    if (!step || !baselineRef.current) return;
+    if (step.optional && step.precondition && !step.precondition(snapshot)) {
+      const t = setTimeout(nextStep, 100);
+      return () => clearTimeout(t);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep]);
 
-  /* ── Auto-advance based on store state ── */
+  /* ── 앵커가 끝까지 안 잡히는 경우의 안내 + 자동 skip ── */
 
   useEffect(() => {
-    if (currentStep === null) return;
-    const sn = GUIDE_STEPS[currentStep]!.step;
-    let ok = false;
-    switch (sn) {
-      case 1: ok = processStep >= 1; break;
-      case 2: ok = role === 'participant'; break;
-      case 3: ok = participants[0]?.confirmed ?? false; break;
-      case 4: ok = participants.length < 2 || role === 'participant'; break;
-      case 5: ok = participants.length < 2 || (participants[1]?.confirmed ?? false); break;
-      case 6: ok = !reinsurer.enabled || role === 'rein'; break;
-      case 7: ok = !reinsurer.enabled || reinsurer.confirmed; break;
-      case 8: ok = role === 'leader'; break;
-      case 9: ok = masterActive; break;
-      case 10: ok = activeTab === 'tab-feed'; break;
-      case 12: ok = activeTab === 'tab-oracle'; break;
-      case 14: ok = claims.length > claimsAtStart.current; break;
-      case 15: ok = claims.some(c => c.status === 'settled'); break;
-      case 16: ok = activeTab === 'tab-settlement'; break;
-    }
-    if (ok) {
-      const timer = setTimeout(nextStep, 350);
-      return () => clearTimeout(timer);
-    }
-  }, [currentStep, processStep, role, participants, reinsurer, masterActive, activeTab, contracts.length, claims, nextStep]);
+    if (currentStep === null || targetRect) return;
+    const noticeTimer = setTimeout(() => setMissingAnchor(true), ANCHOR_MISSING_GRACE_MS);
+    const skipTimer = setTimeout(() => {
+      const el = document.querySelector(`[data-guide="${GUIDE_STEPS[currentStep]!.anchor}"]`);
+      if (!el) nextStep();
+    }, ANCHOR_MISSING_SKIP_MS);
+    return () => {
+      clearTimeout(noticeTimer);
+      clearTimeout(skipTimer);
+    };
+  }, [currentStep, targetRect, nextStep]);
 
-  /* ── Step 13: DOM event listener for select change ── */
+  /* ── store/탭 변화로 자동 다음 진행 ── */
 
   useEffect(() => {
-    if (currentStep === null || GUIDE_STEPS[currentStep]!.step !== 13) return;
-    const el = document.querySelector('[data-guide="select-contract"]') as HTMLSelectElement;
+    if (!step || !baselineRef.current) return;
+    if (step.isComplete(snapshot, baselineRef.current)) {
+      const t = setTimeout(nextStep, 350);
+      return () => clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    currentStep, processStep, masterActive,
+    participants, reinsurer.enabled, reinsurer.confirmed,
+    contracts.length, claims, activeTab, nextStep,
+  ]);
+
+  /* ── select-contract step: DOM change 리스너 ── */
+
+  useEffect(() => {
+    if (!step || step.anchor !== GUIDE_ANCHORS.SELECT_CONTRACT) return;
+    const el = document.querySelector(`[data-guide="${GUIDE_ANCHORS.SELECT_CONTRACT}"]`) as HTMLSelectElement | null;
     if (!el) return;
     const handler = () => {
       if (el.value !== '0') setTimeout(nextStep, 350);
     };
     el.addEventListener('change', handler);
     return () => el.removeEventListener('change', handler);
-  }, [currentStep, nextStep]);
+  }, [currentStep, step, nextStep]);
 
   /* ── Completion overlay ── */
 
@@ -340,23 +419,19 @@ export function GuideTour({ activeTab }: Props) {
     );
   }
 
-  /* ── No active step ── */
+  /* ── 활성 step 없음 ── */
 
-  if (currentStep === null || !step || !targetRect) return null;
+  if (currentStep === null || !step) return null;
 
-  const showNext = MANUAL_STEPS.has(step.step);
+  const showNext = step.manualNext === true;
+  const visible = !!targetRect;
+  const tooltipStyle = targetRect
+    ? getTooltipStyle(targetRect, step.position)
+    : { top: -9999, left: -9999 } as React.CSSProperties; // off-screen 유지 (transition 부드럽게)
 
   return createPortal(
     <>
-      {/* <Spotlight
-        style={{
-          top: targetRect.top - 6,
-          left: targetRect.left - 6,
-          width: targetRect.width + 12,
-          height: targetRect.height + 12,
-        }}
-      /> */}
-      <TooltipWrap key={currentStep} style={getTooltipStyle(targetRect, step.position)}>
+      <TooltipWrap visible={visible} smoothPos={smoothPos} style={tooltipStyle}>
         <Arrow position={step.position} />
         <StepBadge>{step.step} / {TOTAL_STEPS}</StepBadge>
         <TooltipTitle>{t(step.titleKey)}</TooltipTitle>
@@ -366,6 +441,14 @@ export function GuideTour({ activeTab }: Props) {
           {showNext && <NextBtn onClick={nextStep}>{t('guide.next')}</NextBtn>}
         </TooltipFooter>
       </TooltipWrap>
+      {!visible && missingAnchor && (
+        <CenterNotice>
+          <div style={{ marginBottom: 8 }}>
+            {t('guide.anchorMissing', { step: step.step, total: TOTAL_STEPS })}
+          </div>
+          <SkipBtn onClick={skipTour}>{t('guide.skip')}</SkipBtn>
+        </CenterNotice>
+      )}
     </>,
     document.body,
   );
